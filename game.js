@@ -30,7 +30,9 @@ const classStats = {
     blind: { health: 90, mana: 80, perks: ['Шостий сенс', 'Чуття небезпеки'] },
     elfFemale: { health: 85, mana: 110, perks: ['Ельфійська спритність', 'Стародавня мудрість'] },
     animeFan: { health: 80, mana: 70, perks: ['Отаку знання', 'Фанатизм'] },
-    animeFanFemale: { health: 75, mana: 90, perks: ['Харизма', 'Кавайність'] }
+    animeFanFemale: { health: 75, mana: 90, perks: ['Харизма', 'Кавайність'] },
+    boxer: { health: 130, mana: 40, perks: ['Міцні кулаки', 'Витривалість'] },
+    lumberjack: { health: 125, mana: 35, perks: ['Сила замаху', 'Стійкість'] }
 };
 
 // Локалізація гри
@@ -76,25 +78,13 @@ const localization = {
         animeFanFemale: "Anime Enthusiast",
         animeFanFemaleDesc: "Charismatic adventurer with unique abilities",
         animeFanFemaleStats: "HP: 75, Mana: 90, Charisma: High",
-        startAdventure: "Start Adventure!",
-        health: "Health",
-        mana: "Mana",
-        experience: "Experience",
-        level: "Level",
-        perks: "Perks",
-        basicSkills: "Basic Skills",
-        saveGame: "Save",
-        loadGame: "Load",
-        history: "History",
-        enemyName: "Enemy",
-        enemyHealth: "Health",
-        enemyDesc: "Description",
-        enemyAbilities: "Abilities",
-        enemyWeaknesses: "Weaknesses",
-        customActionPlaceholder: "Describe what you want to do...",
-        performAction: "Perform Action",
-        customActionLabel: "Or choose your own action:",
-        processingAction: "Processing action",
+        boxer: "Boxer",
+        boxerDesc: "Tough fighter with powerful punches and high endurance",
+        boxerStats: "HP: 130, Mana: 40, Strength: Very High",
+        lumberjack: "Lumberjack",
+        lumberjackDesc: "Strong woodcutter with axe mastery and resilience",
+        lumberjackStats: "HP: 125, Mana: 35, Stamina: High",
+        // ... existing code ...
         
         // Попапи
         levelUp: "Level Up!",
@@ -133,7 +123,38 @@ const localization = {
                 "enemy": null,
                 "new_perks": []
             }
-        }`,
+        }
+        
+        If combat is true, always return enemy information in this format:
+        - For a single enemy: 
+          "enemy": {
+            "name": "Enemy Name", 
+            "health": numeric_value_or_description, 
+            "description": "brief description"
+          }
+        
+        - For multiple enemies or a group:
+          "enemy": {
+            "name": "Group Name", 
+            "count": number_of_enemies, 
+            "health": numeric_value_or_description_per_individual, 
+            "type": "combat_type",
+            "description": "description of the group",
+            "elements": [  // Optional: provide details for individual enemies
+              {
+                "name": "Enemy 1 Name",
+                "health": "Enemy 1 Health",
+                "description": "Enemy 1 description"
+              },
+              {
+                "name": "Enemy 2 Name",
+                "health": "Enemy 2 Health",
+                "description": "Enemy 2 description"
+              }
+            ]
+          }
+        
+        NEVER return enemy as a simple string. Always use the proper object structure.`,
         
         actionPrompt: `Continue the D&D adventure. Previous situation: "{prevSituation}"
         Player chose action: "{action}"
@@ -165,11 +186,72 @@ const localization = {
                 "enemy": null,
                 "new_perks": ["name and description of new perk"]
             }
-        }`,
+        }
+        
+        If combat is true, always return enemy information in this format:
+        - For a single enemy: 
+          "enemy": {
+            "name": "Enemy Name", 
+            "health": numeric_value_or_description, 
+            "description": "brief description"
+          }
+        
+        - For multiple enemies or a group:
+          "enemy": {
+            "name": "Group Name", 
+            "count": number_of_enemies, 
+            "health": numeric_value_or_description_per_individual, 
+            "type": "combat_type",
+            "description": "description of the group",
+            "elements": [  // Optional: provide details for individual enemies
+              {
+                "name": "Enemy 1 Name",
+                "health": "Enemy 1 Health",
+                "description": "Enemy 1 description"
+              },
+              {
+                "name": "Enemy 2 Name",
+                "health": "Enemy 2 Health",
+                "description": "Enemy 2 description"
+              }
+            ]
+          }
+        
+        NEVER return enemy as a simple string. Always use the proper object structure.`,
         
         // Додаємо нові рядки локалізації для вибору початку гри
         gameStartOptions: "Choose an option",
-        newGame: "Start new game"
+        newGame: "Start new game",
+        enemyGroup: "Enemy Group",
+        enemyCount: "Count",
+        enemiesName: "Enemies",
+        
+        // Додаємо нові рядки локалізації для спеціальних класів
+        boxer: "Boxer",
+        boxerDesc: "Tough fighter with powerful punches and high endurance",
+        boxerStats: "HP: 130, Mana: 40, Strength: Very High",
+        lumberjack: "Lumberjack",
+        lumberjackDesc: "Strong woodcutter with axe mastery and resilience",
+        lumberjackStats: "HP: 125, Mana: 35, Stamina: High",
+        startAdventure: "Start Adventure!",
+        health: "Health",
+        mana: "Mana",
+        experience: "Experience",
+        level: "Level",
+        perks: "Perks",
+        basicSkills: "Basic Skills",
+        saveGame: "Save",
+        loadGame: "Load",
+        history: "History",
+        enemyName: "Enemy",
+        enemyHealth: "Health",
+        enemyDesc: "Description",
+        enemyAbilities: "Abilities",
+        enemyWeaknesses: "Weaknesses",
+        customActionPlaceholder: "Describe what you want to do...",
+        performAction: "Perform Action",
+        customActionLabel: "Or choose your own action:",
+        processingAction: "Processing action"
     },
     uk: {
         // Інтерфейс
@@ -212,25 +294,13 @@ const localization = {
         animeFanFemale: "Анімешниця",
         animeFanFemaleDesc: "Харизматична шукачка пригод з унікальними здібностями",
         animeFanFemaleStats: "HP: 75, Mana: 90, Харизма: Висока",
-        startAdventure: "Почати пригоду!",
-        health: "Здоровʼя",
-        mana: "Мана",
-        experience: "Досвід",
-        level: "Рівень",
-        perks: "Перки",
-        basicSkills: "Базові навички",
-        saveGame: "Зберегти",
-        loadGame: "Завантажити",
-        history: "Історія подій",
-        enemyName: "Ворог",
-        enemyHealth: "Здоровʼя",
-        enemyDesc: "Опис",
-        enemyAbilities: "Здібності",
-        enemyWeaknesses: "Слабкості",
-        customActionPlaceholder: "Опишіть, що ви хочете зробити...",
-        performAction: "Виконати дію",
-        customActionLabel: "Або виберіть власну дію:",
-        processingAction: "Обробка дії",
+        boxer: "Боксер",
+        boxerDesc: "Витривалий боєць з потужними ударами та високою стійкістю",
+        boxerStats: "HP: 130, Mana: 40, Сила: Дуже висока",
+        lumberjack: "Лісоруб",
+        lumberjackDesc: "Сильний лісоруб з майстерністю сокири та стійкістю",
+        lumberjackStats: "HP: 125, Mana: 35, Витривалість: Висока",
+        // ... existing code ...
         
         // Попапи
         levelUp: "Рівень підвищено!",
@@ -269,7 +339,38 @@ const localization = {
                 "enemy": null,
                 "new_perks": []
             }
-        }`,
+        }
+        
+        Якщо combat є true, завжди повертай інформацію про ворога в такому форматі:
+        - Для одного ворога: 
+          "enemy": {
+            "name": "Ім'я ворога", 
+            "health": числове_значення_або_опис, 
+            "description": "короткий опис"
+          }
+        
+        - Для кількох ворогів або групи:
+          "enemy": {
+            "name": "Назва групи", 
+            "count": кількість_ворогів, 
+            "health": здоров'я_кожного_індивіда, 
+            "type": "тип_бою",
+            "description": "опис групи",
+            "elements": [  // Необов'язково: надайте деталі для окремих ворогів
+              {
+                "name": "Ім'я ворога 1",
+                "health": "Здоров'я ворога 1",
+                "description": "Опис ворога 1"
+              },
+              {
+                "name": "Ім'я ворога 2",
+                "health": "Здоров'я ворога 2",
+                "description": "Опис ворога 2"
+              }
+            ]
+          }
+        
+        НІКОЛИ не повертай ворога як простий рядок. Завжди використовуй правильну структуру об'єкта.`,
         
         actionPrompt: `Продовжи D&D пригоду. Попередня ситуація: "{prevSituation}"
         Гравець обрав дію: "{action}"
@@ -301,11 +402,72 @@ const localization = {
                 "enemy": null,
                 "new_perks": ["назва та опис нового перку"]
             }
-        }`,
+        }
+        
+        Якщо combat є true, завжди повертай інформацію про ворога в такому форматі:
+        - Для одного ворога: 
+          "enemy": {
+            "name": "Ім'я ворога", 
+            "health": числове_значення_або_опис, 
+            "description": "короткий опис"
+          }
+        
+        - Для кількох ворогів або групи:
+          "enemy": {
+            "name": "Назва групи", 
+            "count": кількість_ворогів, 
+            "health": здоров'я_кожного_індивіда, 
+            "type": "тип_бою",
+            "description": "опис групи",
+            "elements": [  // Необов'язково: надайте деталі для окремих ворогів
+              {
+                "name": "Ім'я ворога 1",
+                "health": "Здоров'я ворога 1",
+                "description": "Опис ворога 1"
+              },
+              {
+                "name": "Ім'я ворога 2",
+                "health": "Здоров'я ворога 2",
+                "description": "Опис ворога 2"
+              }
+            ]
+          }
+        
+        НІКОЛИ не повертай ворога як простий рядок. Завжди використовуй правильну структуру об'єкта.`,
         
         // Додаємо нові рядки локалізації для вибору початку гри
         gameStartOptions: "Виберіть опцію",
-        newGame: "Почати нову гру"
+        newGame: "Почати нову гру",
+        enemyGroup: "Група ворогів",
+        enemyCount: "Кількість",
+        enemiesName: "Вороги",
+        
+        // Додаємо нові рядки локалізації для спеціальних класів
+        boxer: "Боксер",
+        boxerDesc: "Витривалий боєць з потужними ударами та високою стійкістю",
+        boxerStats: "HP: 130, Mana: 40, Сила: Дуже висока",
+        lumberjack: "Лісоруб",
+        lumberjackDesc: "Сильний лісоруб з майстерністю сокири та стійкістю",
+        lumberjackStats: "HP: 125, Mana: 35, Витривалість: Висока",
+        startAdventure: "Почати пригоду!",
+        health: "Здоров'я",
+        mana: "Мана",
+        experience: "Досвід",
+        level: "Рівень",
+        perks: "Перки",
+        basicSkills: "Базові навички",
+        saveGame: "Зберегти",
+        loadGame: "Завантажити",
+        history: "Історія",
+        enemyName: "Ворог",
+        enemyHealth: "Здоров'я",
+        enemyDesc: "Опис",
+        enemyAbilities: "Навички",
+        enemyWeaknesses: "Слабкості",
+        customActionPlaceholder: "Опишіть, що ви хочете зробити...",
+        performAction: "Виконати дію",
+        customActionLabel: "Або виберіть свою дію:",
+        processingAction: "Обробка дії"
     },
     ru: {
         // Интерфейс
@@ -348,25 +510,13 @@ const localization = {
         animeFanFemale: "Анимешница",
         animeFanFemaleDesc: "Харизматичная искательница приключений с уникальными способностями",
         animeFanFemaleStats: "HP: 75, Mana: 90, Харизма: Высокая",
-        startAdventure: "Начать приключение!",
-        health: "Здоровье",
-        mana: "Мана",
-        experience: "Опыт",
-        level: "Уровень",
-        perks: "Перки",
-        basicSkills: "Базовые навыки",
-        saveGame: "Сохранить",
-        loadGame: "Загрузить",
-        history: "История событий",
-        enemyName: "Враг",
-        enemyHealth: "Здоровье",
-        enemyDesc: "Описание",
-        enemyAbilities: "Способности",
-        enemyWeaknesses: "Слабости",
-        customActionPlaceholder: "Опишите, что вы хотите сделать...",
-        performAction: "Выполнить действие",
-        customActionLabel: "Или выберите собственное действие:",
-        processingAction: "Обработка действия",
+        boxer: "Боксер",
+        boxerDesc: "Выносливый боец с мощными ударами и высокой стойкостью",
+        boxerStats: "HP: 130, Mana: 40, Сила: Очень высокая",
+        lumberjack: "Лесоруб",
+        lumberjackDesc: "Сильный лесоруб с мастерством топора и стойкостью",
+        lumberjackStats: "HP: 125, Mana: 35, Выносливость: Высокая",
+        // ... existing code ...
         
         // Попапы
         levelUp: "Уровень повышен!",
@@ -405,7 +555,38 @@ const localization = {
                 "enemy": null,
                 "new_perks": []
             }
-        }`,
+        }
+        
+        Если combat равен true, всегда возвращай информацию о враге в таком формате:
+        - Для одного врага: 
+          "enemy": {
+            "name": "Имя врага", 
+            "health": числовое_значение_или_описание, 
+            "description": "краткое описание"
+          }
+        
+        - Для нескольких врагов или группы:
+          "enemy": {
+            "name": "Название группы", 
+            "count": количество_врагов, 
+            "health": здоровье_каждого_индивида, 
+            "type": "тип_боя",
+            "description": "описание группы",
+            "elements": [  // Необязательно: предоставьте детали для отдельных врагов
+              {
+                "name": "Имя врага 1",
+                "health": "Здоровье врага 1",
+                "description": "Описание врага 1"
+              },
+              {
+                "name": "Имя врага 2",
+                "health": "Здоровье врага 2",
+                "description": "Описание врага 2"
+              }
+            ]
+          }
+        
+        НИКОГДА не возвращай врага как простую строку. Всегда используй правильную структуру объекта.`,
         
         actionPrompt: `Продолжи D&D приключение. Предыдущая ситуация: "{prevSituation}"
         Игрок выбрал действие: "{action}"
@@ -437,11 +618,72 @@ const localization = {
                 "enemy": null,
                 "new_perks": ["название и описание нового перка"]
             }
-        }`,
+        }
+        
+        Если combat равен true, всегда возвращай информацию о враге в таком формате:
+        - Для одного врага: 
+          "enemy": {
+            "name": "Имя врага", 
+            "health": числовое_значение_или_описание, 
+            "description": "краткое описание"
+          }
+        
+        - Для нескольких врагов или группы:
+          "enemy": {
+            "name": "Название группы", 
+            "count": количество_врагов, 
+            "health": здоровье_каждого_индивида, 
+            "type": "тип_боя",
+            "description": "описание группы",
+            "elements": [  // Необязательно: предоставьте детали для отдельных врагов
+              {
+                "name": "Имя врага 1",
+                "health": "Здоровье врага 1",
+                "description": "Описание врага 1"
+              },
+              {
+                "name": "Имя врага 2",
+                "health": "Здоровье врага 2",
+                "description": "Описание врага 2"
+              }
+            ]
+          }
+        
+        НИКОГДА не возвращай врага как простую строку. Всегда используй правильную структуру объекта.`,
         
         // Додаємо нові рядки локалізації для вибору початку гри
         gameStartOptions: "Выберите опцию",
-        newGame: "Начать новую игру"
+        newGame: "Начать новую игру",
+        enemyGroup: "Группа врагов",
+        enemyCount: "Количество",
+        enemiesName: "Враги",
+        
+        // Додаємо нові рядки локалізації для спеціальних класів
+        boxer: "Боксер",
+        boxerDesc: "Выносливый боец с мощными ударами и высокой стойкостью",
+        boxerStats: "HP: 130, Mana: 40, Сила: Очень высокая",
+        lumberjack: "Лесоруб",
+        lumberjackDesc: "Сильный лесоруб с мастерством топора и стойкостью",
+        lumberjackStats: "HP: 125, Mana: 35, Выносливость: Высокая",
+        startAdventure: "Начать приключение!",
+        health: "Здоровье",
+        mana: "Мана",
+        experience: "Опыт",
+        level: "Уровень",
+        perks: "Перки",
+        basicSkills: "Базовые навыки",
+        saveGame: "Сохранить",
+        loadGame: "Загрузить",
+        history: "История",
+        enemyName: "Враг",
+        enemyHealth: "Здоровье",
+        enemyDesc: "Описание",
+        enemyAbilities: "Навыки",
+        enemyWeaknesses: "Слабости",
+        customActionPlaceholder: "Опишите, что вы хотите сделать...",
+        performAction: "Выполнить действие",
+        customActionLabel: "Или выберите свою собственную:",
+        processingAction: "Обработка действия"
     }
 };
 
@@ -726,6 +968,8 @@ function updateLanguage(lang) {
     updateClassInfo("elfFemale", "🧝‍♀️", "elfFemale", "elfFemaleDesc", "elfFemaleStats");
     updateClassInfo("animeFan", "📺", "animeFan", "animeFanDesc", "animeFanStats");
     updateClassInfo("animeFanFemale", "🎀", "animeFanFemale", "animeFanFemaleDesc", "animeFanFemaleStats");
+    updateClassInfo("boxer", "👊", "boxer", "boxerDesc", "boxerStats");
+    updateClassInfo("lumberjack", "🪓", "lumberjack", "lumberjackDesc", "lumberjackStats");
     
     // Кнопка початку гри
     const startButton = document.querySelector('#setupScreen button');
@@ -948,12 +1192,39 @@ function startGame() {
     generateInitialScene();
 }
 
+// Функція для отримання локалізованої назви класу
+function getCharacterClassName(characterClass) {
+    const currentLang = gameState.language;
+    
+    // Спеціальна обробка для аніме-персонажів
+    const classTranslations = {
+        "animeFan": {
+            "en": "Otaku",
+            "uk": "Анімешник",
+            "ru": "Анимешник"
+        },
+        "animeFanFemale": {
+            "en": "Anime Enthusiast",
+            "uk": "Анімешниця",
+            "ru": "Анимешница"
+        }
+    };
+    
+    // Якщо знайдено переклад у спеціальному списку
+    if (classTranslations[characterClass] && classTranslations[characterClass][currentLang]) {
+        return classTranslations[characterClass][currentLang];
+    }
+    
+    // Інакше намагаємось знайти у загальних локалізаціях
+    return getText(characterClass) || characterClass;
+}
+
 // Функція для оновлення панелі персонажа
 function updateCharacterPanel() {
     // Ім'я класу персонажа
     const characterClass = gameState.character.class;
     // Отримуємо локалізовану назву класу
-    const translatedClass = getText(characterClass) || characterClass;
+    const translatedClass = getCharacterClassName(characterClass);
     
     document.getElementById('characterHeader').textContent = `${gameState.character.name} (${translatedClass})`;
     document.getElementById('healthValue').textContent = `${gameState.character.health}/${gameState.character.maxHealth}`;
@@ -965,10 +1236,44 @@ function updateCharacterPanel() {
     perksList.innerHTML = gameState.character.perks.map(perk => `<div class="perk">${translatePerk(perk)}</div>`).join('');
 }
 
+// Додаємо переклади для перків аніме-персонажів
+const animePerkTranslations = {
+    // Анімешник/анімешниця перки
+    "Гарем початковий рівень": {
+        "en": "Harem Starting Level",
+        "ru": "Гарем начальный уровень"
+    },
+    "Гарем початковий рівень: +5 до харизми з анімешницями, але -5 до харизми з усіма іншими": {
+        "en": "Harem Starting Level: +5 to charisma when interacting with female anime fans, but -5 to charisma with everyone else",
+        "ru": "Гарем начальный уровень: +5 к харизме при взаимодействии с анимешницами, но -5 к харизме со всеми остальными"
+    },
+    "Отаку мудрість": {
+        "en": "Otaku Wisdom",
+        "ru": "Мудрость отаку"
+    },
+    "Отаку мудрість: +10 до знань про аніме та мангу, що іноді може бути корисно": {
+        "en": "Otaku Wisdom: +10 to knowledge about anime and manga, which can sometimes be useful",
+        "ru": "Мудрость отаку: +10 к знаниям об аниме и манге, что иногда может быть полезно"
+    },
+    "Аніме харизма": {
+        "en": "Anime Charisma",
+        "ru": "Аниме харизма"
+    },
+    "Аніме харизма: +15 до харизми при взаємодії з любителями аніме": {
+        "en": "Anime Charisma: +15 to charisma when interacting with anime fans",
+        "ru": "Аниме харизма: +15 к харизме при взаимодействии с любителями аниме"
+    }
+};
+
 // Функція для перекладу перків
 function translatePerk(perk) {
     // Перевірка на наявність перекладу для перку
     const currentLang = gameState.language;
+    
+    // Перевіряємо чи є переклад в animePerkTranslations
+    if (animePerkTranslations[perk] && animePerkTranslations[perk][currentLang]) {
+        return animePerkTranslations[perk][currentLang];
+    }
     
     // Базові перки класів
     const perkTranslations = {
@@ -1086,6 +1391,22 @@ function translatePerk(perk) {
         "Базові навички": {
             "en": "Basic Skills",
             "ru": "Базовые навыки"
+        },
+        "Міцні кулаки": {
+            "en": "Powerful Punches",
+            "ru": "Мощные удары"
+        },
+        "Витривалість": {
+            "en": "High Endurance",
+            "ru": "Высокая выносливость"
+        },
+        "Сила замаху": {
+            "en": "Axe Mastery",
+            "ru": "Сила замаха"
+        },
+        "Стійкість": {
+            "en": "Resilience",
+            "ru": "Прочность"
         }
     };
     
@@ -1101,9 +1422,44 @@ function translatePerk(perk) {
 async function generateInitialScene() {
     const prompt = getText('initialScenePrompt')
         .replace('{name}', gameState.character.name)
-        .replace('{class}', gameState.character.class);
+        .replace('{class}', getCharacterClassName(gameState.character.class));
 
     await callGeminiAPI(prompt, true);
+}
+
+// Додаємо локалізацію для спеціальних ефектів аніме-персонажів
+const animeSpecialTexts = {
+    "uk": {
+        "awkwardness": "Ви відчуваєте незручність і ваш голос тремтить. Чомусь вам стає важко дивитися співрозмовнику в очі, а серце починає битися частіше.",
+        "animeConfidence": "Ваші знання аніме та манги дозволяють вам відчувати особливу впевненість в цій ситуації.",
+        "animeFemaleInfluence": "Ви помічаєте, що ваша присутність викликає особливу реакцію. Здається, ви маєте певний вплив на цю людину.",
+        "useInfluence": "Використати свій природній вплив на цю людину",
+        "nervously": "(нервуючи)"
+    },
+    "en": {
+        "awkwardness": "You feel uncomfortable and your voice trembles. For some reason, it becomes difficult to look your interlocutor in the eyes, and your heart begins to beat faster.",
+        "animeConfidence": "Your knowledge of anime and manga allows you to feel special confidence in this situation.",
+        "animeFemaleInfluence": "You notice that your presence causes a special reaction. It seems you have some influence over this person.",
+        "useInfluence": "Use your natural influence on this person",
+        "nervously": "(nervously)"
+    },
+    "ru": {
+        "awkwardness": "Вы чувствуете неловкость и ваш голос дрожит. Почему-то вам становится трудно смотреть собеседнику в глаза, а сердце начинает биться чаще.",
+        "animeConfidence": "Ваши знания аниме и манги позволяют вам чувствовать особую уверенность в этой ситуации.",
+        "animeFemaleInfluence": "Вы замечаете, что ваше присутствие вызывает особую реакцию. Кажется, вы имеете определенное влияние на этого человека.",
+        "useInfluence": "Использовать своё естественное влияние на этого человека",
+        "nervously": "(нервничая)"
+    }
+};
+
+// Функція для отримання локалізованого тексту спеціальних ефектів аніме-персонажів
+function getAnimeText(key) {
+    const lang = gameState.language;
+    if (animeSpecialTexts[lang] && animeSpecialTexts[lang][key]) {
+        return animeSpecialTexts[lang][key];
+    }
+    // За замовчуванням повертаємо український текст
+    return animeSpecialTexts["uk"][key] || key;
 }
 
 // Функція для обробки специфіки взаємодії аніме-персонажів
@@ -1139,7 +1495,7 @@ function processAnimeFanSpecialInteractions(action, response) {
             // Додаємо прихований ефект: анімешник починає нервувати і соромитись при розмові
             // Створюємо новий текст, що натякає на дивну поведінку персонажа
             const originalText = modifiedResponse.text;
-            modifiedResponse.text = originalText + ' Ви відчуваєте незручність і ваш голос тремтить. Чомусь вам стає важко дивитися співрозмовнику в очі, а серце починає битися частіше.';
+            modifiedResponse.text = originalText + ' ' + getAnimeText('awkwardness');
             
             // Штраф до дії, якщо це розмова чи харизма
             if (actionLowerCase.includes('розмов') || actionLowerCase.includes('говор') || 
@@ -1163,7 +1519,7 @@ function processAnimeFanSpecialInteractions(action, response) {
                             option.includes('говорить') || option.includes('спросить') ||
                             option.includes('say') || option.includes('ask') || 
                             option.includes('tell') || option.includes('speak')) {
-                            return option + ' (нервуючи)';
+                            return option + ' ' + getAnimeText('nervously');
                         }
                         return option;
                     });
@@ -1173,7 +1529,15 @@ function processAnimeFanSpecialInteractions(action, response) {
             // Шанс 10% отримати перк "Гарем початковий рівень" після кількох таких взаємодій
             if (!gameState.character.perks.includes('Гарем початковий рівень') && Math.random() < 0.1) {
                 modifiedResponse.consequences.new_perks = modifiedResponse.consequences.new_perks || [];
+                
+                // Використовуємо локалізовану версію перку
+                if (gameState.language === 'en') {
+                    modifiedResponse.consequences.new_perks.push('Harem Starting Level: +5 to charisma when interacting with female anime fans, but -5 to charisma with everyone else');
+                } else if (gameState.language === 'ru') {
+                    modifiedResponse.consequences.new_perks.push('Гарем начальный уровень: +5 к харизме при взаимодействии с анимешницами, но -5 к харизме со всеми остальными');
+                } else {
                 modifiedResponse.consequences.new_perks.push('Гарем початковий рівень: +5 до харизми з анімешницями, але -5 до харизми з усіма іншими');
+                }
             }
         }
         
@@ -1182,7 +1546,7 @@ function processAnimeFanSpecialInteractions(action, response) {
             actionLowerCase.includes('аниме') || actionLowerCase.includes('манг') ||
             actionLowerCase.includes('anime') || actionLowerCase.includes('manga')) {
             
-            modifiedResponse.text = modifiedResponse.text + ' Ваші знання аніме та манги дозволяють вам відчувати особливу впевненість в цій ситуації.';
+            modifiedResponse.text = modifiedResponse.text + ' ' + getAnimeText('animeConfidence');
             
             // Бонус до досвіду за використання знань аніме
             modifiedResponse.consequences.experience = (modifiedResponse.consequences.experience || 0) + 5;
@@ -1190,7 +1554,15 @@ function processAnimeFanSpecialInteractions(action, response) {
             // Шанс 15% отримати перк "Отаку мудрість"
             if (!gameState.character.perks.includes('Отаку мудрість') && Math.random() < 0.15) {
                 modifiedResponse.consequences.new_perks = modifiedResponse.consequences.new_perks || [];
+                
+                // Використовуємо локалізовану версію перку
+                if (gameState.language === 'en') {
+                    modifiedResponse.consequences.new_perks.push('Otaku Wisdom: +10 to knowledge about anime and manga, which can sometimes be useful');
+                } else if (gameState.language === 'ru') {
+                    modifiedResponse.consequences.new_perks.push('Мудрость отаку: +10 к знаниям об аниме и манге, что иногда может быть полезно');
+                } else {
                 modifiedResponse.consequences.new_perks.push('Отаку мудрість: +10 до знань про аніме та мангу, що іноді може бути корисно');
+                }
             }
         }
     } 
@@ -1202,24 +1574,36 @@ function processAnimeFanSpecialInteractions(action, response) {
         
         if (isInteractingWithAnimeFan) {
             // Анімешниця має владу над анімешниками
-            modifiedResponse.text = modifiedResponse.text + ' Ви помічаєте, що ваша присутність викликає особливу реакцію. Здається, ви маєте певний вплив на цю людину.';
+            modifiedResponse.text = modifiedResponse.text + ' ' + getAnimeText('animeFemaleInfluence');
             
             // Бонус до харизми при взаємодії з анімешниками
             if (modifiedResponse.options && modifiedResponse.options.length > 0) {
                 // Додаємо опцію використання впливу
-                modifiedResponse.options.push('Використати свій природній вплив на цю людину');
+                modifiedResponse.options.push(getAnimeText('useInfluence'));
             }
             
             // Шанс 20% отримати перк "Аніме харизма"
             if (!gameState.character.perks.includes('Аніме харизма') && Math.random() < 0.2) {
                 modifiedResponse.consequences.new_perks = modifiedResponse.consequences.new_perks || [];
+                
+                // Використовуємо локалізовану версію перку
+                if (gameState.language === 'en') {
+                    modifiedResponse.consequences.new_perks.push('Anime Charisma: +15 to charisma when interacting with anime fans');
+                } else if (gameState.language === 'ru') {
+                    modifiedResponse.consequences.new_perks.push('Аниме харизма: +15 к харизме при взаимодействии с любителями аниме');
+                } else {
                 modifiedResponse.consequences.new_perks.push('Аніме харизма: +15 до харизми при взаємодії з любителями аніме');
+                }
             }
         }
     }
     
     return modifiedResponse;
 }
+
+// Додаємо змінну для збереження останнього промпту
+let lastPrompt = '';
+let isRetrying = false;
 
 // Модифікуємо функцію callGeminiAPI для обробки аніме-персонажів
 async function callGeminiAPI(prompt, isInitial = false) {
@@ -1228,6 +1612,9 @@ async function callGeminiAPI(prompt, isInitial = false) {
     gameState.isLoading = true;
     document.getElementById('customActionBtn').disabled = true;
     document.getElementById('storyText').innerHTML = `<div class="loading">${getText('processingAction')}</div>`;
+    
+    // Зберігаємо останній промпт для можливого повторного виклику
+    lastPrompt = prompt;
 
     try {
         // Підготовка контексту для API
@@ -1282,14 +1669,21 @@ async function callGeminiAPI(prompt, isInitial = false) {
             let responseText = data.candidates[0].content.parts[0].text;
             
             // Збереження контексту з правильними ролями
+            // Якщо ми повторюємо запит, не додаємо його знову до історії
+            if (!isRetrying) {
             gameState.conversationHistory.push({
                 role: "user",
                 parts: [{ text: prompt }]
             });
+            }
+            
             gameState.conversationHistory.push({
                 role: "model", 
                 parts: [{ text: responseText }]
             });
+            
+            // Скидаємо прапорець повторної спроби
+            isRetrying = false;
             
             try {
                 // Розширена очистка відповіді від markdown та JSON обгорток
@@ -1313,14 +1707,88 @@ async function callGeminiAPI(prompt, isInitial = false) {
                     }
                 }
                 
-                let gameData = JSON.parse(responseText);
+                // Покращена обробка для видалення тексту, що не є частиною JSON
+                function extractJsonFromText(text) {
+                    try {
+                        // Спробуємо парсити як є
+                        return JSON.parse(text);
+                    } catch (e) {
+                        // Шукаємо перший відкриваючий символ JSON об'єкта
+                        const jsonStart = text.indexOf('{');
+                        if (jsonStart < 0) return null;
+                        
+                        // Шукаємо останній закриваючий символ JSON об'єкта
+                        const jsonEnd = text.lastIndexOf('}');
+                        if (jsonEnd < 0 || jsonEnd <= jsonStart) return null;
+                        
+                        try {
+                            // Витягуємо підрядок, який може бути JSON
+                            const jsonSubstring = text.substring(jsonStart, jsonEnd + 1);
+                            return JSON.parse(jsonSubstring);
+                        } catch (subError) {
+                            // Якщо не вдалося, повертаємо null
+                            return null;
+                        }
+                    }
+                }
+                
+                // Спробуємо виправити можливі проблеми з відповіддю та витягти валідний JSON
+                let gameData = null;
+                
+                // Спроба 1: Парсинг як є
+                try {
+                    gameData = JSON.parse(responseText);
+                } catch (error) {
+                    console.log('Не вдалося розпарсити відповідь як є, пробуємо виправлення...');
+                    
+                    // Спроба 2: Витягуємо JSON з тексту
+                    gameData = extractJsonFromText(responseText);
+                    
+                    // Спроба 3: Шукаємо JSON в тексті, який може бути розбитий або містити зайві символи
+                    if (!gameData) {
+                        // Пошук по регулярному виразу
+                        const jsonRegex = /{[\s\S]*?}/g;
+                        const matches = responseText.match(jsonRegex);
+                        
+                        if (matches && matches.length > 0) {
+                            // Перебираємо всі знайдені можливі JSON-об'єкти
+                            for (const match of matches) {
+                                try {
+                                    const potentialData = JSON.parse(match);
+                                    // Перевіряємо, чи має об'єкт потрібні властивості
+                                    if (potentialData.text && potentialData.options && potentialData.consequences) {
+                                        gameData = potentialData;
+                                        break;
+                                    }
+                                } catch (parseErr) {
+                                    // Пропускаємо, якщо не вдалося розпарсити
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Якщо все ще не вдалося розпарсити, викидаємо помилку
+                    if (!gameData) {
+                        throw new Error('Не вдалося розпарсити відповідь як JSON');
+                    }
+                }
                 
                 // Застосовуємо специфічну логіку для анімешників/анімешниць, якщо це не початкова сцена
                 if (!isInitial && (gameState.character.class === 'animeFan' || gameState.character.class === 'animeFanFemale')) {
                     // Отримуємо останню дію гравця для контексту
                     const lastAction = gameState.conversationHistory.slice(-4, -3)[0]?.parts[0]?.text || '';
                     const actionMatch = lastAction.match(/Гравець обрав дію: "([^"]*)"/);
-                    const playerAction = actionMatch ? actionMatch[1] : '';
+                    let playerAction = actionMatch ? actionMatch[1] : '';
+                    
+                    // Для мов, відмінних від української, шукаємо відповідний патерн
+                    if (!playerAction && gameState.language === 'en') {
+                        const enMatch = lastAction.match(/Player chose action: "([^"]*)"/);
+                        playerAction = enMatch ? enMatch[1] : '';
+                    } else if (!playerAction && gameState.language === 'ru') {
+                        const ruMatch = lastAction.match(/Игрок выбрал действие: "([^"]*)"/);
+                        playerAction = ruMatch ? ruMatch[1] : '';
+                    }
                     
                     gameData = processAnimeFanSpecialInteractions(playerAction, gameData);
                 }
@@ -1329,7 +1797,15 @@ async function callGeminiAPI(prompt, isInitial = false) {
             } catch (parseError) {
                 console.error('JSON Parse Error:', parseError);
                 console.log('Raw response:', responseText);
-                // Добавим сообщение об ошибке к локализациям
+                
+                // Додаємо переклади для повторної генерації
+                if (!localization.en.retryGeneration) {
+                    localization.en.retryGeneration = "Retry Generation";
+                    localization.uk.retryGeneration = "Повторити генерацію";
+                    localization.ru.retryGeneration = "Повторить генерацию";
+                }
+                
+                // Додаємо повідомлення про помилку до локалізацій
                 if (!localization.en.parseError) {
                     localization.en.parseError = "Response processing error. Try again.";
                     localization.uk.parseError = "Помилка обробки відповіді. Спробуйте ще раз.";
@@ -1341,18 +1817,56 @@ async function callGeminiAPI(prompt, isInitial = false) {
                     localization.ru.detailedInfo = "Детальная информация";
                 }
                 
-                document.getElementById('storyText').innerHTML = `<p>${getText('parseError')}</p><details><summary>${getText('detailedInfo')}</summary><pre>${responseText}</pre></details>`;
+                // Додаємо кнопку повторної генерації
+                document.getElementById('storyText').innerHTML = `
+                    <p>${getText('parseError')}</p>
+                    <button id="retryButton" class="action-btn" style="margin: 10px 0;">${getText('retryGeneration')}</button>
+                    <details><summary>${getText('detailedInfo')}</summary><pre>${responseText}</pre></details>
+                `;
+                
+                // Додаємо обробник події для кнопки повторної генерації
+                document.getElementById('retryButton').addEventListener('click', () => {
+                    retryGeneration();
+                });
             }
         } else {
             throw new Error('Неправильна відповідь від API');
         }
     } catch (error) {
         console.error('API Error:', error);
-        document.getElementById('storyText').innerHTML = `<p>${getText('apiError')}</p>`;
+        
+        // Додаємо переклади для повторної генерації
+        if (!localization.en.retryGeneration) {
+            localization.en.retryGeneration = "Retry Generation";
+            localization.uk.retryGeneration = "Повторити генерацію";
+            localization.ru.retryGeneration = "Повторить генерацию";
+        }
+        
+        // Додаємо кнопку повторної генерації
+        document.getElementById('storyText').innerHTML = `
+            <p>${getText('apiError')}</p>
+            <button id="retryButton" class="action-btn" style="margin: 10px 0;">${getText('retryGeneration')}</button>
+        `;
+        
+        // Додаємо обробник події для кнопки повторної генерації
+        document.getElementById('retryButton').addEventListener('click', () => {
+            retryGeneration();
+        });
     }
 
     gameState.isLoading = false;
     document.getElementById('customActionBtn').disabled = false;
+}
+
+// Функція для повторної генерації
+function retryGeneration() {
+    if (!lastPrompt) return;
+    
+    // Встановлюємо прапорець повторної спроби
+    isRetrying = true;
+    
+    // Викликаємо API з останнім промптом
+    callGeminiAPI(lastPrompt, false);
 }
 
 function updateGameState(gameData) {
@@ -1402,11 +1916,56 @@ function updateGameState(gameData) {
             showLevelUpPopup(newLevel, levelGains);
         }
         
-        // Додавання нових перків від AI у список доступних
+        // Додавання нових перків від API у список доступних
         if (cons.new_perks && Array.isArray(cons.new_perks) && cons.new_perks.length > 0) {
+            // Функція для локалізації перків в залежності від вибраної мови (зворотний переклад)
+            function localizeNewPerk(perk) {
+                // Якщо гра на українській мові, повертаємо перк без змін
+                if (gameState.language === 'uk') return perk;
+                
+                // Словник відомих перків з локалізацією (зворотний переклад)
+                const perkLocalizations = {
+                    // Базові переклади
+                    "Otaku Wisdom": "Отаку мудрість",
+                    "Anime Charisma": "Аніме харизма",
+                    "Harem Starting Level": "Гарем початковий рівень",
+                    
+                    // Розширені описи перків
+                    "Otaku Wisdom: +10 to knowledge about anime and manga, which can sometimes be useful": 
+                        "Отаку мудрість: +10 до знань про аніме та мангу, що іноді може бути корисно",
+                    "Anime Charisma: +15 to charisma when interacting with anime fans": 
+                        "Аніме харизма: +15 до харизми при взаємодії з любителями аніме",
+                    "Harem Starting Level: +5 to charisma when interacting with female anime fans, but -5 to charisma with everyone else": 
+                        "Гарем початковий рівень: +5 до харизми з анімешницями, але -5 до харизми з усіма іншими"
+                };
+                
+                // Для російських відповідників
+                if (gameState.language === 'ru') {
+                    if (perk === "Мудрость отаку" || perk.includes("Мудрость отаку:")) return "Отаку мудрість";
+                    if (perk === "Аниме харизма" || perk.includes("Аниме харизма:")) return "Аніме харизма";
+                    if (perk === "Гарем начальный уровень" || perk.includes("Гарем начальный уровень:")) return "Гарем початковий рівень";
+                }
+                
+                // Для англійських відповідників
+                if (gameState.language === 'en') {
+                    for (const [engPerk, ukrPerk] of Object.entries(perkLocalizations)) {
+                        if (perk === engPerk || perk.includes(engPerk + ":")) {
+                            return ukrPerk;
+                        }
+                    }
+                }
+                
+                // Якщо не знайдено відповідностей, повертаємо оригінал
+                return perk;
+            }
+            
             cons.new_perks.forEach(perk => {
-                if (typeof perk === 'string' && perk.trim() !== '' && !gameState.availablePerks.includes(perk)) {
-                    gameState.availablePerks.push(perk);
+                if (typeof perk === 'string' && perk.trim() !== '') {
+                    // Локалізуємо перк перед додаванням
+                    const localizedPerk = localizeNewPerk(perk);
+                    if (!gameState.availablePerks.includes(localizedPerk)) {
+                        gameState.availablePerks.push(localizedPerk);
+                    }
                 }
             });
             
@@ -1424,30 +1983,141 @@ function updateGameState(gameData) {
             mainContent.classList.add('combat-mode');
             enemyInfo.style.display = 'block';
             
+            // Визначаємо локалізації для груп
+            if (!localization.en.enemyGroup) {
+                localization.en.enemyGroup = "Enemy Group";
+                localization.uk.enemyGroup = "Група ворогів";
+                localization.ru.enemyGroup = "Группа врагов";
+            }
+            
+            if (!localization.en.enemyCount) {
+                localization.en.enemyCount = "Count";
+                localization.uk.enemyCount = "Кількість";
+                localization.ru.enemyCount = "Количество";
+            }
+            
             // Покращена обробка інформації про ворога
-            const enemy = cons.enemy;
-            let enemyHtml = `
-                <p><strong>Назва:</strong> ${enemy.name || 'Невідомий ворог'}</p>
-                <p><strong>Здоровʼя:</strong> ${enemy.health || enemy.hp || 'Невідомо'}</p>
-            `;
+            let enemy = cons.enemy;
+            let isGroup = false;
+            let groupCount = 0;
             
-            // Додаємо опис, якщо є
+            // Обробляємо випадок, коли ворог приходить як рядок
+            if (typeof enemy === 'string') {
+                enemy = {
+                    name: enemy,
+                    health: 'Невідомо',
+                    description: ''
+                };
+            }
+            
+            // Визначаємо типи ворогів та їхню кількість
+            if (Array.isArray(enemy)) {
+                isGroup = true;
+                groupCount = enemy.length;
+            } else if (enemy.count && typeof enemy.count === 'number') {
+                isGroup = true;
+                groupCount = enemy.count;
+            } else if (enemy.elements && Array.isArray(enemy.elements) && enemy.elements.length > 1) {
+                isGroup = true;
+                groupCount = enemy.elements.length;
+            }
+            
+            // Оновлюємо заголовок: "Вороги" для групи, "Ворог" для одного
+            const enemyTitle = document.querySelector('#enemyInfo h4');
+            if (enemyTitle) {
+                if (isGroup) {
+                    enemyTitle.textContent = `👹 ${getText('enemiesName')}`;
+                } else {
+                    enemyTitle.textContent = `👹 ${getText('enemyName')}`;
+                }
+            }
+            
+            // Додаємо локалізацію для невідомого ворога та невідомих значень
+            if (!localization.en.unknownEnemy) {
+                localization.en.unknownEnemy = "Unknown enemy";
+                localization.uk.unknownEnemy = "Невідомий ворог";
+                localization.ru.unknownEnemy = "Неизвестный враг";
+            }
+            
+            if (!localization.en.unknown) {
+                localization.en.unknown = "Unknown";
+                localization.uk.unknown = "Невідомо";
+                localization.ru.unknown = "Неизвестно";
+            }
+            
+            let enemyHtml = '';
+            
+            // Якщо це група ворогів
+            if (isGroup) {
+                // Відображаємо заголовок групи
+                enemyHtml += `<div class="enemy-group-header" style="margin-bottom: 10px; padding-bottom: 5px;">
+                    <p><strong>${getText('enemyGroup')}:</strong> ${translateEnemyName(enemy.name)}</p>
+                    <p><strong>${getText('enemyCount')}:</strong> ${groupCount}</p>`;
+                
+                // Якщо вказано здоров'я для групи, відображаємо його в заголовку
+                if (enemy.health) {
+                    enemyHtml += `<p><strong>${getText('enemyHealth')}:</strong> ${enemy.health}</p>`;
+                }
+                
+                // Якщо вказано тип для групи, відображаємо його в заголовку
+                if (enemy.type) {
+                    // Додаємо переклад типів ворогів
+                    if (!localization.en.enemyType) {
+                        localization.en.enemyType = "Type";
+                        localization.uk.enemyType = "Тип";
+                        localization.ru.enemyType = "Тип";
+                    }
+                    
+                    const typeTranslations = {
+                        'melee': {
+                            en: 'Melee',
+                            uk: 'Ближній бій',
+                            ru: 'Ближний бой'
+                        },
+                        'ranged': {
+                            en: 'Ranged',
+                            uk: 'Дальній бій',
+                            ru: 'Дальний бой'
+                        },
+                        'magic': {
+                            en: 'Magic',
+                            uk: 'Магічний',
+                            ru: 'Магический'
+                        },
+                        'multiple': {
+                            en: 'Mixed',
+                            uk: 'Змішаний',
+                            ru: 'Смешанный'
+                        }
+                    };
+                    
+                    const translatedType = typeTranslations[enemy.type] && 
+                                          typeTranslations[enemy.type][gameState.language] ? 
+                                          typeTranslations[enemy.type][gameState.language] : 
+                                          enemy.type;
+                    
+                    enemyHtml += `<p><strong>${getText('enemyType')}:</strong> ${translatedType}</p>`;
+                }
+            
+                // Додаємо опис групи, якщо є
             if (enemy.description) {
-                enemyHtml += `<p><strong>Опис:</strong> ${enemy.description}</p>`;
+                    enemyHtml += `<p><strong>${getText('enemyDesc')}:</strong> ${enemy.description}</p>`;
             }
+                
+                enemyHtml += `</div>`;
             
-            // Додаємо здібності, якщо є
-            if (enemy.abilities && Array.isArray(enemy.abilities) && enemy.abilities.length > 0) {
-                enemyHtml += `<p><strong>Здібності:</strong></p><ul style="margin: 5px 0 5px 20px;">`;
-                enemy.abilities.forEach(ability => {
-                    enemyHtml += `<li>${ability}</li>`;
-                });
-                enemyHtml += `</ul>`;
-            }
-            
-            // Додаємо слабкості, якщо є
-            if (enemy.weaknesses && Array.isArray(enemy.weaknesses) && enemy.weaknesses.length > 0) {
-                enemyHtml += `<p><strong>Слабкості:</strong> ${enemy.weaknesses.join(', ')}</p>`;
+                // Перевіряємо, чи є окремі елементи для ворогів
+                if (enemy.elements && Array.isArray(enemy.elements) && enemy.elements.length > 0) {
+                    // Якщо є, відображаємо кожного ворога окремо
+                    enemy.elements.forEach((element, index) => {
+                        enemyHtml += createEnemyCard(element, index);
+                    });
+                }
+                // Ми більше не створюємо автоматично картки для кожного ворога в групі,
+                // якщо немає елементів elements
+            } else {
+                // Одиночний ворог
+                enemyHtml = createEnemyCard(enemy);
             }
             
             document.getElementById('enemyDetails').innerHTML = enemyHtml;
@@ -1482,14 +2152,14 @@ function performAction(action) {
     // Створюємо детальний опис персонажа з усіма перками та характеристиками
     const characterDetails = {
         name: gameState.character.name,
-        class: gameState.character.class,
+        class: getCharacterClassName(gameState.character.class),
         level: gameState.character.level,
         health: gameState.character.health,
         maxHealth: gameState.character.maxHealth,
         mana: gameState.character.mana,
         maxMana: gameState.character.maxMana,
         experience: gameState.character.experience,
-        perks: gameState.character.perks.join(', ')
+        perks: gameState.character.perks.map(perk => translatePerk(perk)).join(', ')
     };
     
     // Формуємо шаблон промпту та замінюємо всі змінні
@@ -1867,3 +2537,142 @@ document.addEventListener('DOMContentLoaded', function() {
     // Використовуємо мову за замовчуванням (встановлену в gameState)
     updateLanguage(gameState.language);
 });
+
+// Функция для перевода имени врага на выбранный язык
+function translateEnemyName(name) {
+    if (!name) return getText('unknownEnemy');
+    
+    // Добавим переводы для типичных врагов
+    const enemyTranslations = {
+        'Kobold': {
+            en: 'Kobold',
+            uk: 'Кобольд',
+            ru: 'Кобольд'
+        },
+        'Kobold Pack': {
+            en: 'Kobold Pack',
+            uk: 'Зграя кобольдів',
+            ru: 'Стая кобольдов'
+        },
+        'Goblin': {
+            en: 'Goblin',
+            uk: 'Гоблін',
+            ru: 'Гоблин'
+        },
+        'Orc': {
+            en: 'Orc',
+            uk: 'Орк',
+            ru: 'Орк'
+        },
+        'Wolf': {
+            en: 'Wolf',
+            uk: 'Вовк',
+            ru: 'Волк'
+        },
+        'Rat': {
+            en: 'Rat',
+            uk: 'Щур',
+            ru: 'Крыса'
+        },
+        'Skeleton': {
+            en: 'Skeleton',
+            uk: 'Скелет',
+            ru: 'Скелет'
+        },
+        'Zombie': {
+            en: 'Zombie',
+            uk: 'Зомбі',
+            ru: 'Зомби'
+        },
+        'Spider': {
+            en: 'Spider',
+            uk: 'Павук',
+            ru: 'Паук'
+        },
+        'Bandit': {
+            en: 'Bandit',
+            uk: 'Бандит',
+            ru: 'Бандит'
+        },
+        'Разгневанный Сосед': {
+            en: 'Angry Neighbor',
+            uk: 'Розлючений Сусід',
+            ru: 'Разгневанный Сосед'
+        }
+    };
+    
+    // Проверка на существование перевода
+    if (enemyTranslations[name] && enemyTranslations[name][gameState.language]) {
+        return enemyTranslations[name][gameState.language];
+    }
+    
+    return name;
+}
+
+// Функция для создания HTML-карточки врага
+function createEnemyCard(enemy, index = null) {
+    let cardHtml = `<div class="enemy-card" style="margin-bottom: 10px; background: rgba(255, 0, 0, 0.05); padding: 10px;">`;
+    
+    // Додаємо ім'я з номером для групи або просто ім'я для одиночного ворога
+    cardHtml += `<p><strong>${getText('enemyName')}:</strong> ${translateEnemyName(enemy.name)}</p>`;
+    
+    // Додаємо здоров'я
+    cardHtml += `<p><strong>${getText('enemyHealth')}:</strong> ${enemy.health || enemy.hp || getText('unknown')}</p>`;
+    
+    // Додаємо тип, якщо є
+    if (enemy.type) {
+        // Добавим перевод типов врагов
+        if (!localization.en.enemyType) {
+            localization.en.enemyType = "Type";
+            localization.uk.enemyType = "Тип";
+            localization.ru.enemyType = "Тип";
+        }
+        
+        const typeTranslations = {
+            'melee': {
+                en: 'Melee',
+                uk: 'Ближній бій',
+                ru: 'Ближний бой'
+            },
+            'ranged': {
+                en: 'Ranged',
+                uk: 'Дальній бій',
+                ru: 'Дальний бой'
+            },
+            'magic': {
+                en: 'Magic',
+                uk: 'Магічний',
+                ru: 'Магический'
+            }
+        };
+        
+        const translatedType = typeTranslations[enemy.type] && 
+                              typeTranslations[enemy.type][gameState.language] ? 
+                              typeTranslations[enemy.type][gameState.language] : 
+                              enemy.type;
+        
+        cardHtml += `<p><strong>${getText('enemyType')}:</strong> ${translatedType}</p>`;
+    }
+    
+    // Додаємо опис, якщо є
+    if (enemy.description) {
+        cardHtml += `<p><strong>${getText('enemyDesc')}:</strong> ${enemy.description}</p>`;
+    }
+    
+    // Додаємо здібності, якщо є
+    if (enemy.abilities && Array.isArray(enemy.abilities) && enemy.abilities.length > 0) {
+        cardHtml += `<p><strong>${getText('enemyAbilities')}:</strong></p><ul style="margin: 5px 0 5px 20px;">`;
+        enemy.abilities.forEach(ability => {
+            cardHtml += `<li>${ability}</li>`;
+        });
+        cardHtml += `</ul>`;
+    }
+    
+    // Додаємо слабості, якщо є
+    if (enemy.weaknesses && Array.isArray(enemy.weaknesses) && enemy.weaknesses.length > 0) {
+        cardHtml += `<p><strong>${getText('enemyWeaknesses')}:</strong> ${enemy.weaknesses.join(', ')}</p>`;
+    }
+    
+    cardHtml += `</div>`;
+    return cardHtml;
+}
