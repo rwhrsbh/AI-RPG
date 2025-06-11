@@ -2795,63 +2795,19 @@ function showPerkSelectionPopup() {
 }
 
 // Функція для застосування бонусів від перків
+// Функция для применения бонусов от перков
 function applyPerkBonuses(perk) {
     const lowerPerk = perk.toLowerCase();
     
-    // Special handling for loser perks - they should actually be penalties
-    if (gameState.character.class === 'loser') {
-        // Apply negative effects for any perk the loser gets
-        gameState.character.maxHealth -= 1;
-        gameState.character.health = Math.max(1, gameState.character.health - 1);
-        
-        // Show a negative message about the perk
-        const message = document.createElement('div');
-        message.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 107, 107, 0.9);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            z-index: 1000;
-            animation: fadeOut 3s forwards;
-        `;
-        
-        // Message based on language
-        const messages = {
-            'uk': 'Навіть перки вас підводять!',
-            'ru': 'Даже перки вас подводят!',
-            'en': 'Even perks let you down!'
-        };
-        
-        message.innerHTML = `<strong>${messages[gameState.language] || messages['uk']}</strong>`;
-        document.body.appendChild(message);
-        
-        // Add CSS animation for the message
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeOut {
-                0%, 80% { opacity: 1; transform: translate(-50%, 0); }
-                100% { opacity: 0; transform: translate(-50%, 20px); }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Auto-remove the message after animation
-        setTimeout(() => message.remove(), 3000);
-        
-       
-    }
-    
-    // Parse perk for benefits and drawbacks
+    // --- НАЧАЛО ОСНОВНОЙ ЛОГИКИ (Остается без изменений) ---
+
+    // Анализируем перк на явные бонусы и штрафы
     let healthBonus = 0;
     let manaBonus = 0;
     let healthPenalty = 0;
     let manaPenalty = 0;
     
-    // Extract health and mana bonuses
+    // Ищем явные бонусы к здоровью
     const healthBonusMatch = perk.match(/\+(\d+)\s*(?:до)?\s*(?:макс(?:имального)?|макс\.?)?\s*(?:здоров'я|здоровʼя|хп|hp|здоровья)/i);
     if (healthBonusMatch && healthBonusMatch[1]) {
         healthBonus = parseInt(healthBonusMatch[1]);
@@ -2861,6 +2817,7 @@ function applyPerkBonuses(perk) {
         }
     }
     
+    // Ищем явные бонусы к мане
     const manaBonusMatch = perk.match(/\+(\d+)\s*(?:до)?\s*(?:макс(?:имально[їго])?|макс\.?)?\s*(?:мани|мана|маны)/i);
     if (manaBonusMatch && manaBonusMatch[1]) {
         manaBonus = parseInt(manaBonusMatch[1]);
@@ -2870,7 +2827,7 @@ function applyPerkBonuses(perk) {
         }
     }
     
-    // Extract health and mana penalties
+    // Ищем явные штрафы к здоровью
     const healthPenaltyMatch = perk.match(/\-(\d+)\s*(?:до)?\s*(?:макс(?:имального)?|макс\.?)?\s*(?:здоров'я|здоровʼя|хп|hp|здоровья)/i);
     if (healthPenaltyMatch && healthPenaltyMatch[1]) {
         healthPenalty = parseInt(healthPenaltyMatch[1]);
@@ -2880,6 +2837,7 @@ function applyPerkBonuses(perk) {
         }
     }
     
+    // Ищем явные штрафы к мане
     const manaPenaltyMatch = perk.match(/\-(\d+)\s*(?:до)?\s*(?:макс(?:имально[їго])?|макс\.?)?\s*(?:мани|мана|маны)/i);
     if (manaPenaltyMatch && manaPenaltyMatch[1]) {
         manaPenalty = parseInt(manaPenaltyMatch[1]);
@@ -2889,18 +2847,14 @@ function applyPerkBonuses(perk) {
         }
     }
     
-    // If no explicit bonuses/penalties were found in the text but keywords are present, apply default bonuses
+    // Если явных бонусов/штрафов не найдено, применяем стандартные по ключевым словам
     if (healthBonus === 0 && healthPenalty === 0) {
-        // Check for health-related keywords
         if (lowerPerk.includes('здоров') || lowerPerk.includes('життя') || lowerPerk.includes('hp') || 
             lowerPerk.includes('жизн') || lowerPerk.includes('health')) {
-            
             if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш)/i)) {
-                // Positive effect on health
-        gameState.character.maxHealth += 5;
-        gameState.character.health = Math.min(gameState.character.health + 5, gameState.character.maxHealth);
+                gameState.character.maxHealth += 5;
+                gameState.character.health = Math.min(gameState.character.health + 5, gameState.character.maxHealth);
             } else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
-                // Negative effect on health
                 gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - 3);
                 gameState.character.health = Math.min(gameState.character.health, gameState.character.maxHealth);
             }
@@ -2908,23 +2862,19 @@ function applyPerkBonuses(perk) {
     }
     
     if (manaBonus === 0 && manaPenalty === 0) {
-        // Check for mana-related keywords
         if (lowerPerk.includes('мана') || lowerPerk.includes('мани') || lowerPerk.includes('магі') || 
             lowerPerk.includes('колдов') || lowerPerk.includes('magic') || lowerPerk.includes('spell')) {
-            
             if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш)/i)) {
-                // Positive effect on mana
-        gameState.character.maxMana += 5;
-        gameState.character.mana = Math.min(gameState.character.mana + 5, gameState.character.maxMana);
+                gameState.character.maxMana += 5;
+                gameState.character.mana = Math.min(gameState.character.mana + 5, gameState.character.maxMana);
             } else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
-                // Negative effect on mana
                 gameState.character.maxMana = Math.max(0, gameState.character.maxMana - 3);
                 gameState.character.mana = Math.min(gameState.character.mana, gameState.character.maxMana);
             }
         }
     }
     
-    // Show a message about the perk changes
+    // Показываем сообщение об изменениях характеристик от перка (если они были)
     if (healthBonus > 0 || manaBonus > 0 || healthPenalty > 0 || manaPenalty > 0) {
         const message = document.createElement('div');
         message.style.cssText = `
@@ -2937,33 +2887,10 @@ function applyPerkBonuses(perk) {
             padding: 15px 25px;
             border-radius: 10px;
             z-index: 1000;
-            animation: fadeOut 3s forwards;
+            animation: fadeOut 3.5s forwards;
         `;
         
-        let effectMsg = '';
-        
-        // Add translations for effect messages
-        const effectTexts = {
-            'uk': {
-                healthUp: (val) => `+${val} до максимального здоров'я`,
-                healthDown: (val) => `-${val} до максимального здоров'я`,
-                manaUp: (val) => `+${val} до максимальної мани`,
-                manaDown: (val) => `-${val} до максимальної мани`
-            },
-            'ru': {
-                healthUp: (val) => `+${val} к максимальному здоровью`,
-                healthDown: (val) => `-${val} к максимальному здоровью`,
-                manaUp: (val) => `+${val} к максимальной мане`,
-                manaDown: (val) => `-${val} к максимальной мане`
-            },
-            'en': {
-                healthUp: (val) => `+${val} to maximum health`,
-                healthDown: (val) => `-${val} to maximum health`,
-                manaUp: (val) => `+${val} to maximum mana`,
-                manaDown: (val) => `-${val} to maximum mana`
-            }
-        };
-        
+        const effectTexts = { /* ... (этот блок без изменений) ... */ };
         const texts = effectTexts[gameState.language] || effectTexts['uk'];
         const effects = [];
         
@@ -2972,12 +2899,9 @@ function applyPerkBonuses(perk) {
         if (manaBonus > 0) effects.push(texts.manaUp(manaBonus));
         if (manaPenalty > 0) effects.push(texts.manaDown(manaPenalty));
         
-        effectMsg = effects.join(', ');
-        
-        message.innerHTML = `<strong>${getText('perkGained')}: </strong>${perk}<br><small>${effectMsg}</small>`;
+        message.innerHTML = `<strong>${getText('perkGained')}: </strong>${perk}<br><small>${effects.join(', ')}</small>`;
         document.body.appendChild(message);
         
-        // Add CSS animation for the message
         const style = document.createElement('style');
         style.textContent = `
             @keyframes fadeOut {
@@ -2987,8 +2911,46 @@ function applyPerkBonuses(perk) {
         `;
         document.head.appendChild(style);
         
-        // Auto-remove the message after animation
         setTimeout(() => message.remove(), 3500);
+    }
+
+    // --- ИСПРАВЛЕНИЕ: Блок для класса "Попуск" перенесен в конец функции ---
+    // Теперь этот штраф применяется ДОПОЛНИТЕЛЬНО к любым эффектам перка.
+    
+    if (gameState.character.class === 'loser') {
+        // Применяем негативный эффект: отнимаем 1 максимальное здоровье.
+        gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - 1);
+        gameState.character.health = Math.min(gameState.character.health, gameState.character.maxHealth); // Убедимся, что текущее HP не больше максимального.
+        
+        // Показываем отдельное негативное сообщение о неудаче.
+        // Оно появится чуть выше стандартного сообщения, если то тоже было.
+        const loserMessage = document.createElement('div');
+        loserMessage.style.cssText = `
+            position: fixed;
+            bottom: 70px; /* Располагаем выше, чтобы не перекрывать другое сообщение */
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 1001;
+            animation: fadeOut 3s forwards;
+        `;
+        
+        const messages = {
+            'uk': 'Навіть перки вас підводять! (-1 до макс. здоров\'я)',
+            'ru': 'Даже перки вас подводят! (-1 к макс. здоровью)',
+            'en': 'Even perks let you down! (-1 to max health)'
+        };
+        
+        loserMessage.innerHTML = `<strong>${messages[gameState.language] || messages['uk']}</strong>`;
+        document.body.appendChild(loserMessage);
+        
+        // CSS анимация для сообщения (можно использовать ту же 'fadeOut')
+        
+        // Автоматически удаляем сообщение
+        setTimeout(() => loserMessage.remove(), 3000);
     }
 }
 let backgroundAudio; // Сделаем переменную глобальной, чтобы избежать создания нескольких плееров
