@@ -33,7 +33,12 @@ const classStats = {
     animeFanFemale: { health: 75, mana: 90, perks: ['Харизма', 'Кавайність'] },
     boxer: { health: 130, mana: 40, perks: ['Міцні кулаки', 'Витривалість'] },
     lumberjack: { health: 125, mana: 35, perks: ['Сила замаху', 'Стійкість'] },
-    loser: { health: 20, mana: 0, perks: ['Невдача', 'Нікчемність'] }
+    loser: { health: 20, mana: 0, perks: ['Невдача', 'Нікчемність'] },
+    programmer: { health: 60, mana: 200, perks: ['Баг-фікс', 'Оптимізація'] },
+    streamer: { health: 50, mana: 150, perks: ['Стримерська харизма', 'Донати'] },
+    karen: { health: 100, mana: 80, perks: ['Хочу поговорити з менеджером', 'Скарги'] },
+    boomer: { health: 90, mana: 40, perks: ['В молодості було краще', 'Грамофон'] },
+    zoomer: { health: 70, mana: 120, perks: ['Тікток танці', 'Мемологія'] }
 };
 
 // Локалізація гри
@@ -275,6 +280,21 @@ const localization = {
         gameOverDesc: "Your adventure has ended.",
         restartGame: "Start New Adventure",
         deathMessage: "You have died!",
+        programmer: "Programmer",
+        programmerDesc: "Master of code with infinite mana but low health",
+        programmerStats: "HP: 60, Mana: 200, Debug: High",
+        streamer: "Streamer",
+        streamerDesc: "Charismatic entertainer with unique abilities",
+        streamerStats: "HP: 50, Mana: 150, Charisma: Very High",
+        karen: "Karen",
+        karenDesc: "Professional complainer with manager-seeking abilities",
+        karenStats: "HP: 100, Mana: 80, Complaints: Maximum",
+        boomer: "Boomer",
+        boomerDesc: "Nostalgic warrior with old-school knowledge",
+        boomerStats: "HP: 90, Mana: 40, Nostalgia: High",
+        zoomer: "Zoomer",
+        zoomerDesc: "Modern adventurer with meme powers",
+        zoomerStats: "HP: 70, Mana: 120, Memes: Infinite",
     },
     uk: {
         // Інтерфейс
@@ -513,6 +533,21 @@ const localization = {
         gameOverDesc: "Ваша пригода закінчилась.",
         restartGame: "Почати нову пригоду",
         deathMessage: "Ви померли!",
+        programmer: "Програміст",
+        programmerDesc: "Майстер коду з нескінченною маною, але низьким здоров'ям",
+        programmerStats: "HP: 60, Mana: 200, Дебаг: Високий",
+        streamer: "Стрімер",
+        streamerDesc: "Харизматичний розважальник з унікальними здібностями",
+        streamerStats: "HP: 50, Mana: 150, Харизма: Дуже висока",
+        karen: "Карен",
+        karenDesc: "Професійна скаржниця з навичками пошуку менеджера",
+        karenStats: "HP: 100, Mana: 80, Скарги: Максимум",
+        boomer: "Бумер",
+        boomerDesc: "Ностальгічний воїн зі знаннями старої школи",
+        boomerStats: "HP: 90, Mana: 40, Ностальгія: Висока",
+        zoomer: "Зумер",
+        zoomerDesc: "Сучасний шукач пригод з силою мемів",
+        zoomerStats: "HP: 70, Mana: 120, Меми: Нескінченні",
     },
     ru: {
         // Интерфейс
@@ -751,6 +786,21 @@ const localization = {
         gameOverDesc: "Ваше приключение завершилось.",
         restartGame: "Начать новое приключение",
         deathMessage: "Вы умерли!",
+        programmer: "Программист",
+        programmerDesc: "Мастер кода с бесконечной маной, но низким здоровьем",
+        programmerStats: "HP: 60, Mana: 200, Дебаг: Высокий",
+        streamer: "Стример",
+        streamerDesc: "Харизматичный развлекатель с уникальными способностями",
+        streamerStats: "HP: 50, Mana: 150, Харизма: Очень высокая",
+        karen: "Карен",
+        karenDesc: "Профессиональная жалобщица с навыками поиска менеджера",
+        karenStats: "HP: 100, Mana: 80, Жалобы: Максимум",
+        boomer: "Бумер",
+        boomerDesc: "Ностальгический воин со знаниями старой школы",
+        boomerStats: "HP: 90, Mana: 40, Ностальгия: Высокая",
+        zoomer: "Зумер",
+        zoomerDesc: "Современный искатель приключений с силой мемов",
+        zoomerStats: "HP: 70, Mana: 120, Мемы: Бесконечные",
     }
 };
 
