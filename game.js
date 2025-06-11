@@ -1088,6 +1088,11 @@ function updateLanguage(lang) {
     updateClassInfo("boxer", "👊", "boxer", "boxerDesc", "boxerStats");
     updateClassInfo("lumberjack", "🪓", "lumberjack", "lumberjackDesc", "lumberjackStats");
     updateClassInfo("loser", "😞", "loser", "loserDesc", "loserStats");
+    updateClassInfo("programmer", "👨‍💻", "programmer", "programmerDesc", "programmerStats");
+    updateClassInfo("streamer", "🎥", "streamer", "streamerDesc", "streamerStats");
+    updateClassInfo("karen", "👩‍💼", "karen", "karenDesc", "karenStats");
+    updateClassInfo("boomer", "👴", "boomer", "boomerDesc", "boomerStats");
+    updateClassInfo("zoomer", "👶", "zoomer", "zoomerDesc", "zoomerStats");
     
     // Кнопка початку гри
     const startButton = document.querySelector('#setupScreen button');
@@ -1401,7 +1406,7 @@ function translatePerk(perk) {
         return animePerkTranslations[perk][currentLang];
     }
     
-    // Базові перки класів
+    // Базові переклади перків
     const perkTranslations = {
         // Воїн
         "Майстерність мечем": {
@@ -1533,7 +1538,52 @@ function translatePerk(perk) {
         "Стійкість": {
             "en": "Resilience",
             "ru": "Прочность"
-        }
+        },
+        // Програміст
+"Баг-фікс": {
+    "en": "Bug Fix",
+    "ru": "Исправление багов"
+},
+"Оптимізація": {
+    "en": "Optimization",
+    "ru": "Оптимизация"
+},
+// Стрімер
+"Стримерська харизма": {
+    "en": "Streamer Charisma",
+    "ru": "Стримерская харизма"
+},
+"Донати": {
+    "en": "Donations",
+    "ru": "Донаты"
+},
+// Карен
+"Хочу поговорити з менеджером": {
+    "en": "I Want to Speak to the Manager",
+    "ru": "Хочу поговорить с менеджером"
+},
+"Скарги": {
+    "en": "Complaints",
+    "ru": "Жалобы"
+},
+// Бумер
+"В молодості було краще": {
+    "en": "It Was Better in My Youth",
+    "ru": "В молодости было лучше"
+},
+"Грамофон": {
+    "en": "Gramophone",
+    "ru": "Грамофон"
+},
+// Зумер
+"Тікток танці": {
+    "en": "TikTok Dances",
+    "ru": "ТикТок танцы"
+},
+"Мемологія": {
+    "en": "Memology",
+    "ru": "Мемология"
+}
     };
     
     // Перевіряємо, чи є переклад для перку
@@ -2791,8 +2841,8 @@ function applyPerkBonuses(perk) {
             
             if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш)/i)) {
                 // Positive effect on health
-                gameState.character.maxHealth += 5;
-                gameState.character.health = Math.min(gameState.character.health + 5, gameState.character.maxHealth);
+        gameState.character.maxHealth += 5;
+        gameState.character.health = Math.min(gameState.character.health + 5, gameState.character.maxHealth);
             } else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
                 // Negative effect on health
                 gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - 3);
@@ -2808,8 +2858,8 @@ function applyPerkBonuses(perk) {
             
             if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш)/i)) {
                 // Positive effect on mana
-                gameState.character.maxMana += 5;
-                gameState.character.mana = Math.min(gameState.character.mana + 5, gameState.character.maxMana);
+        gameState.character.maxMana += 5;
+        gameState.character.mana = Math.min(gameState.character.mana + 5, gameState.character.maxMana);
             } else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
                 // Negative effect on mana
                 gameState.character.maxMana = Math.max(0, gameState.character.maxMana - 3);
@@ -2885,7 +2935,14 @@ function applyPerkBonuses(perk) {
         setTimeout(() => message.remove(), 3500);
     }
 }
-
+function playBackgroundMusic() {
+    const audio = new Audio('music.mp3');
+    audio.loop = true; // Музика буде повторюватися
+    audio.volume = 0.5; // Гучність 50%
+    audio.play().catch(error => {
+        console.log('Помилка відтворення музики:', error);
+    });
+}
 // Функція для зміни мови
 function changeLanguage(lang) {
     gameState.language = lang;
@@ -2893,6 +2950,9 @@ function changeLanguage(lang) {
     
     // Оновлюємо панель персонажа з новою мовою
     updateCharacterPanel();
+
+    // Відтворюємо музику
+    playBackgroundMusic();
 }
 
 // Ініціалізація мови при завантаженні сторінки
