@@ -2032,10 +2032,18 @@ async function callGeminiAPI(prompt, isInitial = false) {
             localization.ru.retryGeneration = "Повторить генерацию";
         }
         
-        // Додаємо кнопку повторної генерації
+        // Додаємо переклад для детальної інформації, якщо ще немає
+        if (!localization.en.detailedInfo) {
+            localization.en.detailedInfo = "Detailed information";
+            localization.uk.detailedInfo = "Детальна інформація";
+            localization.ru.detailedInfo = "Детальная информация";
+        }
+        
+        // Додаємо кнопку повторної генерації та випадаючий список з інформацією про помилку
         document.getElementById('storyText').innerHTML = `
             <p>${getText('apiError')}</p>
             <button id="retryButton" class="action-btn" style="margin: 10px 0;">${getText('retryGeneration')}</button>
+            <details><summary>${getText('detailedInfo')}</summary><pre>${error.message}</pre></details>
         `;
         
         // Додаємо обробник події для кнопки повторної генерації
@@ -2947,7 +2955,7 @@ function playBackgroundMusic() {
     if (!backgroundAudio) {
         backgroundAudio = new Audio('music.mp3'); // Укажите путь к вашему файлу
         backgroundAudio.loop = true; // Музыка будет повторяться
-        backgroundAudio.volume = 0.3; // Громкость 30% (чтобы не мешала)
+        backgroundAudio.volume = 0.1; // Громкость 30% (чтобы не мешала)
     }
 
     // Пытаемся запустить воспроизведение
