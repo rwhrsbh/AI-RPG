@@ -110,7 +110,12 @@ const localization = {
         // API промпти
         initialScenePrompt: `You are a D&D game master. Create an initial scene for character {name} of class {class}.
         
-        IMPORTANT: Respond ONLY with clean JSON without markdown blocks, without additional text, without prefixes or suffixes!
+        IMPORTANT: 
+        1. Respond ONLY with clean JSON without markdown blocks, without additional text, without prefixes or suffixes!
+        2. Create CHALLENGING, meaningful situations - don't make it too easy
+        3. Players need to face significant consequences for their actions
+        4. Start with some initial threat or difficult situation - no peaceful beginnings
+        5. Include moral dilemmas and tough choices
         
         Response format:
         {
@@ -122,7 +127,8 @@ const localization = {
                 "experience": 0,
                 "combat": false,
                 "enemy": null,
-                "new_perks": []
+                "new_perks": [],
+                "gameover": false
             }
         }
         
@@ -155,7 +161,9 @@ const localization = {
             ]
           }
         
-        NEVER return enemy as a simple string. Always use the proper object structure.`,
+        NEVER return enemy as a simple string. Always use the proper object structure.
+
+        The 'gameover' field should be set to true only if the character has died or the adventure has reached a definitive end.`,
         
         actionPrompt: `Continue the D&D adventure. Previous situation: "{prevSituation}"
         Player chose action: "{action}"
@@ -166,14 +174,18 @@ const localization = {
         IMPORTANT: 
         1. Respond ONLY with clean JSON without markdown blocks, without additional text, without prefixes or suffixes!
         2. Consider the context of previous events for logical story development
-        3. You can create various situations: combat, puzzles, NPCs, treasures, traps, etc.
-        4. If the character gains a new level or acquires new skills, create new perks through the new_perks field
-        5. The perks you create should be original, thematic, and appropriate to the character's class and situation
+        3. Create VERY CHALLENGING situations - be harsh and unforgiving with players!
+        4. Actions should have significant consequences, both positive and negative
+        5. Include occasional unexpected negative events, even when player makes good decisions
+        6. All perks MUST have both benefits AND drawbacks - create balanced trade-offs
+        7. If character health reaches 0 or a definitive ending is reached, set gameover to true
+        8. Don't be afraid to cause damage to the character during normal activities
+        9. For peaceful choices, introduce unforeseen complications
         
-        Example perks:
-        - "Crystal Harmony: +15 to maximum mana and improved resistance to chaotic magic"
-        - "Warrior's Fervor: Enhanced combat skills, +10% critical hit chance"
-        - "Shadow of the Bumblebee: Ability to become invisible for a short time"
+        Example perks with stronger trade-offs:
+        - "Crystal Harmony: +15 to maximum mana but -5 to maximum health and -10% fire resistance"
+        - "Warrior's Fervor: +10% critical hit chance but -5% dodge chance and occasional recklessness"
+        - "Shadow Pact: Ability to become invisible for a short time but -10% movement speed and occasional dark whispers"
         
         Response format:
         {
@@ -185,7 +197,8 @@ const localization = {
                 "experience": 10,
                 "combat": false,
                 "enemy": null,
-                "new_perks": ["name and description of new perk"]
+                "new_perks": ["name and description of new perk with both benefits and drawbacks"],
+                "gameover": false
             }
         }
         
@@ -218,7 +231,9 @@ const localization = {
             ]
           }
         
-        NEVER return enemy as a simple string. Always use the proper object structure.`,
+        NEVER return enemy as a simple string. Always use the proper object structure.
+
+        The 'gameover' field should be set to true if the character has died (health reaches 0) or the adventure has reached a definitive end.`,
         
         // Додаємо нові рядки локалізації для вибору початку гри
         gameStartOptions: "Choose an option",
@@ -255,7 +270,11 @@ const localization = {
         processingAction: "Processing action",
         loser: "Loser",
         loserDesc: "Fails at everything, speaks uncertainly and mumbles",
-        loserStats: "HP: 20, Mana: 0, Luck: 0, Charisma: 0"
+        loserStats: "HP: 20, Mana: 0, Luck: 0, Charisma: 0",
+        gameOver: "Game Over",
+        gameOverDesc: "Your adventure has ended.",
+        restartGame: "Start New Adventure",
+        deathMessage: "You have died!",
     },
     uk: {
         // Інтерфейс
@@ -329,7 +348,12 @@ const localization = {
         // API промпти
         initialScenePrompt: `Ти - майстер гри у D&D. Створи початкову сцену для персонажа {name} класу {class}. 
         
-        ВАЖЛИВО: Відповідай ТІЛЬКИ чистим JSON без markdown блоків, без додаткового тексту, без префіксів та суфіксів!
+        ВАЖЛИВО: 
+        1. Відповідай ТІЛЬКИ чистим JSON без markdown блоків, без додаткового тексту, без префіксів та суфіксів!
+        2. Створюй СКЛАДНІ, змістовні ситуації - не роби гру занадто простою
+        3. Гравці повинні нести серйозні наслідки за свої дії
+        4. Починай з якоїсь початкової загрози чи складної ситуації - без мирних початків
+        5. Включай моральні дилеми та складні вибори
         
         Формат відповіді:
         {
@@ -341,7 +365,8 @@ const localization = {
                 "experience": 0,
                 "combat": false,
                 "enemy": null,
-                "new_perks": []
+                "new_perks": [],
+                "gameover": false
             }
         }
         
@@ -374,7 +399,9 @@ const localization = {
             ]
           }
         
-        НІКОЛИ не повертай ворога як простий рядок. Завжди використовуй правильну структуру об'єкта.`,
+        НІКОЛИ не повертай ворога як простий рядок. Завжди використовуй правильну структуру об'єкта.
+
+        Поле 'gameover' має бути встановлено в true тільки якщо персонаж помер або пригода досягла остаточного завершення.`,
         
         actionPrompt: `Продовжи D&D пригоду. Попередня ситуація: "{prevSituation}"
         Гравець обрав дію: "{action}"
@@ -385,14 +412,18 @@ const localization = {
         ВАЖЛИВО: 
         1. Відповідай ТІЛЬКИ чистим JSON без markdown блоків, без додаткового тексту, без префіксів та суфіксів!
         2. Врахуй контекст попередніх подій для логічного розвитку сюжету
-        3. Можеш створювати різноманітні ситуації: бої, загадки, NPC, скарби, пастки тощо
-        4. Якщо персонаж отримує новий рівень або набуває нових навичок, створюй нові перки через поле new_perks
-        5. Створені тобою перки повинні бути оригінальними, тематичними і відповідати класу персонажа та ситуації
+        3. Створюй ДУЖЕ СКЛАДНІ ситуації - будь суворим та безжальним до гравця!
+        4. Дії повинні мати серйозні наслідки, як позитивні, так і негативні
+        5. Включай випадкові неочікувані негативні події, навіть коли гравець робить правильні рішення
+        6. ВСІ перки ПОВИННІ мати як переваги, ТАК І недоліки - створюй збалансовані компроміси
+        7. Якщо здоров'я персонажа досягає 0 або досягнуто остаточного завершення, встанови gameover в true
+        8. Не бійся наносити шкоду персонажу під час звичайних дій
+        9. Для мирних виборів, додавай непередбачувані ускладнення
         
-        Приклад перків:
-        - "Кришталева Гармонія: +15 до максимальної мани та покращена стійкість до хаотичної магії"
-        - "Воїнський запал: Посилення бойових навичок, +10% до шансу критичного удару"
-        - "Тінь джмеля: Вміння на короткий час ставати невидимим"
+        Приклад перків із сильнішими компромісами:
+        - "Кришталева Гармонія: +15 до максимальної мани, але -5 до максимального здоров'я та -10% стійкості до вогню"
+        - "Воїнський запал: +10% до шансу критичного удару, але -5% до шансу ухилення та періодична нерозсудливість"
+        - "Тіньовий пакт: Вміння на короткий час ставати невидимим, але -10% до швидкості руху та періодичні темні шепоти"
         
         Формат відповіді:
         {
@@ -404,7 +435,8 @@ const localization = {
                 "experience": 10,
                 "combat": false,
                 "enemy": null,
-                "new_perks": ["назва та опис нового перку"]
+                "new_perks": ["назва та опис нового перку з перевагами та недоліками"],
+                "gameover": false
             }
         }
         
@@ -437,7 +469,9 @@ const localization = {
             ]
           }
         
-        НІКОЛИ не повертай ворога як простий рядок. Завжди використовуй правильну структуру об'єкта.`,
+        НІКОЛИ не повертай ворога як простий рядок. Завжди використовуй правильну структуру об'єкта.
+
+        Поле 'gameover' має бути встановлено в true якщо персонаж помер (здоров'я досягло 0) або пригода досягла остаточного завершення.`,
         
         // Додаємо нові рядки локалізації для вибору початку гри
         gameStartOptions: "Виберіть опцію",
@@ -474,7 +508,11 @@ const localization = {
         processingAction: "Обробка дії",
         loser: "Попуск",
         loserDesc: "У всьому зазнає невдачі, мямлить та говорить невпевнено",
-        loserStats: "HP: 20, Mana: 0, Удача: 0, Харизма: 0"
+        loserStats: "HP: 20, Mana: 0, Удача: 0, Харизма: 0",
+        gameOver: "Гра завершена",
+        gameOverDesc: "Ваша пригода закінчилась.",
+        restartGame: "Почати нову пригоду",
+        deathMessage: "Ви померли!",
     },
     ru: {
         // Интерфейс
@@ -548,7 +586,12 @@ const localization = {
         // API промпты
         initialScenePrompt: `Ты - мастер игры в D&D. Создай начальную сцену для персонажа {name} класса {class}.
         
-        ВАЖНО: Отвечай ТОЛЬКО чистым JSON без markdown блоков, без дополнительного текста, без префиксов и суффиксов!
+        ВАЖНО: 
+        1. Отвечай ТОЛЬКО чистым JSON без markdown блоков, без дополнительного текста, без префиксов и суффиксов!
+        2. Создавай СЛОЖНЫЕ, содержательные ситуации - не делай игру слишком простой
+        3. Игроки должны нести серьезные последствия за свои действия
+        4. Начинай с какой-то начальной угрозы или сложной ситуации - без мирных начал
+        5. Включай моральные дилеммы и сложные выборы
         
         Формат ответа:
         {
@@ -560,7 +603,8 @@ const localization = {
                 "experience": 0,
                 "combat": false,
                 "enemy": null,
-                "new_perks": []
+                "new_perks": [],
+                "gameover": false
             }
         }
         
@@ -593,7 +637,9 @@ const localization = {
             ]
           }
         
-        НИКОГДА не возвращай врага как простую строку. Всегда используй правильную структуру объекта.`,
+        НИКОГДА не возвращай врага как простую строку. Всегда используй правильную структуру объекта.
+
+        Поле 'gameover' должно быть установлено в true только если персонаж умер или приключение достигло окончательного завершения.`,
         
         actionPrompt: `Продолжи D&D приключение. Предыдущая ситуация: "{prevSituation}"
         Игрок выбрал действие: "{action}"
@@ -604,14 +650,18 @@ const localization = {
         ВАЖНО: 
         1. Отвечай ТОЛЬКО чистым JSON без markdown блоков, без дополнительного текста, без префиксов и суффиксов!
         2. Учитывай контекст предыдущих событий для логичного развития сюжета
-        3. Можешь создавать разнообразные ситуации: бои, загадки, NPC, сокровища, ловушки и т.д.
-        4. Если персонаж получает новый уровень или приобретает новые навыки, создавай новые перки через поле new_perks
-        5. Созданные тобой перки должны быть оригинальными, тематическими и соответствовать классу персонажа и ситуации
+        3. Создавай ОЧЕНЬ СЛОЖНЫЕ ситуации - будь суровым и беспощадным к игроку!
+        4. Действия должны иметь серьезные последствия, как положительные, так и отрицательные
+        5. Включай случайные неожиданные негативные события, даже когда игрок делает правильные решения
+        6. ВСЕ перки ДОЛЖНЫ иметь как преимущества, ТАК И недостатки - создавай сбалансированные компромиссы
+        7. Если здоровье персонажа достигает 0 или достигнуто окончательное завершение, установи gameover в true
+        8. Не бойся наносить урон персонажу во время обычных действий
+        9. Для мирных выборов, добавляй непредвиденные осложнения
         
-        Пример перков:
-        - "Кристальная Гармония: +15 к максимальной мане и улучшенная устойчивость к хаотической магии"
-        - "Воинский пыл: Усиление боевых навыков, +10% к шансу критического удара"
-        - "Тень шмеля: Умение на короткое время становиться невидимым"
+        Пример перков с более сильными компромиссами:
+        - "Кристальная Гармония: +15 к максимальной мане, но -5 к максимальному здоровью и -10% устойчивости к огню"
+        - "Воинский пыл: +10% к шансу критического удара, но -5% к шансу уклонения и периодическая безрассудность"
+        - "Теневой пакт: Умение на короткое время становиться невидимым, но -10% к скорости движения и периодические темные шепоты"
         
         Формат ответа:
         {
@@ -623,7 +673,8 @@ const localization = {
                 "experience": 10,
                 "combat": false,
                 "enemy": null,
-                "new_perks": ["название и описание нового перка"]
+                "new_perks": ["название и описание нового перка с преимуществами и недостатками"],
+                "gameover": false
             }
         }
         
@@ -656,7 +707,9 @@ const localization = {
             ]
           }
         
-        НИКОГДА не возвращай врага как простую строку. Всегда используй правильную структуру объекта.`,
+        НИКОГДА не возвращай врага как простую строку. Всегда используй правильную структуру объекта.
+
+        Поле 'gameover' должно быть установлено в true если персонаж умер (здоровье достигло 0) или приключение достигло окончательного завершения.`,
         
         // Додаємо нові рядки локалізації для вибору початку гри
         gameStartOptions: "Выберите опцию",
@@ -693,7 +746,11 @@ const localization = {
         processingAction: "Обработка действия",
         loser: "Лузер",
         loserDesc: "Во всем терпит неудачу, мямлит и говорит неуверенно",
-        loserStats: "HP: 20, Mana: 0, Удача: 0, Харизма: 0"
+        loserStats: "HP: 20, Mana: 0, Удача: 0, Харизма: 0",
+        gameOver: "Игра окончена",
+        gameOverDesc: "Ваше приключение завершилось.",
+        restartGame: "Начать новое приключение",
+        deathMessage: "Вы умерли!",
     }
 };
 
@@ -1922,6 +1979,21 @@ function updateGameState(gameData) {
         gameState.character.mana = Math.max(0, Math.min(gameState.character.maxMana, gameState.character.mana + cons.mana));
         gameState.character.experience += cons.experience;
         
+        // Check for game over
+        if (cons.gameover || gameState.character.health <= 0) {
+            // Ensure health is 0 if player is dead
+            if (gameState.character.health <= 0) {
+                gameState.character.health = 0;
+            }
+            
+            // Update character panel before showing game over
+            updateCharacterPanel();
+            
+            // Show game over popup
+            showGameOverPopup(gameState.character.health <= 0);
+            return; // Stop further processing
+        }
+        
         // Level up check
         const newLevel = Math.floor(gameState.character.experience / 100) + 1;
         if (newLevel > gameState.character.level) {
@@ -2617,35 +2689,150 @@ function applyPerkBonuses(perk) {
         return; // Skip normal perk bonuses
     }
     
-    // Бонуси до здоров'я
-    if (lowerPerk.includes('здоров') || lowerPerk.includes('життя') || lowerPerk.includes('hp')) {
-        gameState.character.maxHealth += 5;
-        gameState.character.health = Math.min(gameState.character.health + 5, gameState.character.maxHealth);
-    }
+    // Parse perk for benefits and drawbacks
+    let healthBonus = 0;
+    let manaBonus = 0;
+    let healthPenalty = 0;
+    let manaPenalty = 0;
     
-    // Бонуси до мани
-    if (lowerPerk.includes('мана') || lowerPerk.includes('мани') || lowerPerk.includes('магі')) {
-        gameState.character.maxMana += 5;
-        gameState.character.mana = Math.min(gameState.character.mana + 5, gameState.character.maxMana);
-    }
-    
-    // Якщо в описі перку вказані конкретні числові бонуси, витягуємо їх
-    const healthBonus = perk.match(/\+(\d+)\s*(?:до)?\s*(?:макс(?:имального)?|макс\.?)?\s*(?:здоров'я|здоровʼя|хп|hp)/i);
-    if (healthBonus && healthBonus[1]) {
-        const bonus = parseInt(healthBonus[1]);
-        if (!isNaN(bonus)) {
-            gameState.character.maxHealth += bonus;
-            gameState.character.health = Math.min(gameState.character.health + bonus, gameState.character.maxHealth);
+    // Extract health and mana bonuses
+    const healthBonusMatch = perk.match(/\+(\d+)\s*(?:до)?\s*(?:макс(?:имального)?|макс\.?)?\s*(?:здоров'я|здоровʼя|хп|hp|здоровья)/i);
+    if (healthBonusMatch && healthBonusMatch[1]) {
+        healthBonus = parseInt(healthBonusMatch[1]);
+        if (!isNaN(healthBonus)) {
+            gameState.character.maxHealth += healthBonus;
+            gameState.character.health = Math.min(gameState.character.health + healthBonus, gameState.character.maxHealth);
         }
     }
     
-    const manaBonus = perk.match(/\+(\d+)\s*(?:до)?\s*(?:макс(?:имально[їго])?|макс\.?)?\s*(?:мани|мана)/i);
-    if (manaBonus && manaBonus[1]) {
-        const bonus = parseInt(manaBonus[1]);
-        if (!isNaN(bonus)) {
-            gameState.character.maxMana += bonus;
-            gameState.character.mana = Math.min(gameState.character.mana + bonus, gameState.character.maxMana);
+    const manaBonusMatch = perk.match(/\+(\d+)\s*(?:до)?\s*(?:макс(?:имально[їго])?|макс\.?)?\s*(?:мани|мана|маны)/i);
+    if (manaBonusMatch && manaBonusMatch[1]) {
+        manaBonus = parseInt(manaBonusMatch[1]);
+        if (!isNaN(manaBonus)) {
+            gameState.character.maxMana += manaBonus;
+            gameState.character.mana = Math.min(gameState.character.mana + manaBonus, gameState.character.maxMana);
         }
+    }
+    
+    // Extract health and mana penalties
+    const healthPenaltyMatch = perk.match(/\-(\d+)\s*(?:до)?\s*(?:макс(?:имального)?|макс\.?)?\s*(?:здоров'я|здоровʼя|хп|hp|здоровья)/i);
+    if (healthPenaltyMatch && healthPenaltyMatch[1]) {
+        healthPenalty = parseInt(healthPenaltyMatch[1]);
+        if (!isNaN(healthPenalty)) {
+            gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - healthPenalty);
+            gameState.character.health = Math.min(gameState.character.health, gameState.character.maxHealth);
+        }
+    }
+    
+    const manaPenaltyMatch = perk.match(/\-(\d+)\s*(?:до)?\s*(?:макс(?:имально[їго])?|макс\.?)?\s*(?:мани|мана|маны)/i);
+    if (manaPenaltyMatch && manaPenaltyMatch[1]) {
+        manaPenalty = parseInt(manaPenaltyMatch[1]);
+        if (!isNaN(manaPenalty)) {
+            gameState.character.maxMana = Math.max(0, gameState.character.maxMana - manaPenalty);
+            gameState.character.mana = Math.min(gameState.character.mana, gameState.character.maxMana);
+        }
+    }
+    
+    // If no explicit bonuses/penalties were found in the text but keywords are present, apply default bonuses
+    if (healthBonus === 0 && healthPenalty === 0) {
+        // Check for health-related keywords
+        if (lowerPerk.includes('здоров') || lowerPerk.includes('життя') || lowerPerk.includes('hp') || 
+            lowerPerk.includes('жизн') || lowerPerk.includes('health')) {
+            
+            if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш)/i)) {
+                // Positive effect on health
+                gameState.character.maxHealth += 5;
+                gameState.character.health = Math.min(gameState.character.health + 5, gameState.character.maxHealth);
+            } else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
+                // Negative effect on health
+                gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - 3);
+                gameState.character.health = Math.min(gameState.character.health, gameState.character.maxHealth);
+            }
+        }
+    }
+    
+    if (manaBonus === 0 && manaPenalty === 0) {
+        // Check for mana-related keywords
+        if (lowerPerk.includes('мана') || lowerPerk.includes('мани') || lowerPerk.includes('магі') || 
+            lowerPerk.includes('колдов') || lowerPerk.includes('magic') || lowerPerk.includes('spell')) {
+            
+            if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш)/i)) {
+                // Positive effect on mana
+                gameState.character.maxMana += 5;
+                gameState.character.mana = Math.min(gameState.character.mana + 5, gameState.character.maxMana);
+            } else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
+                // Negative effect on mana
+                gameState.character.maxMana = Math.max(0, gameState.character.maxMana - 3);
+                gameState.character.mana = Math.min(gameState.character.mana, gameState.character.maxMana);
+            }
+        }
+    }
+    
+    // Show a message about the perk changes
+    if (healthBonus > 0 || manaBonus > 0 || healthPenalty > 0 || manaPenalty > 0) {
+        const message = document.createElement('div');
+        message.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(78, 205, 196, 0.9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 1000;
+            animation: fadeOut 3s forwards;
+        `;
+        
+        let effectMsg = '';
+        
+        // Add translations for effect messages
+        const effectTexts = {
+            'uk': {
+                healthUp: (val) => `+${val} до максимального здоров'я`,
+                healthDown: (val) => `-${val} до максимального здоров'я`,
+                manaUp: (val) => `+${val} до максимальної мани`,
+                manaDown: (val) => `-${val} до максимальної мани`
+            },
+            'ru': {
+                healthUp: (val) => `+${val} к максимальному здоровью`,
+                healthDown: (val) => `-${val} к максимальному здоровью`,
+                manaUp: (val) => `+${val} к максимальной мане`,
+                manaDown: (val) => `-${val} к максимальной мане`
+            },
+            'en': {
+                healthUp: (val) => `+${val} to maximum health`,
+                healthDown: (val) => `-${val} to maximum health`,
+                manaUp: (val) => `+${val} to maximum mana`,
+                manaDown: (val) => `-${val} to maximum mana`
+            }
+        };
+        
+        const texts = effectTexts[gameState.language] || effectTexts['uk'];
+        const effects = [];
+        
+        if (healthBonus > 0) effects.push(texts.healthUp(healthBonus));
+        if (healthPenalty > 0) effects.push(texts.healthDown(healthPenalty));
+        if (manaBonus > 0) effects.push(texts.manaUp(manaBonus));
+        if (manaPenalty > 0) effects.push(texts.manaDown(manaPenalty));
+        
+        effectMsg = effects.join(', ');
+        
+        message.innerHTML = `<strong>${getText('perkGained')}: </strong>${perk}<br><small>${effectMsg}</small>`;
+        document.body.appendChild(message);
+        
+        // Add CSS animation for the message
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                0%, 80% { opacity: 1; transform: translate(-50%, 0); }
+                100% { opacity: 0; transform: translate(-50%, 20px); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Auto-remove the message after animation
+        setTimeout(() => message.remove(), 3500);
     }
 }
 
@@ -2801,4 +2988,115 @@ function createEnemyCard(enemy, index = null) {
     
     cardHtml += `</div>`;
     return cardHtml;
+}
+
+// Function to show game over popup
+function showGameOverPopup(isDead = false) {
+    // Check if popup already exists and remove it
+    if (document.getElementById('gameOverPopup')) {
+        document.getElementById('gameOverPopup').remove();
+    }
+    
+    // Create popup
+    const popup = document.createElement('div');
+    popup.id = 'gameOverPopup';
+    popup.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        border: 2px solid ${isDead ? '#ff6b6b' : '#4ecdc4'};
+        border-radius: 15px;
+        padding: 25px;
+        z-index: 1000;
+        min-width: 300px;
+        max-width: 500px;
+        box-shadow: 0 0 25px rgba(${isDead ? '255, 107, 107' : '78, 205, 196'}, 0.5);
+        backdrop-filter: blur(10px);
+        text-align: center;
+        animation: fadeIn 0.5s;
+    `;
+    
+    // Icon based on if player died or reached end
+    const icon = isDead ? '💀' : '🏆';
+    
+    // Set title based on death or other game over
+    let title = getText('gameOver');
+    let desc = getText('gameOverDesc');
+    
+    // If player died, show specific message
+    if (isDead) {
+        desc = getText('deathMessage');
+    }
+    
+    // Populate popup
+    popup.innerHTML = `
+        <h2 style="text-align: center; color: ${isDead ? '#ff6b6b' : '#4ecdc4'}; margin-bottom: 15px;">${icon} ${title} ${icon}</h2>
+        <p style="text-align: center; margin-bottom: 10px; font-size: 1.2em;">${desc}</p>
+        <div style="margin: 20px 0; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 10px;">
+            <p style="margin-bottom: 5px;"><strong>${gameState.character.name}</strong> (${getCharacterClassName(gameState.character.class)})</p>
+            <p>Level ${gameState.character.level} • XP: ${gameState.character.experience}</p>
+            <p>Survived through ${gameState.gameHistory.length} turns</p>
+        </div>
+        <button id="restartButton" class="action-btn" style="margin-top: 15px; padding: 12px 25px;">${getText('restartGame')}</button>
+    `;
+    
+    // Add overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 999;
+        animation: fadeIn 0.5s;
+    `;
+    
+    // Add animation keyframes
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Add to DOM
+    document.body.appendChild(overlay);
+    document.body.appendChild(popup);
+    
+    // Add restart button handler
+    document.getElementById('restartButton').addEventListener('click', () => {
+        popup.remove();
+        overlay.remove();
+        
+        // Reset everything and show setup screen
+        gameState = {
+            apiKey: gameState.apiKey,
+            language: gameState.language,
+            character: {
+                name: '',
+                class: '',
+                health: 100,
+                maxHealth: 100,
+                mana: 50,
+                maxMana: 50,
+                experience: 0,
+                level: 1,
+                perks: ['Базові навички']
+            },
+            currentScene: null,
+            isLoading: false,
+            gameHistory: [],
+            conversationHistory: [],
+            availablePerks: []
+        };
+        
+        document.getElementById('gameArea').style.display = 'none';
+        document.getElementById('setupScreen').style.display = 'block';
+    });
 }
