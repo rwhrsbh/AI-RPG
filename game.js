@@ -2521,8 +2521,8 @@ function showLevelUpPopup(newLevel, levelGains) {
         <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin: 10px 0;">
             <p><strong>${getText('bonuses')}:</strong></p>
             <ul style="margin: 10px 0 10px 20px;">
-                <li>+${levelGains.health} ${getText('health') === 'Health' ? 'to maximum health' : 'до максимального ' + getText('health').toLowerCase()}</li>
-                <li>+${levelGains.mana} ${getText('mana') === 'Mana' ? 'to maximum mana' : 'до максимальної ' + getText('mana').toLowerCase()}</li>
+                <li>+${levelGains.health} ${getText('health') === 'Health' ? 'to maximum health' : '❤️ ' + getText('health').toLowerCase()}</li>
+                <li>+${levelGains.mana} ${getText('mana') === 'Mana' ? 'to maximum mana' : '💙 ' + getText('mana').toLowerCase()}</li>
             </ul>
         </div>
         <button id="levelUpCloseBtn" style="
