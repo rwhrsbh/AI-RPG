@@ -32,7 +32,8 @@ const classStats = {
     animeFan: { health: 80, mana: 70, perks: ['Отаку знання', 'Фанатизм'] },
     animeFanFemale: { health: 75, mana: 90, perks: ['Харизма', 'Кавайність'] },
     boxer: { health: 130, mana: 40, perks: ['Міцні кулаки', 'Витривалість'] },
-    lumberjack: { health: 125, mana: 35, perks: ['Сила замаху', 'Стійкість'] }
+    lumberjack: { health: 125, mana: 35, perks: ['Сила замаху', 'Стійкість'] },
+    loser: { health: 20, mana: 0, perks: ['Невдача', 'Нікчемність'] }
 };
 
 // Локалізація гри
@@ -251,7 +252,10 @@ const localization = {
         customActionPlaceholder: "Describe what you want to do...",
         performAction: "Perform Action",
         customActionLabel: "Or choose your own action:",
-        processingAction: "Processing action"
+        processingAction: "Processing action",
+        loser: "Loser",
+        loserDesc: "Fails at everything, speaks uncertainly and mumbles",
+        loserStats: "HP: 20, Mana: 0, Luck: 0, Charisma: 0"
     },
     uk: {
         // Інтерфейс
@@ -467,7 +471,10 @@ const localization = {
         customActionPlaceholder: "Опишіть, що ви хочете зробити...",
         performAction: "Виконати дію",
         customActionLabel: "Або виберіть свою дію:",
-        processingAction: "Обробка дії"
+        processingAction: "Обробка дії",
+        loser: "Попуск",
+        loserDesc: "У всьому зазнає невдачі, мямлить та говорить невпевнено",
+        loserStats: "HP: 20, Mana: 0, Удача: 0, Харизма: 0"
     },
     ru: {
         // Интерфейс
@@ -683,7 +690,10 @@ const localization = {
         customActionPlaceholder: "Опишите, что вы хотите сделать...",
         performAction: "Выполнить действие",
         customActionLabel: "Или выберите свою собственную:",
-        processingAction: "Обработка действия"
+        processingAction: "Обработка действия",
+        loser: "Лузер",
+        loserDesc: "Во всем терпит неудачу, мямлит и говорит неуверенно",
+        loserStats: "HP: 20, Mana: 0, Удача: 0, Харизма: 0"
     }
 };
 
@@ -970,6 +980,7 @@ function updateLanguage(lang) {
     updateClassInfo("animeFanFemale", "🎀", "animeFanFemale", "animeFanFemaleDesc", "animeFanFemaleStats");
     updateClassInfo("boxer", "👊", "boxer", "boxerDesc", "boxerStats");
     updateClassInfo("lumberjack", "🪓", "lumberjack", "lumberjackDesc", "lumberjackStats");
+    updateClassInfo("loser", "😞", "loser", "loserDesc", "loserStats");
     
     // Кнопка початку гри
     const startButton = document.querySelector('#setupScreen button');
@@ -1262,6 +1273,14 @@ const animePerkTranslations = {
     "Аніме харизма: +15 до харизми при взаємодії з любителями аніме": {
         "en": "Anime Charisma: +15 to charisma when interacting with anime fans",
         "ru": "Аниме харизма: +15 к харизме при взаимодействии с любителями аниме"
+    },
+    "Невдача": {
+        "en": "Bad Luck",
+        "ru": "Неудача"
+    },
+    "Нікчемність": {
+        "en": "Worthlessness",
+        "ru": "Никчемность"
     }
 };
 
@@ -1615,6 +1634,20 @@ async function callGeminiAPI(prompt, isInitial = false) {
     
     // Зберігаємо останній промпт для можливого повторного виклику
     lastPrompt = prompt;
+    
+    // Add special instructions for loser class
+    if (gameState.character.class === 'loser') {
+        // Add harsh treatment instruction for the loser class
+        if (!isInitial) {
+            prompt += "\n\nIMPORTANT: This character is a complete loser. Be extremely harsh with them, create difficult situations, never forgive mistakes, and make everything go wrong for them. Even good decisions should have bad outcomes.";
+        } else {
+            prompt = prompt.replace(
+                "create an initial scene", 
+                "create a particularly harsh and unlucky initial scene"
+            );
+            prompt += "\n\nIMPORTANT: This character is a complete loser. Start with an embarrassing and difficult situation. Be extremely harsh and unforgiving.";
+        }
+    }
 
     try {
         // Підготовка контексту для API
@@ -2149,6 +2182,39 @@ function updateGameState(gameData) {
 }
 
 function performAction(action) {
+    // Special handling for loser class - add mumbling to their speech
+    if (gameState.character.class === 'loser') {
+        // Add mumbling and uncertainty to speech
+        if (action.startsWith('Сказати') || action.startsWith('Говорити') || 
+            action.startsWith('Сказать') || action.startsWith('Говорить') || 
+            action.startsWith('Say') || action.startsWith('Talk') || 
+            action.startsWith('Speak') || action.startsWith('Tell')) {
+            
+            // Get current language
+            const lang = gameState.language;
+            
+            // Add mumbling prefixes based on language
+            const mumblePrefixes = {
+                'uk': ['Мм.. е-е.. ', 'Н-ну.. ', 'Т-так.. ', 'Я-я.. ', 'Ем.. '],
+                'ru': ['Мм.. э-э.. ', 'Н-ну.. ', 'Т-так.. ', 'Я-я.. ', 'Эм.. '],
+                'en': ['Um.. er.. ', 'S-so.. ', 'W-well.. ', 'I-I.. ', 'Hmm.. ']
+            };
+            
+            // Random selection of mumbling prefix
+            const prefixes = mumblePrefixes[lang] || mumblePrefixes['uk'];
+            const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+            
+            // Add random stutter to words
+            action = randomPrefix + stutterText(action);
+        }
+        
+        // Randomly apply small damage to represent bad luck (25% chance)
+        if (Math.random() < 0.25) {
+            gameState.character.health = Math.max(1, gameState.character.health - 1);
+            updateCharacterPanel();
+        }
+    }
+    
     // Створюємо детальний опис персонажа з усіма перками та характеристиками
     const characterDetails = {
         name: gameState.character.name,
@@ -2177,6 +2243,19 @@ function performAction(action) {
         .replace('{perks}', characterDetails.perks);
 
     callGeminiAPI(prompt, false);
+}
+
+// Helper function to add random stuttering to text
+function stutterText(text) {
+    const words = text.split(' ');
+    return words.map(word => {
+        // 30% chance to stutter on words longer than 2 letters
+        if (word.length > 2 && Math.random() < 0.3) {
+            const firstLetter = word[0];
+            return `${firstLetter}-${word}`;
+        }
+        return word;
+    }).join(' ');
 }
 
 function performCustomAction() {
@@ -2490,6 +2569,53 @@ function showPerkSelectionPopup() {
 // Функція для застосування бонусів від перків
 function applyPerkBonuses(perk) {
     const lowerPerk = perk.toLowerCase();
+    
+    // Special handling for loser perks - they should actually be penalties
+    if (gameState.character.class === 'loser') {
+        // Apply negative effects for any perk the loser gets
+        gameState.character.maxHealth -= 1;
+        gameState.character.health = Math.max(1, gameState.character.health - 1);
+        
+        // Show a negative message about the perk
+        const message = document.createElement('div');
+        message.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 1000;
+            animation: fadeOut 3s forwards;
+        `;
+        
+        // Message based on language
+        const messages = {
+            'uk': 'Навіть перки вас підводять!',
+            'ru': 'Даже перки вас подводят!',
+            'en': 'Even perks let you down!'
+        };
+        
+        message.innerHTML = `<strong>${messages[gameState.language] || messages['uk']}</strong>`;
+        document.body.appendChild(message);
+        
+        // Add CSS animation for the message
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                0%, 80% { opacity: 1; transform: translate(-50%, 0); }
+                100% { opacity: 0; transform: translate(-50%, 20px); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Auto-remove the message after animation
+        setTimeout(() => message.remove(), 3000);
+        
+        return; // Skip normal perk bonuses
+    }
     
     // Бонуси до здоров'я
     if (lowerPerk.includes('здоров') || lowerPerk.includes('життя') || lowerPerk.includes('hp')) {
