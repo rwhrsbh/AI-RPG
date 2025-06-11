@@ -90,6 +90,12 @@ const localization = {
         lumberjack: "Lumberjack",
         lumberjackDesc: "Strong woodcutter with axe mastery and resilience",
         lumberjackStats: "HP: 125, Mana: 35, Stamina: High",
+        
+        // Звукові налаштування
+        soundSettings: "Sound",
+        mute: "Mute",
+        unmute: "Unmute",
+        volume: "Volume",
         // ... existing code ...
         
         // Попапи
@@ -306,6 +312,12 @@ const localization = {
         characterNamePlaceholder: "Імʼя персонажа",
         warrior: "Воїн",
         warriorDesc: "Майстер ближнього бою з високим здоровʼям",
+        
+        // Звукові налаштування
+        soundSettings: "Звук",
+        mute: "Вимкнути",
+        unmute: "Увімкнути",
+        volume: "Гучність",
         warriorStats: "HP: 120, Mana: 30, Сила: Висока",
         mage: "Маг",
         mageDesc: "Володар магії з потужними заклинаннями",
@@ -556,6 +568,12 @@ const localization = {
         apiKeyPlaceholder: "API ключ Gemini",
         save: "Сохранить",
         createCharacter: "Создайте вашего персонажа",
+        
+        // Звуковые настройки
+        soundSettings: "Звук",
+        mute: "Выключить",
+        unmute: "Включить",
+        volume: "Громкость",
         characterNamePlaceholder: "Имя персонажа",
         warrior: "Воин",
         warriorDesc: "Мастер ближнего боя с высоким здоровьем",
@@ -1025,6 +1043,7 @@ function loadSpecificSave(saveData) {
         if (gameState.currentScene) {
             document.getElementById('setupScreen').style.display = 'none';
             document.getElementById('gameArea').style.display = 'block';
+            initSoundControls();
             updateGameState(gameState.currentScene);
         }
         
@@ -1135,6 +1154,11 @@ function updateLanguage(lang) {
     // Ворог (якщо відображається)
     const enemyTitle = document.querySelector('#enemyInfo h4');
     if (enemyTitle) enemyTitle.textContent = `👹 ${getText('enemyName')}`;
+    
+    // Звукові налаштування
+    const soundTitle = document.getElementById('soundSettingsTitle');
+    if (soundTitle) soundTitle.textContent = `🔊 ${getText('soundSettings')}`;
+    updateMuteButtonText();
 }
 
 // Допоміжна функція для оновлення інформації про клас персонажа
@@ -1157,6 +1181,9 @@ function saveApiKey() {
     if (apiKey) {
         gameState.apiKey = apiKey;
         document.getElementById('apiSetup').style.display = 'none';
+        
+        // Ініціалізуємо елементи керування звуком одразу після введення API ключа
+        initSoundControls();
         
         // Перевіряємо наявність збережених ігор
         const allSaves = getAllSaveGames();
@@ -1312,6 +1339,7 @@ function startGame() {
     document.getElementById('gameArea').style.display = 'block';
     
     updateCharacterPanel();
+    initSoundControls();
     generateInitialScene();
 }
 
@@ -1853,6 +1881,19 @@ async function callGeminiAPI(prompt, isInitial = false) {
             })
         });
 
+        // Перевіряємо, чи запит успішний
+        if (!response.ok) {
+            // Додаємо всю інформацію про помилку, включаючи код статусу і текст
+            const errorText = await response.text();
+            const error = new Error(`API error: ${response.status} ${response.statusText}`);
+            error.response = {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+            };
+            throw error;
+        }
+
         const data = await response.json();
 
         if (data.candidates && data.candidates[0] && data.candidates[0].content) {
@@ -2043,7 +2084,14 @@ async function callGeminiAPI(prompt, isInitial = false) {
         document.getElementById('storyText').innerHTML = `
             <p>${getText('apiError')}</p>
             <button id="retryButton" class="action-btn" style="margin: 10px 0;">${getText('retryGeneration')}</button>
-            <details><summary>${getText('detailedInfo')}</summary><pre>${error.message}</pre></details>
+            <details open>
+                <summary>${getText('detailedInfo')}</summary>
+                <pre style="background: rgba(255,0,0,0.1); padding: 10px; border-radius: 5px; overflow-x: auto; white-space: pre-wrap; word-break: break-word;">
+${error.message}
+${error.stack ? error.stack : ''}
+${error.response ? JSON.stringify(error.response, null, 2) : ''}
+                </pre>
+            </details>
         `;
         
         // Додаємо обробник події для кнопки повторної генерації
@@ -2944,27 +2992,149 @@ function applyPerkBonuses(perk) {
     }
 }
 let backgroundAudio; // Сделаем переменную глобальной, чтобы избежать создания нескольких плееров
+let previousVolume = 5; // Зберігаємо попередню гучність для функції mute
 
 function playBackgroundMusic() {
-    // Проверяем, не запущена ли музыка уже
-    if (backgroundAudio && !backgroundAudio.paused) {
+    // Якщо музика вже відтворюється, нічого не робимо
+    if (backgroundAudio && !backgroundAudio.paused && !backgroundAudio.muted) {
         return;
     }
     
-    // Создаем аудио-плеер, если его еще нет
-    if (!backgroundAudio) {
-        backgroundAudio = new Audio('music.mp3'); // Укажите путь к вашему файлу
-        backgroundAudio.loop = true; // Музыка будет повторяться
-        backgroundAudio.volume = 0.1; // Громкость 30% (чтобы не мешала)
-    }
+    try {
+        // Створюємо аудіо-плеєр, якщо його ще немає
+        if (!backgroundAudio) {
+            backgroundAudio = new Audio('music.mp3');
+            backgroundAudio.loop = true; // Музика буде повторюватися
+            
+            // Отримуємо початкове значення гучності з повзунка, якщо можливо
+            const volumeSlider = document.getElementById('volumeSlider');
+            if (volumeSlider) {
+                previousVolume = parseInt(volumeSlider.value) || previousVolume;
+            }
+            
+            backgroundAudio.volume = previousVolume / 100;
+        }
 
-    // Пытаемся запустить воспроизведение
-    backgroundAudio.play().catch(error => {
-        // Современные браузеры блокируют автовоспроизведение звука
-        // до первого взаимодействия пользователя со страницей (клик, нажатие клавиши).
-        // Это нормально, музыка начнется после клика по кнопке языка.
-        console.log('Ошибка автовоспроизведения музыки (это нормально):', error);
-    });
+        // Пробуємо запустити відтворення, якщо воно було на паузі або muted
+        if (backgroundAudio.paused || backgroundAudio.muted) {
+            // Якщо музика була вимкнена, зберігаємо цей стан
+            const wasMuted = backgroundAudio.muted;
+            
+            // Запускаємо відтворення
+            backgroundAudio.play().then(() => {
+                // Повертаємо попередній стан muted
+                backgroundAudio.muted = wasMuted;
+                
+                // Оновлюємо текст кнопки після запуску
+                updateMuteButtonText();
+            }).catch(error => {
+                console.log('Помилка відтворення музики (це нормально):', error);
+            });
+        }
+    } catch (error) {
+        console.error('Помилка ініціалізації аудіо:', error);
+    }
+}
+
+// Функція для керування звуком при завантаженні сторінки
+function initSoundControls() {
+    const volumeSlider = document.getElementById('volumeSlider');
+    const muteButton = document.getElementById('muteButton');
+    
+    if (volumeSlider && muteButton) {
+        // Ініціалізація значення повзунка
+        volumeSlider.value = backgroundAudio ? (backgroundAudio.muted ? 0 : backgroundAudio.volume * 100) : previousVolume;
+        
+        // Оновлюємо текст кнопки
+        updateMuteButtonText();
+        
+        // Видалення попередніх обробників, щоб уникнути дублювання
+        volumeSlider.removeEventListener('input', volumeChangeHandler);
+        muteButton.removeEventListener('click', muteButtonHandler);
+        
+        // Обробник зміни гучності
+        volumeSlider.addEventListener('input', volumeChangeHandler);
+        
+        // Обробник кліку на кнопку mute/unmute
+        muteButton.addEventListener('click', muteButtonHandler);
+        
+        // Оновлення текстів на основі поточної мови
+        const soundTitle = document.getElementById('soundSettingsTitle');
+        if (soundTitle) {
+            soundTitle.textContent = `🔊 ${getText('soundSettings')}`;
+        }
+    }
+}
+
+// Виносимо обробники в окремі функції для можливості видалення
+function volumeChangeHandler() {
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (!volumeSlider) return;
+
+    // Зберігаємо поточне значення гучності
+    previousVolume = volumeSlider.value;
+    
+    // Створюємо аудіо об'єкт, якщо його ще немає
+    if (!backgroundAudio) {
+        playBackgroundMusic();
+    }
+    
+    if (backgroundAudio) {
+        backgroundAudio.volume = volumeSlider.value / 100;
+        
+        // Якщо користувач змінив гучність з 0, то вимикаємо режим mute
+        if (backgroundAudio.muted && volumeSlider.value > 0) {
+            backgroundAudio.muted = false;
+            updateMuteButtonText();
+        }
+    }
+}
+
+function muteButtonHandler() {
+    // Якщо аудіо ще не створено, створюємо його
+    if (!backgroundAudio) {
+        playBackgroundMusic();
+    }
+    
+    if (backgroundAudio) {
+        const volumeSlider = document.getElementById('volumeSlider');
+        
+        if (!backgroundAudio.muted) {
+            // Зберігаємо поточне значення гучності перед mute
+            if (volumeSlider && volumeSlider.value > 0) {
+                previousVolume = volumeSlider.value;
+            }
+            // Встановлюємо mute і змінюємо повзунок на 0
+            backgroundAudio.muted = true;
+            if (volumeSlider) volumeSlider.value = 0;
+        } else {
+            // Знімаємо mute і повертаємо попередню гучність
+            backgroundAudio.muted = false;
+            
+            // Повертаємо попереднє значення повзунка
+            if (volumeSlider) {
+                volumeSlider.value = previousVolume;
+                backgroundAudio.volume = previousVolume / 100;
+            }
+        }
+        
+        // Оновлюємо текст кнопки
+        updateMuteButtonText();
+    }
+}
+
+// Функція для оновлення тексту кнопки mute/unmute
+function updateMuteButtonText() {
+    const muteButton = document.getElementById('muteButton');
+    if (muteButton) {
+        // Перевіряємо чи існує аудіо об'єкт і чи він вимкнений
+        // Якщо аудіо об'єкт не існує, використовуємо стандартний текст для невимкненого звуку
+        if (backgroundAudio && backgroundAudio.muted) {
+            muteButton.innerHTML = `🔈 ${getText('unmute')}`;
+        } else {
+            muteButton.innerHTML = `🔇 ${getText('mute')}`;
+        }
+    }
 }
 
 // ==========================================================
@@ -2980,6 +3150,9 @@ function changeLanguage(lang) {
 
     // Воспроизводим музыку (это сработает, так как пользователь нажал на кнопку)
     playBackgroundMusic();
+    
+    // Оновлюємо елементи керування звуком
+    initSoundControls();
 }
 
 
@@ -2987,6 +3160,9 @@ function changeLanguage(lang) {
 document.addEventListener('DOMContentLoaded', function() {
     // Використовуємо мову за замовчуванням (встановлену в gameState)
     updateLanguage(gameState.language);
+    
+    // Ініціалізуємо елементи керування звуком
+    initSoundControls();
 });
 
 // Функция для перевода имени врага на выбранный язык

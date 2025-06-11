@@ -302,6 +302,20 @@
             <p>Пригода чекає на тебе у цьому світі магії та небезпек</p>
         </div>
 
+        <!-- Додаємо звукові налаштування, які будуть видимі завжди -->
+        <div style="background: rgba(0, 0, 0, 0.4); border-radius: 15px; padding: 15px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center;">
+                <h4 id="soundSettingsTitle" style="margin: 0 15px 0 0;">🔊 Звук</h4>
+                <button id="muteButton" class="action-btn" style="padding: 5px 10px; font-size: 0.9em; margin-right: 15px;">
+                    🔇 Вимкнути
+                </button>
+            </div>
+            <div style="flex-grow: 1; max-width: 300px;">
+                <input type="range" id="volumeSlider" min="0" max="100" value="5" 
+                       style="width: 100%; accent-color: #4ecdc4; background: rgba(255, 255, 255, 0.1); height: 8px; border-radius: 4px;">
+            </div>
+        </div>
+
         <div id="apiSetup" class="api-setup">
             <h3>🔑 Налаштування API</h3>
             <p>Введіть ваш Gemini API ключ для початку гри:</p>
