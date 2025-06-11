@@ -2786,7 +2786,7 @@ function applyPerkBonuses(perk) {
         // Auto-remove the message after animation
         setTimeout(() => message.remove(), 3000);
         
-        return; // Skip normal perk bonuses
+       
     }
     
     // Parse perk for benefits and drawbacks
