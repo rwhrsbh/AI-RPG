@@ -2935,25 +2935,45 @@ function applyPerkBonuses(perk) {
         setTimeout(() => message.remove(), 3500);
     }
 }
+let backgroundAudio; // Сделаем переменную глобальной, чтобы избежать создания нескольких плееров
+
 function playBackgroundMusic() {
-    const audio = new Audio('music.mp3');
-    audio.loop = true; // Музика буде повторюватися
-    audio.volume = 0.5; // Гучність 50%
-    audio.play().catch(error => {
-        console.log('Помилка відтворення музики:', error);
+    // Проверяем, не запущена ли музыка уже
+    if (backgroundAudio && !backgroundAudio.paused) {
+        return;
+    }
+    
+    // Создаем аудио-плеер, если его еще нет
+    if (!backgroundAudio) {
+        backgroundAudio = new Audio('music.mp3'); // Укажите путь к вашему файлу
+        backgroundAudio.loop = true; // Музыка будет повторяться
+        backgroundAudio.volume = 0.3; // Громкость 30% (чтобы не мешала)
+    }
+
+    // Пытаемся запустить воспроизведение
+    backgroundAudio.play().catch(error => {
+        // Современные браузеры блокируют автовоспроизведение звука
+        // до первого взаимодействия пользователя со страницей (клик, нажатие клавиши).
+        // Это нормально, музыка начнется после клика по кнопке языка.
+        console.log('Ошибка автовоспроизведения музыки (это нормально):', error);
     });
 }
-// Функція для зміни мови
+
+// ==========================================================
+// ИЗМЕНЕННАЯ ФУНКЦИЯ ДЛЯ ЗАПУСКА МУЗЫКИ
+// ==========================================================
+// Функция для смены языка
 function changeLanguage(lang) {
     gameState.language = lang;
     updateLanguage(lang);
     
-    // Оновлюємо панель персонажа з новою мовою
+    // Обновляем панель персонажа с новой языковой версией
     updateCharacterPanel();
 
-    // Відтворюємо музику
+    // Воспроизводим музыку (это сработает, так как пользователь нажал на кнопку)
     playBackgroundMusic();
 }
+
 
 // Ініціалізація мови при завантаженні сторінки
 document.addEventListener('DOMContentLoaded', function() {
