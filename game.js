@@ -1920,7 +1920,10 @@ async function callGeminiAPI(prompt, isInitial = false) {
                 contents: contents,
                 generationConfig: {
                     responseMimeType: 'text/plain',
-                    maxOutputTokens: 200000
+                    maxOutputTokens: 1000000,
+                    thinkingConfig: {
+                        thinkingBudget: 0
+                    }
                 },
                 safetySettings: [
                     {
