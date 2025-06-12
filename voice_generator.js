@@ -7,10 +7,14 @@
 let isGeneratingVoice = false;
 let voiceQueue = [];
 let currentlyPlaying = null;
+let isVoiceStopRequested = false;  // Новий прапорець для зупинки обробки голосу
 let voiceContext = {
     voice: 'Zephyr',
     isEnabled: true,
-    volume: 1.0
+    volume: 1.0,
+    service: 'gemini', // 'gemini' або 'elevenlabs'
+    elevenLabsApiKey: '', // API ключ для ElevenLabs
+    elevenLabsVoice: 'EXAVITQu4vr4xnSDxMaL' // ID голосу ElevenLabs (Rachel за замовчуванням)
 };
 
 // Доступні голоси Gemini
@@ -29,6 +33,7 @@ const AVAILABLE_VOICES = [
  * @param {Object} options - Додаткові параметри
  * @param {string} options.voice - Голос для озвучування
  * @param {string} options.instructions - Інструкції для озвучування (тон, емоції тощо)
+ * @param {string} options.service - Сервіс для озвучування ('gemini' або 'elevenlabs')
  * @returns {Promise<void>}
  */
 async function generateVoice(text, options = {}) {
@@ -48,7 +53,19 @@ async function generateVoice(text, options = {}) {
         return;
     }
     
-    const voice = options.voice || voiceContext.voice;
+    // Скидаємо прапорець зупинки голосу
+    isVoiceStopRequested = false;
+    
+    const service = options.service || voiceContext.service;
+    
+    // Вибираємо голос залежно від сервісу
+    let voice;
+    if (service === 'elevenlabs') {
+        voice = options.voice || voiceContext.elevenLabsVoice;
+    } else {
+        voice = options.voice || voiceContext.voice;
+    }
+    
     let instructions = '';
     
     // Перевіряємо, чи є інструкції рядком
@@ -63,13 +80,18 @@ async function generateVoice(text, options = {}) {
         }
     }
     
+    // Зупиняємо поточне відтворення перед додаванням нового
+    if (currentlyPlaying) {
+        stopVoice();
+    }
+    
     // Розбиваємо текст на частини для кращої обробки
     const textChunks = splitTextIntoChunks(text);
     console.log(`Текст розбито на ${textChunks.length} частин`);
     
     // Додаємо частини тексту до черги озвучування
     for (const chunk of textChunks) {
-        voiceQueue.push({ text: chunk, voice, instructions });
+        voiceQueue.push({ text: chunk, voice, instructions, service });
     }
     
     // Запускаємо обробку черги, якщо вона ще не запущена
@@ -120,6 +142,13 @@ async function processVoiceQueue() {
     let errorCount = 0;
     
     while (voiceQueue.length > 0) {
+        // Перевіряємо, чи не запитано припинення озвучування
+        if (isVoiceStopRequested) {
+            console.log('Обробку черги озвучування зупинено на вимогу');
+            voiceQueue = [];  // Очищаємо чергу
+            break;
+        }
+        
         // Беремо перший елемент з черги
         const item = voiceQueue.shift();
         processedCount++;
@@ -128,9 +157,24 @@ async function processVoiceQueue() {
         console.log(`Текст для озвучування: ${item.text.substring(0, 50)}...`);
         
         try {
-            // Генеруємо аудіо
-            console.log(`Запит на генерацію озвучування для голосу ${item.voice}...`);
-            const audioBlob = await fetchGeminiVoiceAudio(item.text, item.voice, item.instructions);
+            // Генеруємо аудіо залежно від вибраного сервісу
+            console.log(`Запит на генерацію озвучування для голосу ${item.voice} через сервіс ${item.service || voiceContext.service}...`);
+            
+            let audioBlob;
+            const service = item.service || voiceContext.service;
+            
+            if (service === 'elevenlabs') {
+                audioBlob = await fetchElevenLabsVoiceAudio(item.text, item.voice, item.instructions);
+            } else {
+                audioBlob = await fetchGeminiVoiceAudio(item.text, item.voice, item.instructions);
+            }
+            
+            // Знову перевіряємо, чи не запитано припинення озвучування
+            if (isVoiceStopRequested) {
+                console.log('Обробку черги озвучування зупинено на вимогу після отримання аудіо');
+                voiceQueue = [];
+                break;
+            }
             
             if (!audioBlob) {
                 console.error('Не вдалося отримати аудіо blob');
@@ -155,6 +199,13 @@ async function processVoiceQueue() {
             for (const method of playbackMethods) {
                 if (played) break;
                 
+                // Перевіряємо, чи не запитано припинення озвучування
+                if (isVoiceStopRequested) {
+                    console.log(`Відтворення через ${method.name} метод скасовано на вимогу`);
+                    voiceQueue = [];
+                    break;
+                }
+                
                 try {
                     console.log(`Спроба відтворення через ${method.name} метод...`);
                     await method.method(audioBlob);
@@ -167,7 +218,7 @@ async function processVoiceQueue() {
                 }
             }
             
-            if (!played) {
+            if (!played && !isVoiceStopRequested) {
                 console.error('Усі методи відтворення аудіо зазнали невдачі');
                 throw lastError || new Error('Не вдалося відтворити аудіо жодним методом');
             }
@@ -189,6 +240,7 @@ async function processVoiceQueue() {
     
     // Скидаємо прапорець після обробки всієї черги
     isGeneratingVoice = false;
+    isVoiceStopRequested = false; // Скидаємо флаг зупинки
     console.log(`Обробка черги озвучування завершена. Оброблено елементів: ${processedCount}, помилок: ${errorCount}`);
 }
 
@@ -787,6 +839,9 @@ function playAudioViaURL(audioBlob) {
  * Зупиняє поточне відтворення аудіо
  */
 function stopVoice() {
+    // Встановлюємо прапорець для зупинки обробки черги
+    isVoiceStopRequested = true;
+    
     if (currentlyPlaying) {
         try {
             currentlyPlaying.pause();
@@ -812,8 +867,11 @@ function stopVoice() {
  * Встановлює налаштування озвучування
  * @param {Object} settings - Налаштування
  * @param {boolean} settings.isEnabled - Чи увімкнено озвучування
- * @param {string} settings.voice - Голос для озвучування
+ * @param {string} settings.voice - Голос для озвучування (Gemini)
  * @param {number} settings.volume - Гучність (0-1)
+ * @param {string} settings.service - Сервіс для озвучування ('gemini' або 'elevenlabs')
+ * @param {string} settings.elevenLabsApiKey - API ключ для ElevenLabs
+ * @param {string} settings.elevenLabsVoice - ID голосу для ElevenLabs
  */
 function setVoiceSettings(settings) {
     if (typeof settings !== 'object') return;
@@ -823,13 +881,29 @@ function setVoiceSettings(settings) {
         voiceContext.isEnabled = settings.isEnabled;
     }
     
+    // Оновлюємо сервіс, якщо вказано
+    if (typeof settings.service === 'string' && 
+        (settings.service === 'gemini' || settings.service === 'elevenlabs')) {
+        voiceContext.service = settings.service;
+    }
+    
+    // Налаштування для Gemini
     if (typeof settings.voice === 'string' && settings.voice.trim() !== '') {
         // Перевіряємо, чи є такий голос у списку доступних
         if (AVAILABLE_VOICES.includes(settings.voice)) {
             voiceContext.voice = settings.voice;
         } else {
-            console.warn(`Голос "${settings.voice}" не знайдено в списку доступних голосів. Використовуємо поточний: ${voiceContext.voice}`);
+            console.warn(`Голос "${settings.voice}" не знайдено в списку доступних голосів Gemini. Використовуємо поточний: ${voiceContext.voice}`);
         }
+    }
+    
+    // Налаштування для ElevenLabs
+    if (typeof settings.elevenLabsApiKey === 'string') {
+        voiceContext.elevenLabsApiKey = settings.elevenLabsApiKey;
+    }
+    
+    if (typeof settings.elevenLabsVoice === 'string' && settings.elevenLabsVoice.trim() !== '') {
+        voiceContext.elevenLabsVoice = settings.elevenLabsVoice;
     }
     
     if (typeof settings.volume === 'number' && !isNaN(settings.volume)) {
@@ -932,6 +1006,81 @@ function pcmToWav(pcmData, sampleRate = 24000, numChannels = 1) {
     }
 }
 
+/**
+ * Отримує аудіо з ElevenLabs API
+ * @param {string} text - Текст для озвучування
+ * @param {string} voice - ID голосу для озвучування
+ * @param {string} instructions - Інструкції для озвучування (не використовуються в ElevenLabs)
+ * @returns {Promise<Blob>} - Blob з аудіо
+ */
+async function fetchElevenLabsVoiceAudio(text, voice, instructions) {
+    try {
+        // Використовуємо API ключ з налаштувань
+        const apiKey = voiceContext.elevenLabsApiKey;
+        if (!apiKey) {
+            throw new Error('Відсутній API ключ ElevenLabs');
+        }
+
+        console.log(`Генерація озвучування через ElevenLabs API: ${text.substring(0, 50)}... (голос: ${voice})`);
+        
+        // Підготовка даних для запиту
+        const payload = {
+            text: text,
+            model_id: "eleven_multilingual_v2"        };
+        
+        // Якщо voice не є ID, використовуємо EXAVITQu4vr4xnSDxMaL (Rachel) за замовчуванням
+        const voiceId = voice && voice.length > 10 ? voice : "EXAVITQu4vr4xnSDxMaL";
+        
+        // Формуємо URL для запиту
+        const apiUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=mp3_44100_128`;
+        
+        console.log('ElevenLabs TTS URL:', apiUrl);
+        console.log('ElevenLabs запит:', JSON.stringify(payload, null, 2));
+        
+        // Відправляємо запит
+        console.log('Відправляємо запит до ElevenLabs TTS API...');
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Xi-Api-Key': apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        console.log('ElevenLabs TTS відповідь статус:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('ElevenLabs TTS помилка відповіді:', errorText);
+            throw new Error(`Помилка API: ${response.status} ${response.statusText} ${errorText}`);
+        }
+        
+        // Отримуємо аудіо blob напряму з відповіді
+        const audioBlob = await response.blob();
+        console.log('ElevenLabs TTS отримано аудіо blob, розмір:', audioBlob.size);
+        
+        return audioBlob;
+    } catch (error) {
+        console.error('Помилка отримання аудіо з ElevenLabs API:', error);
+        throw error;
+    }
+}
+
+// Популярні голоси ElevenLabs
+const ELEVENLABS_POPULAR_VOICES = [
+    { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", gender: "female" },
+    { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", gender: "female" },
+    { id: "AZnzlk1XvdvUeBnXmlld", name: "Domi", gender: "female" },
+    { id: "29vD33N1CtxCmqQRPOHJ", name: "Drew", gender: "male" },
+    { id: "2EiwWnXFnvU5JabPnv8n", name: "Clyde", gender: "male" },
+    { id: "5Q0t7uMcjvnagumLfvZi", name: "Paul", gender: "male" },
+    { id: "9BWtsMINqrJLrRacOk9x", name: "Aria", gender: "female" },
+    { id: "CYw3kZ02Hs0563khs1Fj", name: "Dave", gender: "male" },
+    { id: "CwhRBWXzGAHq8TQ4Fs17", name: "Roger", gender: "male" },
+    { id: "D38z5RcWu1voky8WS1ja", name: "Fin", gender: "male" }
+];
+
 // Експортуємо функції
 window.voiceGenerator = {
     generateVoice,
@@ -939,5 +1088,6 @@ window.voiceGenerator = {
     setVoiceSettings,
     getVoiceSettings,
     loadVoiceSettings,
-    availableVoices: AVAILABLE_VOICES
+    availableVoices: AVAILABLE_VOICES,
+    elevenLabsVoices: ELEVENLABS_POPULAR_VOICES
 };

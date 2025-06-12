@@ -559,9 +559,11 @@ function showImageError(message) {
                 regular: window.lastImagePrompt,
                 safe: window.safeImagePrompt
             });
-            console.log('Game state API key:', window.gameState && window.gameState.apiKey);
+            // Беремо API ключ так само, як і для першої генерації
+            const apiKey = window.gameState && window.gameState.apiKey;
+            console.log('API key from gameState:', apiKey);
             
-            if (window.gameState && window.gameState.apiKey) {
+            if (apiKey) {
                 // Показуємо індикатор завантаження та скидаємо прапорці
                 isGeneratingImage = false; // Скидаємо прапорець, щоб дозволити нову генерацію
                 
@@ -570,7 +572,7 @@ function showImageError(message) {
                 const safePromptToUse = window.safeImagePrompt;
                 
                 if (promptToUse) {
-                    generateImage(promptToUse, window.gameState.apiKey, safePromptToUse);
+                    generateImage(promptToUse, apiKey, safePromptToUse);
                 } else {
                     console.error('Cannot retry: missing prompt');
                     alert('Не вдалося повторити генерацію зображення: відсутній prompt');

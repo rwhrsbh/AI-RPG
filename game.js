@@ -18,6 +18,7 @@ let gameState = {
     conversationHistory: [], // Для API контексту
     availablePerks: [] // Доступні перки для вибору
 };
+window.gameState = gameState;
 
 const classStats = {
     warrior: { health: 120, mana: 30, perks: ['Майстерність мечем', 'Берсерк'] },
@@ -103,6 +104,12 @@ const localization = {
         selectVoice: "Select voice:",
         defaultVoice: "default",
         voiceApiNote: "Voice narration uses the same Gemini API key. Make sure your key has access to the Gemini TTS model.",
+        voiceService: "Select voice service:",
+        geminiVoice: "Gemini TTS",
+        elevenLabsVoice: "ElevenLabs TTS",
+        elevenLabsApiKey: "ElevenLabs API key:",
+        elevenLabsApiKeyPlaceholder: "Enter your ElevenLabs API key",
+        elevenLabsApiNote: "To use ElevenLabs, enter your API key.",
         
         // Попапи
         levelUp: "Level Up!",
@@ -331,6 +338,12 @@ const localization = {
         selectVoice: "Виберіть голос:",
         defaultVoice: "за замовчуванням",
         voiceApiNote: "Озвучування використовує той же ключ Gemini API. Переконайтеся, що ваш ключ має доступ до TTS моделі Gemini.",
+        voiceService: "Виберіть сервіс озвучування:",
+        geminiVoice: "Gemini TTS",
+        elevenLabsVoice: "ElevenLabs TTS",
+        elevenLabsApiKey: "API ключ ElevenLabs:",
+        elevenLabsApiKeyPlaceholder: "Введіть ваш API ключ ElevenLabs",
+        elevenLabsApiNote: "Для використання ElevenLabs введіть ваш API ключ.",
         
         warriorStats: "HP: 120, Mana: 30, Сила: Висока",
         mage: "Маг",
@@ -595,6 +608,12 @@ const localization = {
         selectVoice: "Выберите голос:",
         defaultVoice: "по умолчанию",
         voiceApiNote: "Озвучивание использует тот же ключ Gemini API. Убедитесь, что ваш ключ имеет доступ к TTS модели Gemini.",
+        voiceService: "Выберите сервис озвучивания:",
+        geminiVoice: "Gemini TTS",
+        elevenLabsVoice: "ElevenLabs TTS",
+        elevenLabsApiKey: "API ключ ElevenLabs:",
+        elevenLabsApiKeyPlaceholder: "Введите ваш API ключ ElevenLabs",
+        elevenLabsApiNote: "Для использования ElevenLabs введите ваш API ключ.",
         
         characterNamePlaceholder: "Имя персонажа",
         warrior: "Воин",
@@ -1217,6 +1236,23 @@ function updateClassInfo(className, icon, textKey, descKey, statsKey) {
     if (statsElement) statsElement.textContent = getText(statsKey);
 }
 
+/**
+ * Перемикає відображення налаштувань озвучування залежно від вибраного сервісу
+ */
+function toggleVoiceServiceOptions() {
+    const selectedService = document.getElementById('voiceService').value;
+    const geminiOptions = document.getElementById('geminiVoiceOptions');
+    const elevenLabsOptions = document.getElementById('elevenLabsVoiceOptions');
+    
+    if (selectedService === 'gemini') {
+        geminiOptions.style.display = 'block';
+        elevenLabsOptions.style.display = 'none';
+    } else if (selectedService === 'elevenlabs') {
+        geminiOptions.style.display = 'none';
+        elevenLabsOptions.style.display = 'block';
+    }
+}
+
 function saveApiKey() {
     const apiKey = document.getElementById('apiKey').value.trim();
     if (apiKey) {
@@ -1225,12 +1261,23 @@ function saveApiKey() {
         // Зберігаємо налаштування озвучування
         if (window.voiceGenerator) {
             const voiceEnabled = document.getElementById('voiceEnabled').checked;
-            const voiceType = document.getElementById('voiceSelect').value;
+            const voiceService = document.getElementById('voiceService').value;
+            const elevenLabsApiKey = document.getElementById('elevenLabsApiKey').value.trim();
             
-            window.voiceGenerator.setVoiceSettings({
+            // Вибираємо голос залежно від сервісу
+            let voiceSettings = {
                 isEnabled: voiceEnabled,
-                voice: voiceType
-            });
+                service: voiceService
+            };
+            
+            if (voiceService === 'gemini') {
+                voiceSettings.voice = document.getElementById('geminiVoiceSelect').value;
+            } else if (voiceService === 'elevenlabs') {
+                voiceSettings.elevenLabsApiKey = elevenLabsApiKey;
+                voiceSettings.elevenLabsVoice = document.getElementById('elevenLabsVoiceSelect').value;
+            }
+            
+            window.voiceGenerator.setVoiceSettings(voiceSettings);
             
             // Зберігаємо налаштування в gameState для зручності
             gameState.voiceSettings = window.voiceGenerator.getVoiceSettings();
@@ -1872,6 +1919,11 @@ async function callGeminiAPI(prompt, isInitial = false) {
     gameState.isLoading = true;
     document.getElementById('customActionBtn').disabled = true;
     document.getElementById('storyText').innerHTML = `<div class="loading">${getText('processingAction')}</div>`;
+    
+    // Зупиняємо поточне озвучування, якщо воно є
+    if (window.voiceGenerator) {
+        window.voiceGenerator.stopVoice();
+    }
     
     // Зберігаємо останній промпт для можливого повторного виклику
     lastPrompt = prompt;
@@ -3483,6 +3535,9 @@ function changeLanguage(lang) {
     
     // Оновлюємо елементи керування звуком
     initSoundControls();
+    
+    // Оновлюємо тексти налаштувань озвучування
+    initVoiceSettingsUI();
 }
 
 
@@ -3493,7 +3548,90 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Ініціалізуємо елементи керування звуком
     initSoundControls();
+    
+    // Ініціалізуємо налаштування озвучування
+    initVoiceSettingsUI();
 });
+
+/**
+ * Ініціалізує UI налаштувань озвучування
+ */
+function initVoiceSettingsUI() {
+    // Оновлюємо тексти з перекладом
+    if (document.getElementById('voiceSettingsTitle')) {
+        document.getElementById('voiceSettingsTitle').textContent = getText('voiceSettings');
+    }
+    
+    if (document.getElementById('voiceEnabledLabel')) {
+        document.getElementById('voiceEnabledLabel').textContent = getText('voiceEnabled');
+    }
+    
+    if (document.getElementById('voiceServiceLabel')) {
+        document.getElementById('voiceServiceLabel').textContent = getText('voiceService');
+    }
+    
+    if (document.getElementById('geminiVoiceOption')) {
+        document.getElementById('geminiVoiceOption').textContent = getText('geminiVoice');
+    }
+    
+    if (document.getElementById('elevenLabsVoiceOption')) {
+        document.getElementById('elevenLabsVoiceOption').textContent = getText('elevenLabsVoice');
+    }
+    
+    if (document.getElementById('voiceApiNoteGemini')) {
+        document.getElementById('voiceApiNoteGemini').textContent = getText('voiceApiNote');
+    }
+    
+    if (document.getElementById('selectGeminiVoiceLabel')) {
+        document.getElementById('selectGeminiVoiceLabel').textContent = getText('selectVoice');
+    }
+    
+    if (document.getElementById('elevenLabsApiKeyLabel')) {
+        document.getElementById('elevenLabsApiKeyLabel').textContent = getText('elevenLabsApiKey');
+    }
+    
+    if (document.getElementById('elevenLabsApiKey')) {
+        document.getElementById('elevenLabsApiKey').placeholder = getText('elevenLabsApiKeyPlaceholder');
+    }
+    
+    if (document.getElementById('voiceApiNoteElevenLabs')) {
+        document.getElementById('voiceApiNoteElevenLabs').textContent = getText('elevenLabsApiNote');
+    }
+    
+    if (document.getElementById('selectElevenLabsVoiceLabel')) {
+        document.getElementById('selectElevenLabsVoiceLabel').textContent = getText('selectVoice');
+    }
+    
+    // Якщо налаштування озвучування вже збережені, завантажуємо їх
+    if (window.voiceGenerator) {
+        const settings = window.voiceGenerator.getVoiceSettings();
+        
+        // Встановлюємо значення для чекбоксу
+        if (document.getElementById('voiceEnabled')) {
+            document.getElementById('voiceEnabled').checked = settings.isEnabled;
+        }
+        
+        // Встановлюємо значення для вибору сервісу
+        if (document.getElementById('voiceService')) {
+            document.getElementById('voiceService').value = settings.service || 'gemini';
+            toggleVoiceServiceOptions();
+        }
+        
+        // Встановлюємо значення для голосу Gemini
+        if (document.getElementById('geminiVoiceSelect')) {
+            document.getElementById('geminiVoiceSelect').value = settings.voice || 'Zephyr';
+        }
+        
+        // Встановлюємо значення для ElevenLabs
+        if (document.getElementById('elevenLabsApiKey')) {
+            document.getElementById('elevenLabsApiKey').value = settings.elevenLabsApiKey || '';
+        }
+        
+        if (document.getElementById('elevenLabsVoiceSelect')) {
+            document.getElementById('elevenLabsVoiceSelect').value = settings.elevenLabsVoice || 'EXAVITQu4vr4xnSDxMaL';
+        }
+    }
+}
 
 // Функция для перевода имени врага на выбранный язык
 function translateEnemyName(name) {
@@ -3791,3 +3929,26 @@ function generateVoiceInstructions(gameData) {
     
     return instructions;
 }
+
+// Додаємо підтримку Enter для старту гри з поля імені персонажа
+const characterNameInput = document.getElementById('characterName');
+if (characterNameInput) {
+    characterNameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            startGame();
+        }
+    });
+}
+
+// Додаємо глобальний keydown на екран вибору персонажа (setupScreen)
+document.addEventListener('keydown', function(e) {
+    const setupScreen = document.getElementById('setupScreen');
+    if (setupScreen && setupScreen.style.display !== 'none') {
+        // Не реагуємо, якщо фокус у textarea чи input
+        const active = document.activeElement;
+        if ((active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) && e.key !== 'Enter') return;
+        if (e.key === 'Enter') {
+            startGame();
+        }
+    }
+});

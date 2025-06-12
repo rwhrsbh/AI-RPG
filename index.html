@@ -345,15 +345,26 @@
             
             <div class="voice-settings">
                 <h4 style="margin-top: 0;">🎤 <span id="voiceSettingsTitle">Налаштування озвучування</span></h4>
-                <p style="margin-bottom: 10px; font-size: 0.9em; color: #ffc107;" id="voiceApiNote">Озвучування використовує той же ключ Gemini API. Переконайтеся, що ваш ключ має доступ до TTS моделі Gemini.</p>
+                
                 <div class="voice-option">
                     <input type="checkbox" id="voiceEnabled" checked>
                     <label for="voiceEnabled" id="voiceEnabledLabel">Увімкнути озвучування</label>
                 </div>
                 
                 <div style="margin-top: 15px;">
-                    <label for="voiceSelect" id="selectVoiceLabel">Виберіть голос:</label>
-                    <select id="voiceSelect" class="api-input" style="margin-top: 5px;">
+                    <label for="voiceService" id="voiceServiceLabel">Виберіть сервіс озвучування:</label>
+                    <select id="voiceService" class="api-input" style="margin-top: 5px;" onchange="toggleVoiceServiceOptions()">
+                        <option value="gemini" selected id="geminiVoiceOption">Gemini TTS</option>
+                        <option value="elevenlabs" id="elevenLabsVoiceOption">ElevenLabs TTS</option>
+                    </select>
+                </div>
+                
+                <!-- Налаштування для Gemini -->
+                <div id="geminiVoiceOptions" style="margin-top: 15px;">
+                    <p style="margin-bottom: 10px; font-size: 0.9em; color: #ffc107;" id="voiceApiNoteGemini">Озвучування використовує той же ключ Gemini API. Переконайтеся, що ваш ключ має доступ до TTS моделі Gemini.</p>
+                    
+                    <label for="geminiVoiceSelect" id="selectGeminiVoiceLabel">Виберіть голос:</label>
+                    <select id="geminiVoiceSelect" class="api-input" style="margin-top: 5px;">
                         <option value="Zephyr" selected id="defaultVoiceOption">Zephyr (за замовчуванням)</option>
                         <option value="Puck">Puck</option>
                         <option value="Charon">Charon</option>
@@ -384,6 +395,25 @@
                         <option value="Sadachbia">Sadachbia</option>
                         <option value="Sadaltager">Sadaltager</option>
                         <option value="Sulafat">Sulafat</option>
+                    </select>
+                </div>
+                
+                <!-- Налаштування для ElevenLabs -->
+                <div id="elevenLabsVoiceOptions" style="margin-top: 15px; display: none;">
+                    <p style="margin-bottom: 10px; font-size: 0.9em; color: #ffc107;" id="voiceApiNoteElevenLabs">Для використання ElevenLabs введіть ваш API ключ.</p>
+                    
+                    <label for="elevenLabsApiKey" id="elevenLabsApiKeyLabel">API ключ ElevenLabs:</label>
+                    <input type="password" id="elevenLabsApiKey" class="api-input" placeholder="API ключ ElevenLabs" style="margin-top: 5px;">
+                    
+                    <label for="elevenLabsVoiceSelect" id="selectElevenLabsVoiceLabel" style="margin-top: 10px; display: block;">Виберіть голос:</label>
+                    <select id="elevenLabsVoiceSelect" class="api-input" style="margin-top: 5px;">
+                        <option value="EXAVITQu4vr4xnSDxMaL" selected>Rachel</option>
+                        <option value="21m00Tcm4TlvDq8ikWAM">Adam</option>
+                        <option value="AZnzlk1XvdvUeBnXmlld">Domi</option>
+                        <option value="MF3mGyEYCl7XYWbV9V6O">Elli</option>
+                        <option value="TxGEqnHWrfWFTfGW9XjX">Josh</option>
+                        <option value="VR6AewLTigWG4xSOukaG">Arnold</option>
+                        <option value="pNInz6obpgDQGcFmaJgB">Bella</option>
                     </select>
                 </div>
             </div>
