@@ -213,6 +213,28 @@
             color: white;
             margin: 10px 0;
         }
+        
+        /* Стилі для налаштувань озвучування */
+        .voice-settings {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(78, 205, 196, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(78, 205, 196, 0.3);
+        }
+        
+        .voice-option {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .voice-option input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            accent-color: #4ecdc4;
+        }
 
         .loading {
             text-align: center;
@@ -320,7 +342,53 @@
             <h3>🔑 Налаштування API</h3>
             <p>Введіть ваш Gemini API ключ для початку гри:</p>
             <input type="password" id="apiKey" class="api-input" placeholder="API ключ Gemini">
-            <button onclick="saveApiKey()" class="action-btn">Зберегти</button>
+            
+            <div class="voice-settings">
+                <h4 style="margin-top: 0;">🎤 <span id="voiceSettingsTitle">Налаштування озвучування</span></h4>
+                <p style="margin-bottom: 10px; font-size: 0.9em; color: #ffc107;" id="voiceApiNote">Озвучування використовує той же ключ Gemini API. Переконайтеся, що ваш ключ має доступ до TTS моделі Gemini.</p>
+                <div class="voice-option">
+                    <input type="checkbox" id="voiceEnabled" checked>
+                    <label for="voiceEnabled" id="voiceEnabledLabel">Увімкнути озвучування</label>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <label for="voiceSelect" id="selectVoiceLabel">Виберіть голос:</label>
+                    <select id="voiceSelect" class="api-input" style="margin-top: 5px;">
+                        <option value="Zephyr" selected id="defaultVoiceOption">Zephyr (за замовчуванням)</option>
+                        <option value="Puck">Puck</option>
+                        <option value="Charon">Charon</option>
+                        <option value="Kore">Kore</option>
+                        <option value="Fenrir">Fenrir</option>
+                        <option value="Leda">Leda</option>
+                        <option value="Orus">Orus</option>
+                        <option value="Aoede">Aoede</option>
+                        <option value="Callirrhoe">Callirrhoe</option>
+                        <option value="Autonoe">Autonoe</option>
+                        <option value="Enceladus">Enceladus</option>
+                        <option value="Iapetus">Iapetus</option>
+                        <option value="Umbriel">Umbriel</option>
+                        <option value="Algieba">Algieba</option>
+                        <option value="Despina">Despina</option>
+                        <option value="Erinome">Erinome</option>
+                        <option value="Algenib">Algenib</option>
+                        <option value="Rasalgethi">Rasalgethi</option>
+                        <option value="Laomedeia">Laomedeia</option>
+                        <option value="Achernar">Achernar</option>
+                        <option value="Alnilam">Alnilam</option>
+                        <option value="Schedar">Schedar</option>
+                        <option value="Gacrux">Gacrux</option>
+                        <option value="Pulcherrima">Pulcherrima</option>
+                        <option value="Achird">Achird</option>
+                        <option value="Zubenelgenubi">Zubenelgenubi</option>
+                        <option value="Vindemiatrix">Vindemiatrix</option>
+                        <option value="Sadachbia">Sadachbia</option>
+                        <option value="Sadaltager">Sadaltager</option>
+                        <option value="Sulafat">Sulafat</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button onclick="saveApiKey()" class="action-btn" style="margin-top: 15px;">Зберегти</button>
         </div>
 
         <div id="setupScreen" class="setup-screen" style="display: none;">
@@ -503,6 +571,8 @@
     </div>
 
     <script src="game.js"></script>
+    <script src="image_generator.js"></script>
+    <script src="voice_generator.js"></script>
     
     <!-- Вибір мови при кожному завантаженні сторінки -->
     <script>

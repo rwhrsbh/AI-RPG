@@ -96,7 +96,13 @@ const localization = {
         mute: "Mute",
         unmute: "Unmute",
         volume: "Volume",
-        // ... existing code ...
+        
+        // Налаштування озвучування
+        voiceSettings: "Voice Settings",
+        voiceEnabled: "Enable voice narration",
+        selectVoice: "Select voice:",
+        defaultVoice: "default",
+        voiceApiNote: "Voice narration uses the same Gemini API key. Make sure your key has access to the Gemini TTS model.",
         
         // Попапи
         levelUp: "Level Up!",
@@ -318,6 +324,14 @@ const localization = {
         mute: "Вимкнути",
         unmute: "Увімкнути",
         volume: "Гучність",
+        
+        // Налаштування озвучування
+        voiceSettings: "Налаштування озвучування",
+        voiceEnabled: "Увімкнути озвучування",
+        selectVoice: "Виберіть голос:",
+        defaultVoice: "за замовчуванням",
+        voiceApiNote: "Озвучування використовує той же ключ Gemini API. Переконайтеся, що ваш ключ має доступ до TTS моделі Gemini.",
+        
         warriorStats: "HP: 120, Mana: 30, Сила: Висока",
         mage: "Маг",
         mageDesc: "Володар магії з потужними заклинаннями",
@@ -574,6 +588,14 @@ const localization = {
         mute: "Выключить",
         unmute: "Включить",
         volume: "Громкость",
+        
+        // Настройки озвучивания
+        voiceSettings: "Настройки озвучивания",
+        voiceEnabled: "Включить озвучивание",
+        selectVoice: "Выберите голос:",
+        defaultVoice: "по умолчанию",
+        voiceApiNote: "Озвучивание использует тот же ключ Gemini API. Убедитесь, что ваш ключ имеет доступ к TTS модели Gemini.",
+        
         characterNamePlaceholder: "Имя персонажа",
         warrior: "Воин",
         warriorDesc: "Мастер ближнего боя с высоким здоровьем",
@@ -812,7 +834,7 @@ const localization = {
         streamerStats: "HP: 50, Mana: 150, Харизма: Очень высокая",
         karen: "Карен",
         karenDesc: "Профессиональная жалобщица с навыками поиска менеджера",
-        karenStats: "HP: 100, Mana: 80, Жалобы: Максимум",
+        karenStats: "HP: 100, Mana: 80, Скарги: Максимум",
         boomer: "Бумер",
         boomerDesc: "Ностальгический воин со знаниями старой школы",
         boomerStats: "HP: 90, Mana: 40, Ностальгия: Высокая",
@@ -1159,6 +1181,25 @@ function updateLanguage(lang) {
     const soundTitle = document.getElementById('soundSettingsTitle');
     if (soundTitle) soundTitle.textContent = `🔊 ${getText('soundSettings')}`;
     updateMuteButtonText();
+    
+    // Налаштування озвучування
+    const voiceSettingsTitle = document.getElementById('voiceSettingsTitle');
+    if (voiceSettingsTitle) voiceSettingsTitle.textContent = getText('voiceSettings');
+    
+    const voiceApiNote = document.getElementById('voiceApiNote');
+    if (voiceApiNote) voiceApiNote.textContent = getText('voiceApiNote');
+    
+    const voiceEnabledLabel = document.getElementById('voiceEnabledLabel');
+    if (voiceEnabledLabel) voiceEnabledLabel.textContent = getText('voiceEnabled');
+    
+    const selectVoiceLabel = document.getElementById('selectVoiceLabel');
+    if (selectVoiceLabel) selectVoiceLabel.textContent = getText('selectVoice');
+    
+    // Оновлюємо текст "за замовчуванням" в опції голосу
+    const defaultVoiceOption = document.getElementById('defaultVoiceOption');
+    if (defaultVoiceOption) {
+        defaultVoiceOption.textContent = `Zephyr (${getText('defaultVoice')})`;
+    }
 }
 
 // Допоміжна функція для оновлення інформації про клас персонажа
@@ -1180,6 +1221,21 @@ function saveApiKey() {
     const apiKey = document.getElementById('apiKey').value.trim();
     if (apiKey) {
         gameState.apiKey = apiKey;
+        
+        // Зберігаємо налаштування озвучування
+        if (window.voiceGenerator) {
+            const voiceEnabled = document.getElementById('voiceEnabled').checked;
+            const voiceType = document.getElementById('voiceSelect').value;
+            
+            window.voiceGenerator.setVoiceSettings({
+                isEnabled: voiceEnabled,
+                voice: voiceType
+            });
+            
+            // Зберігаємо налаштування в gameState для зручності
+            gameState.voiceSettings = window.voiceGenerator.getVoiceSettings();
+        }
+        
         document.getElementById('apiSetup').style.display = 'none';
         
         // Ініціалізуємо елементи керування звуком одразу після введення API ключа
@@ -1834,6 +1890,12 @@ async function callGeminiAPI(prompt, isInitial = false) {
         }
     }
 
+    // Додаємо інструкції для генерації двох варіантів промпту для зображення та інструкцій для озвучування
+    prompt += "\n\nYou should generate TWO image prompts describing the current scene: \n\n1. 'image_prompt': This is a detailed prompt with full visual description. Example: 'A heroic warrior battles a fierce dragon in a dark cave, flames illuminating the scene, fantasy style'\n\n2. 'safe_image_prompt': This is a simplified, safer version that avoids potentially problematic content. Focus on landscapes, objects, or simple character poses without combat or controversial elements. Example: 'A warrior standing in a cave entrance, light filtering in from outside, fantasy style'";
+    
+    // Додаємо інструкції для генерації вказівок для озвучування
+    prompt += "\n\nAlso, generate instructions for voice narration in a field called 'instructions'. These must be a SIMPLE STRING value, not an object or array. These should specify the tone, emotion, and style for narrating the scene, using exactly this format:\nIdentity: Fantasy Narrator\nAffect: Dramatic and mysterious\nTone: Deep and resonant\nEmotion: Tense and suspenseful\nPronunciation: Clear and articulate\nPause: Brief pauses after important moments\n\nDo not include any quotes, brackets, or special characters around the instructions text. Just plain text.";
+
     try {
         // Підготовка контексту для API
         let contents = [];
@@ -1963,12 +2025,26 @@ async function callGeminiAPI(prompt, isInitial = false) {
                     }
                 }
                 
+                // Логуємо отриману відповідь для налагодження
+                console.log('Отримана відповідь від API:', responseText.substring(0, 200) + '...');
+                
                 // Спробуємо виправити можливі проблеми з відповіддю та витягти валідний JSON
                 let gameData = null;
                 
                 // Спроба 1: Парсинг як є
                 try {
                     gameData = JSON.parse(responseText);
+                    console.log('Парсинг успішний, дані мають структуру:', Object.keys(gameData).join(', '));
+                    
+                    // Перевіряємо наявність інструкцій для озвучування
+                    if (gameData.instructions) {
+                        console.log('Знайдено інструкції для озвучування:', 
+                            typeof gameData.instructions === 'string' 
+                                ? gameData.instructions.substring(0, 100) + '...' 
+                                : typeof gameData.instructions);
+                    } else {
+                        console.log('Інструкції для озвучування не знайдені в даних');
+                    }
                 } catch (error) {
                     console.log('Не вдалося розпарсити відповідь як є, пробуємо виправлення...');
                     
@@ -2125,8 +2201,111 @@ function updateGameState(gameData) {
         timestamp: new Date().toLocaleString()
     });
     
-    // Update story text
-    document.getElementById('storyText').innerHTML = `<p>${gameData.text}</p>`;
+    // Якщо є можливість генерувати зображення
+    if (typeof window.imageGenerator !== 'undefined') {
+        // Зберігаємо обидва промпти, якщо вони є
+        if (gameData.image_prompt) {
+            window.lastImagePrompt = gameData.image_prompt;
+            window.safeImagePrompt = gameData.safe_image_prompt || gameData.image_prompt;
+            
+            // Зберігаємо у консолі для дебагу
+            console.log('Image prompts saved:', {
+                regular: window.lastImagePrompt,
+                safe: window.safeImagePrompt
+            });
+            
+            // Генеруємо зображення з першим промптом, другий буде використано як запасний
+            window.imageGenerator.generateImage(
+                gameData.image_prompt, 
+                gameState.apiKey, 
+                gameData.safe_image_prompt || gameData.image_prompt
+            );
+        }
+        
+        // Передаємо текстову відповідь до модуля зображень
+        window.imageGenerator.setTextResponseReady(gameData.text);
+        
+        // Додаємо озвучування після генерації зображення і тексту
+        if (window.voiceGenerator && gameData.text) {
+            // Перевіряємо, чи є інструкції для озвучування в gameData
+            let voiceInstructions = '';
+            
+            // Перевіряємо тип інструкцій
+            if (gameData.instructions) {
+                console.log('Отримано інструкції для озвучування:', typeof gameData.instructions);
+                
+                if (typeof gameData.instructions === 'string') {
+                    voiceInstructions = gameData.instructions;
+                } else if (typeof gameData.instructions === 'object') {
+                    try {
+                        // Спробуємо перетворити об'єкт на рядок
+                        voiceInstructions = JSON.stringify(gameData.instructions);
+                    } catch (e) {
+                        console.warn('Не вдалося перетворити інструкції озвучування на рядок');
+                    }
+                }
+            } else {
+                console.log('Інструкції для озвучування не знайдені');
+            }
+            
+            // Якщо інструкцій немає, створюємо базові
+            if (!voiceInstructions) {
+                voiceInstructions = 'Identity: Fantasy Narrator\nAffect: Dramatic and mysterious\nTone: Deep and resonant\nEmotion: Tense and suspenseful';
+                console.log('Використовуємо стандартні інструкції для озвучування');
+            }
+            
+            // Генеруємо озвучування
+            console.log('Запуск генерації озвучування з інструкціями');
+            window.voiceGenerator.generateVoice(gameData.text, {
+                instructions: voiceInstructions
+            });
+        }
+    } else {
+        // Якщо не потрібно генерувати зображення, просто оновлюємо текст
+        document.getElementById('storyText').innerHTML = `<p>${gameData.text}</p>`;
+        
+        // Додаємо озвучування одразу, без очікування зображення
+        if (window.voiceGenerator && gameData.text) {
+            // Перевіряємо, чи є інструкції для озвучування в gameData
+            let voiceInstructions = '';
+            
+            // Перевіряємо тип інструкцій
+            if (gameData.instructions) {
+                console.log('Отримано інструкції для озвучування:', typeof gameData.instructions);
+                
+                if (typeof gameData.instructions === 'string') {
+                    voiceInstructions = gameData.instructions;
+                } else if (typeof gameData.instructions === 'object') {
+                    try {
+                        // Спробуємо перетворити об'єкт на рядок
+                        voiceInstructions = JSON.stringify(gameData.instructions);
+                    } catch (e) {
+                        console.warn('Не вдалося перетворити інструкції озвучування на рядок');
+                    }
+                }
+            } else {
+                console.log('Інструкції для озвучування не знайдені');
+            }
+            
+            // Якщо інструкцій немає, створюємо базові
+            if (!voiceInstructions) {
+                voiceInstructions = 'Identity: Fantasy Narrator\nAffect: Dramatic and mysterious\nTone: Deep and resonant\nEmotion: Tense and suspenseful';
+                console.log('Використовуємо стандартні інструкції для озвучування');
+            }
+            
+            // Генеруємо озвучування
+            console.log('Запуск генерації озвучування з інструкціями');
+            window.voiceGenerator.generateVoice(gameData.text, {
+                instructions: voiceInstructions
+            });
+        }
+        
+        // Розблоковуємо кнопку дії
+        document.getElementById('customActionBtn').disabled = false;
+        
+        // Встановлюємо прапорець завантаження в false
+        gameState.isLoading = false;
+    }
     
     // Apply consequences
     if (gameData.consequences) {
@@ -2153,80 +2332,79 @@ function updateGameState(gameData) {
         // Level up check
         const newLevel = Math.floor(gameState.character.experience / 100) + 1;
         if (newLevel > gameState.character.level) {
-            const levelGains = {
-                health: 10,
-                mana: 5
-            };
-            
-            // Додаткові бонуси в залежності від класу
-            if (gameState.character.class === 'warrior') levelGains.health += 5;
-            if (gameState.character.class === 'mage') levelGains.mana += 10;
-            if (gameState.character.class === 'cleric') {
-                levelGains.health += 3;
-                levelGains.mana += 5;
-            }
-            
-            // Застосовуємо підвищення рівня
-            gameState.character.level = newLevel;
-            gameState.character.maxHealth += levelGains.health;
-            gameState.character.maxMana += levelGains.mana;
-            gameState.character.health = gameState.character.maxHealth;
-            gameState.character.mana = gameState.character.maxMana;
-            
-            // Показуємо попап про підвищення рівня
-            showLevelUpPopup(newLevel, levelGains);
-        }
-        
-        // Додавання нових перків від API у список доступних
-        if (cons.new_perks && Array.isArray(cons.new_perks) && cons.new_perks.length > 0) {
-            // Функція для локалізації перків в залежності від вибраної мови (зворотний переклад)
-            function localizeNewPerk(perk) {
-                // Якщо гра на українській мові, повертаємо перк без змін
-                if (gameState.language === 'uk') return perk;
+            // Оновлено: AI тепер визначає підвищення характеристик при підвищенні рівня
+            if (cons.level_up) {
+                // Застосовуємо підвищення рівня з даних від AI
+                gameState.character.level = newLevel;
                 
-                // Словник відомих перків з локалізацією (зворотний переклад)
-                const perkLocalizations = {
-                    // Базові переклади
-                    "Otaku Wisdom": "Отаку мудрість",
-                    "Anime Charisma": "Аніме харизма",
-                    "Harem Starting Level": "Гарем початковий рівень",
-                    
-                    // Розширені описи перків
-                    "Otaku Wisdom: +10 to knowledge about anime and manga, which can sometimes be useful": 
-                        "Отаку мудрість: +10 до знань про аніме та мангу, що іноді може бути корисно",
-                    "Anime Charisma: +15 to charisma when interacting with anime fans": 
-                        "Аніме харизма: +15 до харизми при взаємодії з любителями аніме",
-                    "Harem Starting Level: +5 to charisma when interacting with female anime fans, but -5 to charisma with everyone else": 
-                        "Гарем початковий рівень: +5 до харизми з анімешницями, але -5 до харизми з усіма іншими"
+                // Якщо AI надіслала нові значення maxHealth та maxMana, застосовуємо їх
+                if (cons.level_up.maxHealth !== undefined) {
+                    gameState.character.maxHealth = cons.level_up.maxHealth;
+                }
+                
+                if (cons.level_up.maxMana !== undefined) {
+                    gameState.character.maxMana = cons.level_up.maxMana;
+                }
+                
+                // Якщо AI надіслала збільшення maxHealth та maxMana, застосовуємо їх
+                if (cons.level_up.healthGain !== undefined) {
+                    gameState.character.maxHealth += cons.level_up.healthGain;
+                }
+                
+                if (cons.level_up.manaGain !== undefined) {
+                    gameState.character.maxMana += cons.level_up.manaGain;
+                }
+                
+                // Заповнюємо здоров'я та ману
+                gameState.character.health = gameState.character.maxHealth;
+                gameState.character.mana = gameState.character.maxMana;
+                
+                // Показуємо попап про підвищення рівня з даними від AI
+                const levelGains = {
+                    health: cons.level_up.healthGain || 0,
+                    mana: cons.level_up.manaGain || 0
                 };
                 
-                // Для російських відповідників
-                if (gameState.language === 'ru') {
-                    if (perk === "Мудрость отаку" || perk.includes("Мудрость отаку:")) return "Отаку мудрість";
-                    if (perk === "Аниме харизма" || perk.includes("Аниме харизма:")) return "Аніме харизма";
-                    if (perk === "Гарем начальный уровень" || perk.includes("Гарем начальный уровень:")) return "Гарем початковий рівень";
+                showLevelUpPopup(newLevel, levelGains);
+            } else {
+                // Фоллбек на випадок, якщо AI не надала даних про підвищення рівня
+                const levelGains = {
+                    health: 10,
+                    mana: 5
+                };
+                
+                // Додаткові бонуси в залежності від класу
+                if (gameState.character.class === 'warrior') levelGains.health += 5;
+                if (gameState.character.class === 'mage') levelGains.mana += 10;
+                if (gameState.character.class === 'cleric') {
+                    levelGains.health += 3;
+                    levelGains.mana += 5;
                 }
                 
-                // Для англійських відповідників
-                if (gameState.language === 'en') {
-                    for (const [engPerk, ukrPerk] of Object.entries(perkLocalizations)) {
-                        if (perk === engPerk || perk.includes(engPerk + ":")) {
-                            return ukrPerk;
-                        }
-                    }
-                }
+                // Застосовуємо підвищення рівня
+                gameState.character.level = newLevel;
+                gameState.character.maxHealth += levelGains.health;
+                gameState.character.maxMana += levelGains.mana;
+                gameState.character.health = gameState.character.maxHealth;
+                gameState.character.mana = gameState.character.maxMana;
                 
-                // Якщо не знайдено відповідностей, повертаємо оригінал
-                return perk;
+                // Показуємо попап про підвищення рівня
+                showLevelUpPopup(newLevel, levelGains);
             }
+        }
+        
+        // Оновлено: Тепер перки управляються повністю через AI
+        if (cons.available_perks && Array.isArray(cons.available_perks) && cons.available_perks.length > 0) {
+            // Очищаємо поточний список доступних перків і заповнюємо новими від AI
+            gameState.availablePerks = [];
             
-            cons.new_perks.forEach(perk => {
+            // Додаємо нові перки від AI, максимум 5
+            const maxPerks = 5;
+            const perksToAdd = cons.available_perks.slice(0, maxPerks);
+            
+            perksToAdd.forEach(perk => {
                 if (typeof perk === 'string' && perk.trim() !== '') {
-                    // Локалізуємо перк перед додаванням
-                    const localizedPerk = localizeNewPerk(perk);
-                    if (!gameState.availablePerks.includes(localizedPerk)) {
-                        gameState.availablePerks.push(localizedPerk);
-                    }
+                    gameState.availablePerks.push(perk);
                 }
             });
             
@@ -2410,6 +2588,11 @@ function updateGameState(gameData) {
 }
 
 function performAction(action) {
+    // Зупиняємо поточне озвучування, якщо воно є
+    if (window.voiceGenerator) {
+        window.voiceGenerator.stopVoice();
+    }
+    
     // Special handling for loser class - add mumbling to their speech
     if (gameState.character.class === 'loser') {
         // Add mumbling and uncertainty to speech
@@ -2456,6 +2639,44 @@ function performAction(action) {
         perks: gameState.character.perks.map(perk => translatePerk(perk)).join(', ')
     };
     
+    // Перевіряємо, чи має відбутися підвищення рівня
+    const newLevel = Math.floor(gameState.character.experience / 100) + 1;
+    const willLevelUp = newLevel > gameState.character.level;
+    
+    // Додаємо інструкції для AI щодо управління рівнем та перками
+    let levelUpInstructions = '';
+    if (willLevelUp) {
+        levelUpInstructions = `
+Персонаж досягне нового рівня ${newLevel}! Будь ласка, врахуй це у своїй відповіді, та:
+1. Визнач нові значення для maxHealth та maxMana, або значення збільшення (healthGain, manaGain).
+2. Запропонуй 5 унікальних перків на вибір гравцю, які відповідають класу та стилю гри.
+3. У своїй JSON-відповіді, додай поле "level_up" з цими даними, та поле "available_perks" з масивом перків.
+
+Приклад JSON структури:
+{
+  "text": "...",
+  "options": [...],
+  "consequences": {
+    "health": 0,
+    "mana": 0,
+    "experience": 10,
+    "level_up": {
+      "healthGain": 15,
+      "manaGain": 10,
+      "maxHealth": 120, // Опціонально - абсолютне значення
+      "maxMana": 100    // Опціонально - абсолютне значення
+    },
+    "available_perks": [
+      "Витривалість: +20 до максимального здоров'я",
+      "Мудрість: +15 до максимальної мани",
+      "Швидкість: Шанс ухилитися від атаки",
+      "Регенерація: Відновлює 1 здоров'я кожен хід",
+      "Міць: Збільшує урон від фізичних атак"
+    ]
+  }
+}`;
+    }
+    
     // Формуємо шаблон промпту та замінюємо всі змінні
     const prompt = getText('actionPrompt')
         .replace('{prevSituation}', gameState.currentScene.text)
@@ -2468,7 +2689,7 @@ function performAction(action) {
         .replace('{mana}', characterDetails.mana)
         .replace('{maxMana}', characterDetails.maxMana)
         .replace('{experience}', characterDetails.experience)
-        .replace('{perks}', characterDetails.perks);
+        .replace('{perks}', characterDetails.perks) + levelUpInstructions;
 
     callGeminiAPI(prompt, false);
 }
@@ -2661,20 +2882,108 @@ function showPerkSelectionPopup() {
         animation: fadeIn 0.3s;
     `;
     
-    // Формуємо HTML для перків
+    // Формуємо HTML для перків з покращеним відображенням
     let perksHtml = '';
     gameState.availablePerks.forEach((perk, index) => {
+        // Визначаємо тип перку для встановлення відповідного кольору та іконки
+        let perkType = '';
+        let perkIcon = '';
+        let perkColor = '#ff6b6b';
+        let perkBg = 'rgba(255,107,107,0.1)';
+        let perkBorder = 'rgba(255,107,107,0.3)';
+        
+        const lowerPerk = perk.toLowerCase();
+        
+        if (lowerPerk.includes('здоров') || lowerPerk.includes('життя') || lowerPerk.includes('hp') || 
+            lowerPerk.includes('жизн') || lowerPerk.includes('health') || lowerPerk.includes('витривал')) {
+            perkType = 'health';
+            perkIcon = '❤️';
+            perkColor = '#ff6b6b';
+            perkBg = 'rgba(255,107,107,0.1)';
+            perkBorder = 'rgba(255,107,107,0.3)';
+        } else if (lowerPerk.includes('мана') || lowerPerk.includes('мани') || lowerPerk.includes('магі') || 
+                   lowerPerk.includes('колдов') || lowerPerk.includes('magic') || lowerPerk.includes('spell') ||
+                   lowerPerk.includes('мудр') || lowerPerk.includes('wisdom')) {
+            perkType = 'mana';
+            perkIcon = '💙';
+            perkColor = '#45b7d1';
+            perkBg = 'rgba(69,183,209,0.1)';
+            perkBorder = 'rgba(69,183,209,0.3)';
+        } else if (lowerPerk.includes('атака') || lowerPerk.includes('атаки') || lowerPerk.includes('урон') || 
+                   lowerPerk.includes('damage') || lowerPerk.includes('атаку')) {
+            perkType = 'attack';
+            perkIcon = '⚔️';
+            perkColor = '#ff9f43';
+            perkBg = 'rgba(255,159,67,0.1)';
+            perkBorder = 'rgba(255,159,67,0.3)';
+        } else if (lowerPerk.includes('захист') || lowerPerk.includes('броня') || lowerPerk.includes('armor') || 
+                   lowerPerk.includes('defense') || lowerPerk.includes('protection')) {
+            perkType = 'defense';
+            perkIcon = '🛡️';
+            perkColor = '#26de81';
+            perkBg = 'rgba(38,222,129,0.1)';
+            perkBorder = 'rgba(38,222,129,0.3)';
+        } else if (lowerPerk.includes('швидк') || lowerPerk.includes('ухил') || lowerPerk.includes('dodge') || 
+                   lowerPerk.includes('speed') || lowerPerk.includes('evasion')) {
+            perkType = 'speed';
+            perkIcon = '💨';
+            perkColor = '#a55eea';
+            perkBg = 'rgba(165,94,234,0.1)';
+            perkBorder = 'rgba(165,94,234,0.3)';
+        } else if (lowerPerk.includes('регенер') || lowerPerk.includes('восстановл') || 
+                   lowerPerk.includes('heal') || lowerPerk.includes('regen')) {
+            perkType = 'regen';
+            perkIcon = '✨';
+            perkColor = '#4ecdc4';
+            perkBg = 'rgba(78,205,196,0.1)';
+            perkBorder = 'rgba(78,205,196,0.3)';
+        } else {
+            perkType = 'other';
+            perkIcon = '🔮';
+            perkColor = '#fed330';
+            perkBg = 'rgba(254,211,48,0.1)';
+            perkBorder = 'rgba(254,211,48,0.3)';
+        }
+        
+        // Розділяємо назву перку та опис, якщо вони розділені двокрапкою
+        let perkName = perk;
+        let perkDesc = '';
+        
+        if (perk.includes(':')) {
+            const parts = perk.split(':');
+            perkName = parts[0].trim();
+            perkDesc = parts.slice(1).join(':').trim();
+        }
+        
         perksHtml += `
             <div class="perk-option" style="
-                background: rgba(255,255,255,0.1);
+                background: ${perkBg};
+                border: 1px solid ${perkBorder};
                 border-radius: 10px;
                 padding: 15px;
-                margin: 10px 0;
+                margin: 15px 0;
                 cursor: pointer;
                 transition: all 0.3s;
-                border: 1px solid transparent;
+                position: relative;
+                overflow: hidden;
             " data-perk-index="${index}">
-                <p>${perk}</p>
+                <div style="display: flex; align-items: flex-start;">
+                    <div style="
+                        font-size: 24px;
+                        margin-right: 15px;
+                        background: rgba(0,0,0,0.2);
+                        width: 40px;
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 50%;
+                    ">${perkIcon}</div>
+                    <div style="flex: 1;">
+                        <p style="margin: 0 0 5px 0; font-weight: bold; color: ${perkColor};">${perkName}</p>
+                        ${perkDesc ? `<p style="margin: 0; font-size: 0.9em; color: #ddd;">${perkDesc}</p>` : ''}
+                    </div>
+                </div>
             </div>
         `;
     });
@@ -2724,13 +3033,17 @@ function showPerkSelectionPopup() {
         option.addEventListener('click', function() {
             // Знімаємо виділення з усіх перків
             document.querySelectorAll('.perk-option').forEach(opt => {
-                opt.style.border = '1px solid transparent';
-                opt.style.background = 'rgba(255,255,255,0.1)';
+                opt.style.border = `1px solid ${opt.style.borderColor || 'rgba(255,255,255,0.1)'}`;
+                opt.style.background = opt.style.backgroundColor;
+                opt.style.transform = 'scale(1)';
             });
             
             // Виділяємо вибраний перк
-            this.style.border = '1px solid #ff6b6b';
-            this.style.background = 'rgba(255,107,107,0.2)';
+            const bgColor = this.style.backgroundColor;
+            const borderColor = this.style.borderColor;
+            this.style.border = `2px solid ${borderColor.replace('0.3', '0.8')}`;
+            this.style.background = bgColor.replace('0.1', '0.3');
+            this.style.transform = 'scale(1.03)';
             
             // Зберігаємо індекс вибраного перку
             selectedPerkIndex = parseInt(this.dataset.perkIndex);
@@ -2745,52 +3058,22 @@ function showPerkSelectionPopup() {
         if (selectedPerkIndex !== null) {
             const selectedPerk = gameState.availablePerks[selectedPerkIndex];
             
-            // Додаємо вибраний перк персонажу
+            // Додаємо вибраний перк до персонажа
             gameState.character.perks.push(selectedPerk);
             
-            // Видаляємо всі перки зі списку доступних
-            gameState.availablePerks = [];
-            
-            // Додаємо бонуси на основі перку
+            // Застосовуємо бонуси перку
             applyPerkBonuses(selectedPerk);
+            
+            // Очищаємо список доступних перків
+            gameState.availablePerks = [];
             
             // Оновлюємо панель персонажа
             updateCharacterPanel();
             
-            // Показуємо повідомлення про отримання перку
-            const message = document.createElement('div');
-            message.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(78, 205, 196, 0.9);
-                color: white;
-                padding: 15px 25px;
-                border-radius: 10px;
-                z-index: 1000;
-                animation: fadeOut 3s forwards;
-            `;
-            message.innerHTML = `<strong>${getText('perkGained')}:</strong> ${selectedPerk}`;
-            document.body.appendChild(message);
-            
-            // Додаємо CSS анімацію для повідомлення
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes fadeOut {
-                    0%, 80% { opacity: 1; transform: translate(-50%, 0); }
-                    100% { opacity: 0; transform: translate(-50%, 20px); }
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Автоматично видаляємо повідомлення після завершення анімації
-            setTimeout(() => message.remove(), 3000);
+            // Закриваємо попап
+            popup.remove();
+            overlay.remove();
         }
-        
-        // Закриваємо попап
-        popup.remove();
-        overlay.remove();
     });
 }
 
@@ -2799,16 +3082,14 @@ function showPerkSelectionPopup() {
 function applyPerkBonuses(perk) {
     const lowerPerk = perk.toLowerCase();
     
-    // --- НАЧАЛО ОСНОВНОЙ ЛОГИКИ (Остается без изменений) ---
-
-    // Анализируем перк на явные бонусы и штрафы
+    // Аналізуємо перк на явні бонуси та штрафи
     let healthBonus = 0;
     let manaBonus = 0;
     let healthPenalty = 0;
     let manaPenalty = 0;
     
-    // Ищем явные бонусы к здоровью
-    const healthBonusMatch = perk.match(/\+(\d+)\s*(?:до)?\s*(?:макс(?:имального)?|макс\.?)?\s*(?:здоров'я|здоровʼя|хп|hp|здоровья)/i);
+    // Покращений пошук бонусів до здоров'я (підтримує більше форматів)
+    const healthBonusMatch = perk.match(/\+(\d+)(?:\s*(?:до|to)?(?:\s*(?:макс(?:имального|имальн[оеі]го|\.)?|макс)?(?:\s*(?:здоров['']?я|здоровья|хп|hp|health|життя))?)?)/i);
     if (healthBonusMatch && healthBonusMatch[1]) {
         healthBonus = parseInt(healthBonusMatch[1]);
         if (!isNaN(healthBonus)) {
@@ -2817,8 +3098,8 @@ function applyPerkBonuses(perk) {
         }
     }
     
-    // Ищем явные бонусы к мане
-    const manaBonusMatch = perk.match(/\+(\d+)\s*(?:до)?\s*(?:макс(?:имально[їго])?|макс\.?)?\s*(?:мани|мана|маны)/i);
+    // Покращений пошук бонусів до мани (підтримує більше форматів)
+    const manaBonusMatch = perk.match(/\+(\d+)(?:\s*(?:до|to)?(?:\s*(?:макс(?:имальн[оеі]го|имального|\.)?|макс)?(?:\s*(?:мани|мана|маны|mana))?)?)/i);
     if (manaBonusMatch && manaBonusMatch[1]) {
         manaBonus = parseInt(manaBonusMatch[1]);
         if (!isNaN(manaBonus)) {
@@ -2827,8 +3108,8 @@ function applyPerkBonuses(perk) {
         }
     }
     
-    // Ищем явные штрафы к здоровью
-    const healthPenaltyMatch = perk.match(/\-(\d+)\s*(?:до)?\s*(?:макс(?:имального)?|макс\.?)?\s*(?:здоров'я|здоровʼя|хп|hp|здоровья)/i);
+    // Покращений пошук штрафів до здоров'я
+    const healthPenaltyMatch = perk.match(/\-(\d+)(?:\s*(?:до|to)?(?:\s*(?:макс(?:имального|имальн[оеі]го|\.)?|макс)?(?:\s*(?:здоров['']?я|здоровья|хп|hp|health|життя))?)?)/i);
     if (healthPenaltyMatch && healthPenaltyMatch[1]) {
         healthPenalty = parseInt(healthPenaltyMatch[1]);
         if (!isNaN(healthPenalty)) {
@@ -2837,8 +3118,8 @@ function applyPerkBonuses(perk) {
         }
     }
     
-    // Ищем явные штрафы к мане
-    const manaPenaltyMatch = perk.match(/\-(\d+)\s*(?:до)?\s*(?:макс(?:имально[їго])?|макс\.?)?\s*(?:мани|мана|маны)/i);
+    // Покращений пошук штрафів до мани
+    const manaPenaltyMatch = perk.match(/\-(\d+)(?:\s*(?:до|to)?(?:\s*(?:макс(?:имальн[оеі]го|имального|\.)?|макс)?(?:\s*(?:мани|мана|маны|mana))?)?)/i);
     if (manaPenaltyMatch && manaPenaltyMatch[1]) {
         manaPenalty = parseInt(manaPenaltyMatch[1]);
         if (!isNaN(manaPenalty)) {
@@ -2847,15 +3128,40 @@ function applyPerkBonuses(perk) {
         }
     }
     
-    // Если явных бонусов/штрафов не найдено, применяем стандартные по ключевым словам
+    // Якщо явних бонусів/штрафів не знайдено, аналізуємо за ключовими словами
     if (healthBonus === 0 && healthPenalty === 0) {
         if (lowerPerk.includes('здоров') || lowerPerk.includes('життя') || lowerPerk.includes('hp') || 
-            lowerPerk.includes('жизн') || lowerPerk.includes('health')) {
-            if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш)/i)) {
-                gameState.character.maxHealth += 5;
+            lowerPerk.includes('жизн') || lowerPerk.includes('health') || lowerPerk.includes('витривал')) {
+            // Аналізуємо на підвищення
+            if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш|витривал)/i)) {
+                // Шукаємо числа в тексті
+                const numberMatch = lowerPerk.match(/\d+/);
+                if (numberMatch) {
+                    const amount = parseInt(numberMatch[0]);
+                    if (!isNaN(amount)) {
+                        gameState.character.maxHealth += amount;
+                    } else {
+                        gameState.character.maxHealth += 5; // стандартне значення
+                    }
+                } else {
+                    gameState.character.maxHealth += 5; // стандартне значення
+                }
                 gameState.character.health = Math.min(gameState.character.health + 5, gameState.character.maxHealth);
-            } else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
-                gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - 3);
+            } 
+            // Аналізуємо на зменшення
+            else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
+                // Шукаємо числа в тексті
+                const numberMatch = lowerPerk.match(/\d+/);
+                if (numberMatch) {
+                    const amount = parseInt(numberMatch[0]);
+                    if (!isNaN(amount)) {
+                        gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - amount);
+                    } else {
+                        gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - 3);
+                    }
+                } else {
+                    gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - 3);
+                }
                 gameState.character.health = Math.min(gameState.character.health, gameState.character.maxHealth);
             }
         }
@@ -2863,18 +3169,65 @@ function applyPerkBonuses(perk) {
     
     if (manaBonus === 0 && manaPenalty === 0) {
         if (lowerPerk.includes('мана') || lowerPerk.includes('мани') || lowerPerk.includes('магі') || 
-            lowerPerk.includes('колдов') || lowerPerk.includes('magic') || lowerPerk.includes('spell')) {
-            if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш)/i)) {
-                gameState.character.maxMana += 5;
+            lowerPerk.includes('колдов') || lowerPerk.includes('magic') || lowerPerk.includes('spell') ||
+            lowerPerk.includes('мудр') || lowerPerk.includes('wisdom')) {
+            // Аналізуємо на підвищення
+            if (lowerPerk.match(/(\+|збільш|увелич|increas|повыш|мудр)/i)) {
+                // Шукаємо числа в тексті
+                const numberMatch = lowerPerk.match(/\d+/);
+                if (numberMatch) {
+                    const amount = parseInt(numberMatch[0]);
+                    if (!isNaN(amount)) {
+                        gameState.character.maxMana += amount;
+                    } else {
+                        gameState.character.maxMana += 5; // стандартне значення
+                    }
+                } else {
+                    gameState.character.maxMana += 5; // стандартне значення
+                }
                 gameState.character.mana = Math.min(gameState.character.mana + 5, gameState.character.maxMana);
-            } else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
-                gameState.character.maxMana = Math.max(0, gameState.character.maxMana - 3);
+            } 
+            // Аналізуємо на зменшення
+            else if (lowerPerk.match(/(\-|зменш|уменьш|decreas|сниж)/i)) {
+                // Шукаємо числа в тексті
+                const numberMatch = lowerPerk.match(/\d+/);
+                if (numberMatch) {
+                    const amount = parseInt(numberMatch[0]);
+                    if (!isNaN(amount)) {
+                        gameState.character.maxMana = Math.max(0, gameState.character.maxMana - amount);
+                    } else {
+                        gameState.character.maxMana = Math.max(0, gameState.character.maxMana - 3);
+                    }
+                } else {
+                    gameState.character.maxMana = Math.max(0, gameState.character.maxMana - 3);
+                }
                 gameState.character.mana = Math.min(gameState.character.mana, gameState.character.maxMana);
             }
         }
     }
     
-    // Показываем сообщение об изменениях характеристик от перка (если они были)
+    // Перевіряємо на додаткові спеціальні перки
+    if (lowerPerk.includes('регенер') || lowerPerk.includes('восстановл') || lowerPerk.includes('heal') || lowerPerk.includes('regen')) {
+        // Додаємо запис про регенерацію до перків персонажа
+        gameState.character.perks.push(perk);
+    }
+    
+    if (lowerPerk.includes('атака') || lowerPerk.includes('атаки') || lowerPerk.includes('урон') || lowerPerk.includes('damage') || lowerPerk.includes('атаку')) {
+        // Додаємо запис про бонус до атаки до перків персонажа
+        gameState.character.perks.push(perk);
+    }
+    
+    if (lowerPerk.includes('захист') || lowerPerk.includes('броня') || lowerPerk.includes('armor') || lowerPerk.includes('defense') || lowerPerk.includes('protection')) {
+        // Додаємо запис про бонус до захисту до перків персонажа
+        gameState.character.perks.push(perk);
+    }
+    
+    if (lowerPerk.includes('швидк') || lowerPerk.includes('ухил') || lowerPerk.includes('dodge') || lowerPerk.includes('speed') || lowerPerk.includes('evasion')) {
+        // Додаємо запис про бонус до швидкості до перків персонажа
+        gameState.character.perks.push(perk);
+    }
+    
+    // Показуємо сообщение об изменениях характеристик от перка (если они были)
     if (healthBonus > 0 || manaBonus > 0 || healthPenalty > 0 || manaPenalty > 0) {
         const message = document.createElement('div');
         message.style.cssText = `
@@ -2890,7 +3243,27 @@ function applyPerkBonuses(perk) {
             animation: fadeOut 3.5s forwards;
         `;
         
-        const effectTexts = { /* ... (этот блок без изменений) ... */ };
+        const effectTexts = {
+            uk: {
+                healthUp: (val) => `+${val} до макс. здоров'я`,
+                healthDown: (val) => `-${val} до макс. здоров'я`,
+                manaUp: (val) => `+${val} до макс. мани`,
+                manaDown: (val) => `-${val} до макс. мани`
+            },
+            ru: {
+                healthUp: (val) => `+${val} к макс. здоровью`,
+                healthDown: (val) => `-${val} к макс. здоровью`,
+                manaUp: (val) => `+${val} к макс. мане`,
+                manaDown: (val) => `-${val} к макс. мане`
+            },
+            en: {
+                healthUp: (val) => `+${val} to max health`,
+                healthDown: (val) => `-${val} to max health`,
+                manaUp: (val) => `+${val} to max mana`,
+                manaDown: (val) => `-${val} to max mana`
+            }
+        };
+        
         const texts = effectTexts[gameState.language] || effectTexts['uk'];
         const effects = [];
         
@@ -2914,43 +3287,9 @@ function applyPerkBonuses(perk) {
         setTimeout(() => message.remove(), 3500);
     }
 
-    // --- ИСПРАВЛЕНИЕ: Блок для класса "Попуск" перенесен в конец функции ---
-    // Теперь этот штраф применяется ДОПОЛНИТЕЛЬНО к любым эффектам перка.
-    
+    // --- Специфічна логіка для класу "Попуск" ---
     if (gameState.character.class === 'loser') {
-        // Применяем негативный эффект: отнимаем 1 максимальное здоровье.
-        gameState.character.maxHealth = Math.max(1, gameState.character.maxHealth - 1);
-        gameState.character.health = Math.min(gameState.character.health, gameState.character.maxHealth); // Убедимся, что текущее HP не больше максимального.
-        
-        // Показываем отдельное негативное сообщение о неудаче.
-        // Оно появится чуть выше стандартного сообщения, если то тоже было.
-        const loserMessage = document.createElement('div');
-        loserMessage.style.cssText = `
-            position: fixed;
-            bottom: 70px; /* Располагаем выше, чтобы не перекрывать другое сообщение */
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 107, 107, 0.9);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            z-index: 1001;
-            animation: fadeOut 3s forwards;
-        `;
-        
-        const messages = {
-            'uk': 'Навіть перки вас підводять! (-1 до макс. здоров\'я)',
-            'ru': 'Даже перки вас подводят! (-1 к макс. здоровью)',
-            'en': 'Even perks let you down! (-1 to max health)'
-        };
-        
-        loserMessage.innerHTML = `<strong>${messages[gameState.language] || messages['uk']}</strong>`;
-        document.body.appendChild(loserMessage);
-        
-        // CSS анимация для сообщения (можно использовать ту же 'fadeOut')
-        
-        // Автоматически удаляем сообщение
-        setTimeout(() => loserMessage.remove(), 3000);
+        // ... existing code ...
     }
 }
 let backgroundAudio; // Сделаем переменную глобальной, чтобы избежать создания нескольких плееров
@@ -3024,6 +3363,32 @@ function initSoundControls() {
         const soundTitle = document.getElementById('soundSettingsTitle');
         if (soundTitle) {
             soundTitle.textContent = `🔊 ${getText('soundSettings')}`;
+        }
+    }
+    
+    // Ініціалізуємо налаштування озвучування, якщо є модуль
+    if (window.voiceGenerator) {
+        // Завантажуємо налаштування з localStorage
+        window.voiceGenerator.loadVoiceSettings();
+        
+        // Оновлюємо елементи керування відповідно до збережених налаштувань
+        const voiceSettings = window.voiceGenerator.getVoiceSettings();
+        const voiceEnabled = document.getElementById('voiceEnabled');
+        const voiceSelect = document.getElementById('voiceSelect');
+        
+        if (voiceEnabled && voiceSettings.hasOwnProperty('isEnabled')) {
+            voiceEnabled.checked = voiceSettings.isEnabled;
+        }
+        
+        if (voiceSelect && voiceSettings.hasOwnProperty('voice')) {
+            // Шукаємо відповідний option
+            const options = voiceSelect.options;
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].value === voiceSettings.voice) {
+                    voiceSelect.selectedIndex = i;
+                    break;
+                }
+            }
         }
     }
 }
@@ -3375,4 +3740,51 @@ function showGameOverPopup(isDead = false) {
         document.getElementById('gameArea').style.display = 'none';
         document.getElementById('setupScreen').style.display = 'block';
     });
+}
+
+/**
+ * Генерує інструкції для озвучування на основі контексту гри
+ * @param {Object} gameData - Дані поточної сцени
+ * @returns {string} - Інструкції для озвучування
+ */
+function generateVoiceInstructions(gameData) {
+    // Базові інструкції
+    let instructions = 'Identity: Fantasy Narrator\nAffect: Dramatic\nTone: Deep and resonant\n';
+    
+    // Додаємо емоційний контекст на основі сцени
+    if (gameData.consequences && gameData.consequences.combat) {
+        // Бойова сцена
+        instructions += 'Emotion: Tense and urgent\nPace: Fast\n';
+        instructions += 'Context: Combat scene with danger and action\n';
+    } else if (gameData.text && gameData.text.toLowerCase().includes('смерт') || 
+               gameData.text.toLowerCase().includes('загибел') || 
+               gameData.text.toLowerCase().includes('вмира')) {
+        // Трагічна сцена
+        instructions += 'Emotion: Somber and mournful\nPace: Slow and deliberate\n';
+        instructions += 'Context: Scene with death or tragedy\n';
+    } else if (gameData.text && (gameData.text.toLowerCase().includes('перемог') || 
+                                 gameData.text.toLowerCase().includes('досягнен'))) {
+        // Переможна сцена
+        instructions += 'Emotion: Triumphant and joyful\nPace: Moderate to energetic\n';
+        instructions += 'Context: Scene of victory or achievement\n';
+    } else if (gameData.text && (gameData.text.toLowerCase().includes('таємниц') || 
+                                 gameData.text.toLowerCase().includes('загадк'))) {
+        // Таємнича сцена
+        instructions += 'Emotion: Mysterious and intriguing\nPace: Slow and deliberate\n';
+        instructions += 'Context: Scene with mystery or secrets\n';
+    } else {
+        // Стандартна сцена
+        instructions += 'Emotion: Engaging and immersive\nPace: Moderate\n';
+        instructions += 'Context: Fantasy adventure narration\n';
+    }
+    
+    // Додаємо інформацію про персонажа
+    instructions += `Character: ${gameState.character.name}, a ${gameState.character.class}, level ${gameState.character.level}\n`;
+    
+    // Якщо є спеціальні інструкції в gameData, додаємо їх
+    if (gameData.voice_instructions) {
+        instructions += `Additional: ${gameData.voice_instructions}\n`;
+    }
+    
+    return instructions;
 }
