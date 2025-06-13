@@ -20,7 +20,6 @@ let gameState = {
     gameHistory: [], // Для збереження контексту
     conversationHistory: [], // Для API контексту
     availablePerks: [], // Доступні перки для вибору
-    interactionCount: 0, // Лічильник взаємодій для створення підсумків
     summarizedHistory: [], // Масив для зберігання підсумків історії
     shortResponses: false // Прапорець для режиму коротких відповідей
 };
@@ -179,7 +178,7 @@ const localization = {
           "enemy": {
             "name": "Group Name", 
             "count": number_of_enemies, 
-            "health": numeric_value_or_description_per_individual, 
+            "health": numeric_value_or_description_per_individual (string), 
             "type": "combat_type",
             "description": "description of the group",
             "elements": [  // Optional: provide details for individual enemies
@@ -430,7 +429,7 @@ const localization = {
         4. Додавай соціальні сцени, діалоги, загадки, моральні дилеми, гумор, дослідження, несподівані зустрічі.
         5. Бійки мають бути лише одним із можливих варіантів розвитку подій, а не основним фокусом.
         6. Гравці повинні нести серйозні наслідки за свої дії.
-        7. Починай з цікавої ситуації, яка може містити загрозу, але не обовʼязково бійку.
+        7. Починай з цікавої ситуації, вона не повинна бути складною, але гра не повинна бути легкою.
         8. Включай моральні дилеми та складні вибори.
         
         Формат відповіді:
@@ -460,7 +459,7 @@ const localization = {
           "enemy": {
             "name": "Назва групи", 
             "count": кількість_ворогів, 
-            "health": здоров'я_кожного_індивіда, 
+            "health": здоров'я_кожного_індивіда (string), 
             "type": "тип_бою",
             "description": "опис групи",
             "elements": [  // Необов'язково: надайте деталі для окремих ворогів
@@ -738,7 +737,7 @@ const localization = {
           "enemy": {
             "name": "Название группы", 
             "count": количество_врагов, 
-            "health": здоровье_каждого_индивида, 
+            "health": здоровье_каждого_индивида (string), 
             "type": "тип_боя",
             "description": "описание группы",
             "elements": [  // Необязательно: предоставьте детали для отдельных врагов
@@ -889,33 +888,26 @@ const localization = {
 
 // Функції для збереження і завантаження гри
 function saveGame() {
-    try {
-        // Зберігаємо всі дані крім API ключа
-        const saveData = {
-            ...gameState,
-            apiKey: undefined
-        };
-        
-        localStorage.setItem('dndAdventureSave', JSON.stringify(saveData));
-        alert(getText('gameSaved'));
-    } catch (error) {
-        console.error('Помилка збереження:', error);
-        alert(getText('saveError'));
-    }
+    // Використовуємо нову функцію органзованого збереження
+    organizedSaveGame(false);
 }
 
 function loadGame() {
     try {
-        // Отримуємо всі збережені ігри з localStorage
-        const allSaves = getAllSaveGames();
+        console.log('Завантажуємо гру, отримуємо список персонажів зі збереженнями...');
+        // Отримуємо список усіх персонажів із збереженнями
+        const characters = getAllCharactersWithSaves();
+        console.log('Отримано персонажів:', Object.keys(characters));
         
-        if (Object.keys(allSaves).length === 0) {
+        if (Object.keys(characters).length === 0) {
+            console.log('Немає збережених ігор!');
             alert(getText('noSavedGames'));
             return false;
         }
         
-        // Показуємо модальне вікно з вибором сейвів
-        showSaveSelectionModal(allSaves);
+        // Показуємо модальне вікно з вибором персонажа
+        console.log('Показуємо вікно вибору персонажа');
+        showCharacterSelectionModal(characters);
         return true;
     } catch (error) {
         console.error('Помилка завантаження:', error);
@@ -924,8 +916,76 @@ function loadGame() {
     }
 }
 
+// Функція для отримання всіх персонажів із збереженнями
+function getAllCharactersWithSaves() {
+    console.log('Отримання всіх персонажів із збереженнями...');
+    const characters = {};
+    
+    // Перебираємо всі ключі в localStorage і групуємо за персонажами
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('dndSave_')) {
+            try {
+                // Витягуємо ім'я персонажа з ключа (формат: dndSave_CharacterName_Timestamp)
+                const characterKey = key.split('_')[1];
+                console.log('Знайдено ключ зі збереженням:', key, 'персонаж:', characterKey);
+                
+                if (!characters[characterKey]) {
+                    // Отримуємо дані збереження для додаткової інформації
+                    const saveData = JSON.parse(localStorage.getItem(key));
+                    characters[characterKey] = {
+                        name: saveData.character.name || characterKey,
+                        lastPlayed: saveData.timestamp || new Date().toISOString(),
+                        saves: getCharacterSaves(characterKey)
+                    };
+                    console.log('Доданий новий персонаж:', saveData.character.name);
+                }
+            } catch (e) {
+                console.error('Помилка парсингу збереження:', e);
+            }
+        }
+    }
+    
+    // Додаємо підтримку старого формату збереження
+    console.log('Перевіряю наявність старого формату збереження...');
+    const defaultSave = localStorage.getItem('dndAdventureSave');
+    if (defaultSave) {
+        try {
+            console.log('Знайдено старе збереження, парсимо...');
+            const saveData = JSON.parse(defaultSave);
+            const characterName = saveData.character?.name || 'Невідомий герой';
+            console.log('Персонаж зі старого збереження:', characterName);
+            
+            if (!characters[characterName]) {
+                characters[characterName] = {
+                    name: characterName,
+                    lastPlayed: new Date().toISOString(),
+                    saves: {
+                        'default': {
+                            name: characterName,
+                            level: saveData.character?.level || 1,
+                            class: saveData.character?.class || 'Невідомий клас',
+                            timestamp: new Date().toISOString(),
+                            data: defaultSave
+                        }
+                    }
+                };
+                console.log('Додано персонаж зі старого формату збереження:', characterName);
+            }
+        } catch (e) {
+            console.error('Помилка парсингу старого збереження:', e);
+        }
+    } else {
+        console.log('Старе збереження не знайдено');
+    }
+    
+    console.log('Всього знайдено персонажів:', Object.keys(characters).length, characters);
+    return characters;
+}
+
 // Функція для отримання всіх збережених ігор з localStorage
 function getAllSaveGames() {
+    console.log('Пошук збережень...');
     const saves = {};
     // Перевіряємо стандартний сейв
     const defaultSave = localStorage.getItem('dndAdventureSave');
@@ -940,26 +1000,60 @@ function getAllSaveGames() {
                 timestamp: new Date().toLocaleString(),
                 data: defaultSave
             };
+            console.log('Знайдено стандартне збереження:', characterInfo.name);
         } catch (e) {
             console.error('Помилка парсингу збереження:', e);
         }
     }
     
-    // Можна додати перевірку інших слотів для збереження в майбутньому
+    // Додаємо перевірку збережень нового формату (dndSave_)
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('dndSave_')) {
+            try {
+                const saveData = JSON.parse(localStorage.getItem(key));
+                const characterInfo = saveData.character || {};
+                saves[key] = {
+                    name: characterInfo.name || 'Невідомий герой',
+                    level: characterInfo.level || 1,
+                    class: characterInfo.class || 'Невідомий клас',
+                    timestamp: saveData.timestamp || new Date().toISOString(),
+                    data: localStorage.getItem(key)
+                };
+                console.log('Знайдено збереження нового формату:', key, characterInfo.name);
+            } catch (e) {
+                console.error('Помилка парсингу збереження нового формату:', e);
+            }
+        }
+    }
+    console.log('Всього знайдено збережень:', Object.keys(saves).length);
     
     return saves;
 }
 
-// Функція для показу модального вікна з вибором сейву
-function showSaveSelectionModal(saves) {
+// Функція для показу модального вікна з вибором персонажа
+function showCharacterSelectionModal(characters) {
     // Перевіряємо, чи не існує вже модальне вікно
-    if (document.getElementById('saveSelectionModal')) {
-        document.getElementById('saveSelectionModal').remove();
+    if (document.getElementById('characterSelectionModal')) {
+        document.getElementById('characterSelectionModal').remove();
+    }
+    
+    // Додаємо локалізацію
+    if (!localization.en.loadGameCharacters) {
+        localization.en.loadGameCharacters = "Load Character";
+        localization.uk.loadGameCharacters = "Завантажити персонажа";
+        localization.ru.loadGameCharacters = "Загрузить персонажа";
+    }
+    
+    if (!localization.en.lastPlayed) {
+        localization.en.lastPlayed = "Last played";
+        localization.uk.lastPlayed = "Останній раз гра";
+        localization.ru.lastPlayed = "Последний раз игра";
     }
     
     // Створюємо модальне вікно
     const modal = document.createElement('div');
-    modal.id = 'saveSelectionModal';
+    modal.id = 'characterSelectionModal';
     modal.style.cssText = `
         position: fixed;
         top: 50%;
@@ -972,13 +1066,15 @@ function showSaveSelectionModal(saves) {
         z-index: 1000;
         min-width: 300px;
         max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
         box-shadow: 0 0 25px rgba(78, 205, 196, 0.5);
         backdrop-filter: blur(10px);
     `;
     
     // Створюємо заголовок
     const title = document.createElement('h2');
-    title.textContent = getText('loadGame');
+    title.textContent = getText('loadGameCharacters');
     title.style.cssText = `
         text-align: center;
         color: #4ecdc4;
@@ -986,62 +1082,66 @@ function showSaveSelectionModal(saves) {
     `;
     modal.appendChild(title);
     
-    // Додаємо блоки для кожного збереження
-    for (const [key, save] of Object.entries(saves)) {
-        const saveBlock = document.createElement('div');
-        saveBlock.classList.add('save-item');
-        saveBlock.style.cssText = `
+    // Додаємо блоки для кожного персонажа
+    for (const [characterKey, character] of Object.entries(characters)) {
+        const characterBlock = document.createElement('div');
+        characterBlock.classList.add('character-save-item');
+        characterBlock.style.cssText = `
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 10px;
             padding: 15px;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s;
         `;
         
-        // Добавим локализацию для текста "рівень" в сохранениях
-        if (!localization.en.levelSave) {
-            localization.en.levelSave = "level";
-            localization.uk.levelSave = "рівень";
-            localization.ru.levelSave = "уровень";
+        // Форматуємо дату останньої гри
+        let lastPlayed = '';
+        try {
+            const date = new Date(character.lastPlayed);
+            lastPlayed = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        } catch (e) {
+            lastPlayed = getText('timeNotSpecified');
         }
         
-        // Добавим локализацию для "Час не вказано"
-        if (!localization.en.timeNotSpecified) {
-            localization.en.timeNotSpecified = "Time not specified";
-            localization.uk.timeNotSpecified = "Час не вказано";
-            localization.ru.timeNotSpecified = "Время не указано";
-        }
+        // Отримуємо кількість збережень
+        const savesCount = Object.keys(character.saves).length;
         
-        saveBlock.innerHTML = `
-            <div><strong>${save.name}</strong> (${save.class}, ${getText('levelSave')} ${save.level})</div>
-            <small>${save.timestamp || getText('timeNotSpecified')}</small>
+        characterBlock.innerHTML = `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <strong style="font-size: 1.2em;">${character.name}</strong>
+                <span style="font-size: 0.9em;">${savesCount} ${getText('saves')}</span>
+            </div>
+            <small>${getText('lastPlayed')}: ${lastPlayed}</small>
         `;
         
-        saveBlock.addEventListener('mouseover', () => {
-            saveBlock.style.background = 'rgba(78, 205, 196, 0.2)';
-            saveBlock.style.borderColor = 'rgba(78, 205, 196, 0.5)';
+        characterBlock.addEventListener('mouseover', () => {
+            characterBlock.style.background = 'rgba(78, 205, 196, 0.2)';
+            characterBlock.style.borderColor = 'rgba(78, 205, 196, 0.5)';
         });
         
-        saveBlock.addEventListener('mouseout', () => {
-            saveBlock.style.background = 'rgba(255, 255, 255, 0.1)';
-            saveBlock.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        characterBlock.addEventListener('mouseout', () => {
+            characterBlock.style.background = 'rgba(255, 255, 255, 0.1)';
+            characterBlock.style.borderColor = 'rgba(255, 255, 255, 0.2)';
         });
         
-        // Обробник для завантаження конкретного сейву
-        saveBlock.addEventListener('click', () => {
-            loadSpecificSave(save.data);
+        // Обробник для вибору персонажа і показу його збережень
+        characterBlock.addEventListener('click', () => {
+            // Видаляємо поточне модальне вікно
             modal.remove();
             overlay.remove();
+            
+            // Показуємо вікно з збереженнями цього персонажа
+            showSaveSelectionModal(character.saves, characterKey);
         });
         
-        modal.appendChild(saveBlock);
+        modal.appendChild(characterBlock);
     }
     
     // Додаємо кнопку закриття
     const closeButton = document.createElement('button');
-    // Добавим кнопку отмены к локализациям
+    // Додаємо локалізацію для кнопки скасування
     if (!localization.en.cancel) {
         localization.en.cancel = "Cancel";
         localization.uk.cancel = "Скасувати";
@@ -1085,10 +1185,209 @@ function showSaveSelectionModal(saves) {
     document.body.appendChild(modal);
 }
 
+// Функція для показу модального вікна з вибором сейвів для конкретного персонажа
+function showSaveSelectionModal(saves, characterKey) {
+    // Перевіряємо, чи не існує вже модальне вікно
+    if (document.getElementById('saveSelectionModal')) {
+        document.getElementById('saveSelectionModal').remove();
+    }
+    
+    // Додаємо локалізацію
+    if (!localization.en.loadGameForCharacter) {
+        localization.en.loadGameForCharacter = "Load Game for";
+        localization.uk.loadGameForCharacter = "Завантажити гру для";
+        localization.ru.loadGameForCharacter = "Загрузить игру для";
+    }
+
+    if (!localization.en.saves) {
+        localization.en.saves = "saves";
+        localization.uk.saves = "збереження";
+        localization.ru.saves = "сохранения";
+    }
+    
+    if (!localization.en.levelSave) {
+        localization.en.levelSave = "level";
+        localization.uk.levelSave = "рівень";
+        localization.ru.levelSave = "уровень";
+    }
+    
+    if (!localization.en.timeNotSpecified) {
+        localization.en.timeNotSpecified = "Time not specified";
+        localization.uk.timeNotSpecified = "Час не вказано";
+        localization.ru.timeNotSpecified = "Время не указано";
+    }
+    
+    // Створюємо модальне вікно
+    const modal = document.createElement('div');
+    modal.id = 'saveSelectionModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        border: 2px solid #4ecdc4;
+        border-radius: 15px;
+        padding: 25px;
+        z-index: 1000;
+        min-width: 300px;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 0 25px rgba(78, 205, 196, 0.5);
+        backdrop-filter: blur(10px);
+    `;
+    
+    // Створюємо заголовок
+    const title = document.createElement('h2');
+    title.textContent = `${getText('loadGameForCharacter')} ${characterKey}`;
+    title.style.cssText = `
+        text-align: center;
+        color: #4ecdc4;
+        margin-bottom: 20px;
+    `;
+    modal.appendChild(title);
+    
+    // Сортуємо збереження за часом (від найновішого до найстарішого)
+    const sortedSaves = Object.entries(saves).sort((a, b) => {
+        const dateA = new Date(a[1].timestamp || 0);
+        const dateB = new Date(b[1].timestamp || 0);
+        return dateB - dateA;
+    });
+    
+    // Додаємо блоки для кожного збереження, використовуємо prepend для відображення нових зверху
+    for (const [key, save] of sortedSaves) {
+        const saveBlock = document.createElement('div');
+        saveBlock.classList.add('save-item');
+        saveBlock.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        `;
+        
+        // Форматуємо дату збереження
+        let saveDate = '';
+        try {
+            if (save.timestamp) {
+                const date = new Date(save.timestamp);
+                saveDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+            }
+        } catch (e) {
+            saveDate = getText('timeNotSpecified');
+        }
+        
+        saveBlock.innerHTML = `
+            <div><strong>${save.name}</strong> (${save.class}, ${getText('levelSave')} ${save.level})</div>
+            <small>${saveDate || getText('timeNotSpecified')}</small>
+        `;
+        
+        saveBlock.addEventListener('mouseover', () => {
+            saveBlock.style.background = 'rgba(78, 205, 196, 0.2)';
+            saveBlock.style.borderColor = 'rgba(78, 205, 196, 0.5)';
+        });
+        
+        saveBlock.addEventListener('mouseout', () => {
+            saveBlock.style.background = 'rgba(255, 255, 255, 0.1)';
+            saveBlock.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        });
+        
+        // Обробник для завантаження конкретного сейву
+        saveBlock.addEventListener('click', () => {
+            console.log('Вибрано збереження для завантаження:', key);
+            loadSpecificSave(save.data);
+            modal.remove();
+            overlay.remove();
+        });
+        
+        // Додаємо елемент на початок модального вікна (після заголовка), щоб новіші були зверху
+        const titleElement = modal.querySelector('h2');
+        modal.insertBefore(saveBlock, titleElement.nextSibling);
+    }
+    
+    // Додаємо кнопки керування
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+    `;
+    
+    // Кнопка "Назад"
+    const backButton = document.createElement('button');
+    if (!localization.en.back) {
+        localization.en.back = "Back";
+        localization.uk.back = "Назад";
+        localization.ru.back = "Назад";
+    }
+    
+    backButton.textContent = getText('back');
+    backButton.style.cssText = `
+        padding: 10px 20px;
+        background: linear-gradient(45deg, #4ecdc4, #2cb5ab);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-size: 0.9em;
+    `;
+    
+    backButton.addEventListener('click', () => {
+        modal.remove();
+        overlay.remove();
+        // Повертаємось до вибору персонажа
+        loadGame();
+    });
+    
+    // Кнопка "Скасувати"
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = getText('cancel');
+    cancelButton.style.cssText = `
+        padding: 10px 20px;
+        background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-size: 0.9em;
+    `;
+    
+    cancelButton.addEventListener('click', () => {
+        modal.remove();
+        overlay.remove();
+    });
+    
+    buttonContainer.appendChild(backButton);
+    buttonContainer.appendChild(cancelButton);
+    modal.appendChild(buttonContainer);
+    
+    // Додаємо фон-затемнення
+    const overlay = document.createElement('div');
+    overlay.id = 'saveSelectionOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 999;
+    `;
+    
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
+}
+
 // Функція для завантаження конкретного сейву
 function loadSpecificSave(saveData) {
     try {
+        console.log('Завантажую дані:', saveData.substring(0, 100) + '...');
         const loadedData = JSON.parse(saveData);
+        console.log('Завантажені дані, лічильник взаємодій:', loadedData.interactionCount || 0);
+        console.log('Парсинг успішний, отримані дані:', loadedData.character?.name, loadedData.character?.class);
         // Зберігаємо поточні налаштування
         const currentApiKey = gameState.apiKey;
         const shortResponses = gameState.shortResponses;
@@ -1106,6 +1405,7 @@ function loadSpecificSave(saveData) {
         // Оновлюємо UI
         updateCharacterPanel();
         
+        console.log('UI оновлено, показую поточну сцену');
         // Відображаємо поточну сцену
         if (gameState.currentScene) {
             document.getElementById('setupScreen').style.display = 'none';
@@ -1126,6 +1426,46 @@ function loadSpecificSave(saveData) {
 // Функція для отримання перекладеного тексту
 function getText(key) {
     return localization[gameState.language][key] || key;
+}
+
+// Додаємо нові локалізації для автозбереження і сумаризації
+if (!localization.en.autoSaving) {
+    localization.en.autoSaving = "Auto-saving...";
+    localization.uk.autoSaving = "Автозбереження...";
+    localization.ru.autoSaving = "Автосохранение...";
+}
+
+// Додаємо локалізацію для процесу сумаризації
+if (!localization.en.summarizing) {
+    localization.en.summarizing = "Summarizing history...";
+    localization.uk.summarizing = "Сумаризація історії...";
+    localization.ru.summarizing = "Обобщение истории...";
+}
+
+// Додаємо локалізацію для обробки дії з сумаризацією
+if (!localization.en.processingActionWithSummary) {
+    localization.en.processingActionWithSummary = "Processing action and summarizing history...";
+    localization.uk.processingActionWithSummary = "Обробка дії та сумаризація історії...";
+    localization.ru.processingActionWithSummary = "Обработка действия и обобщение истории...";
+}
+
+// Додаємо локалізацію для повідомлення про необхідність API ключа
+if (!localization.en.apiKeyNeeded) {
+    localization.en.apiKeyNeeded = "API key is required for history summarization.";
+    localization.uk.apiKeyNeeded = "Потрібен API ключ для сумаризації історії.";
+    localization.ru.apiKeyNeeded = "Требуется API ключ для обобщения истории.";
+}
+
+// Додаємо локалізацію для процесу збереження
+if (!localization.en.saving) {
+    localization.en.saving = "Saving game...";
+    localization.uk.saving = "Збереження гри...";
+    localization.ru.saving = "Сохранение игры...";
+}
+
+// Додаємо локалізацію для підсумку пригоди, якщо її не вистачає
+if (!localization.ru.adventureSummary) {
+    localization.ru.adventureSummary = "Сводка приключения";
 }
 
 // Функція для оновлення мови інтерфейсу
@@ -1318,13 +1658,17 @@ function saveApiKey() {
         initSoundControls();
         
         // Перевіряємо наявність збережених ігор
+        console.log('Перевіряю наявність збережень...');
         const allSaves = getAllSaveGames();
         
+        console.log('Результат перевірки збережень:', Object.keys(allSaves).length > 0 ? 'Є збереження' : 'Немає збережень');
         if (Object.keys(allSaves).length > 0) {
             // Показуємо вікно з вибором: створити нову гру або завантажити збережену
+            console.log('Показую вікно вибору: нова гра або завантажити');
             showGameStartOptions();
         } else {
             // Якщо збережених ігор немає, відразу показуємо екран створення персонажа
+            console.log('Збережень немає, показую екран створення персонажа');
             document.getElementById('setupScreen').style.display = 'block';
         }
     } else {
@@ -1822,7 +2166,7 @@ function processAnimeFanSpecialInteractions(action, response) {
         const actionLowerCase = action.toLowerCase();
         const textLowerCase = modifiedResponse.text.toLowerCase();
         
-        // Перевірка на взаємодію з жіночим персонажем
+        // Перевірка на взаємодію з жіноким персонажем
         const isInteractingWithFemale = femaleInteractionKeywords.some(keyword => 
             actionLowerCase.includes(keyword) || textLowerCase.includes(keyword)
         );
@@ -1956,11 +2300,6 @@ async function callGeminiAPI(prompt, isInitial = false) {
     
     // Зберігаємо останній промпт для можливого повторного виклику
     lastPrompt = prompt;
-    
-    // Збільшуємо лічильник взаємодій для підсумків
-    if (!isInitial) {
-        gameState.interactionCount++;
-    }
     
     // Перевіряємо, чи потрібно додати інструкції для коротких відповідей
     if (gameState.shortResponses) {
@@ -2295,6 +2634,20 @@ function updateGameState(gameData) {
         timestamp: new Date().toLocaleString()
     });
     
+    // Перевіряємо кількість несумаризованих пар "питання-відповідь" в історії
+    const eventsToSummarize = 10; // Має відповідати значенню в інших функціях
+    const unsummarizedPairs = gameState.gameHistory.filter(event => !event.scene.summarized).length;
+    const needSummary = unsummarizedPairs >= eventsToSummarize;
+    console.log('Кількість несумаризованих подій в історії:', unsummarizedPairs, 'Потрібна сумаризація:', needSummary);
+    
+    // Додаємо додаткову перевірку для логування API-ключа (закриваємо частину)
+    if (needSummary) {
+        const maskedKey = gameState.apiKey ? 
+            gameState.apiKey.substring(0, 4) + '...' + gameState.apiKey.substring(gameState.apiKey.length - 4) : 
+            'відсутній';
+        console.log('Спроба сумаризації. API-ключ:', maskedKey);
+    }
+    
     // Якщо є можливість генерувати зображення
     if (typeof window.imageGenerator !== 'undefined') {
         // Зберігаємо обидва промпти, якщо вони є
@@ -2316,20 +2669,20 @@ function updateGameState(gameData) {
             );
         }
         
-        // Перевіряємо, чи потрібно генерувати підсумок (кожні 5 взаємодій)
-        const needSummary = gameState.interactionCount > 0 && gameState.interactionCount % 5 === 0;
-        
         if (needSummary) {
+            // Показуємо індикатор сумаризації
+            showAutoSaveIndicator(getText('summarizing') || 'Сумаризація історії...', false);
+            
             // Генеруємо підсумок (інкрементальний, якщо вже є попередні підсумки)
             const isIncremental = gameState.summarizedHistory.length > 0;
             generateHistorySummary(isIncremental).then(summaryText => {
                 if (summaryText) {
-                                         // Створюємо текст з підсумком і передаємо його модулю зображень
-                     const fullText = `
-                         <div style="background: rgba(78, 205, 196, 0.1); border: 1px solid #4ecdc4; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
-                             <h3 style="color: #4ecdc4; margin-top: 0;">📜 ${getText('adventureSummary')}</h3>
-                             ${summaryText}
-                         </div>
+                    // Створюємо текст з підсумком і передаємо його модулю зображень
+                    const fullText = `
+                        <div style="background: rgba(78, 205, 196, 0.1); border: 1px solid #4ecdc4; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                            <h3 style="color: #4ecdc4; margin-top: 0;">📜 ${getText('adventureSummary')}</h3>
+                            ${summaryText}
+                        </div>
                         <hr style="border: none; border-top: 1px dashed rgba(255, 255, 255, 0.2); margin: 20px 0;">
                         <p>${gameData.text}</p>
                     `;
@@ -2380,14 +2733,14 @@ function updateGameState(gameData) {
             });
         }
     } else {
-        // Перевіряємо, чи потрібно генерувати підсумок (кожні 5 взаємодій)
-        const needSummary = gameState.interactionCount > 0 && gameState.interactionCount % 5 === 0;
-        
         // Якщо не потрібно генерувати зображення, просто оновлюємо текст
         if (needSummary) {
             // Показуємо індикатор завантаження для підсумку
             document.getElementById('storyText').innerHTML = `<div class="loading">${getText('processingActionWithSummary')}</div>`;
             document.getElementById('customActionBtn').disabled = true;
+            
+            // Показуємо індикатор сумаризації
+            showAutoSaveIndicator(getText('summarizing') || 'Сумаризація історії...', false);
             
             // Генеруємо підсумок (інкрементальний, якщо вже є попередні підсумки)
             const isIncremental = gameState.summarizedHistory.length > 0;
@@ -2501,16 +2854,24 @@ function updateGameState(gameData) {
             
             // Якщо AI надіслала збільшення maxHealth та maxMana, застосовуємо їх
             if (cons.level_up.healthGain !== undefined) {
-                gameState.character.maxHealth += cons.level_up.healthGain;
+                if (gameState.character.health + cons.level_up.healthGain <= gameState.character.maxHealth) {
+                    gameState.character.health += cons.level_up.healthGain;
+                    console.log('Здоров\'я збільшено на', cons.level_up.healthGain, 'до', gameState.character.health);
+                } else {
+                    console.log('Здоров\'я перевищує максимальне значення');
+                    gameState.character.health = gameState.character.maxHealth;
+                }
             }
             
             if (cons.level_up.manaGain !== undefined) {
-                gameState.character.maxMana += cons.level_up.manaGain;
+                if (gameState.character.mana + cons.level_up.manaGain <= gameState.character.maxMana) {
+                    gameState.character.mana += cons.level_up.manaGain;
+                } else {
+                    gameState.character.mana = gameState.character.maxMana;
+                }
             }
             
-            // Заповнюємо здоров'я та ману
-            gameState.character.health = gameState.character.maxHealth;
-            gameState.character.mana = gameState.character.maxMana;
+            
             
             // Показуємо попап про підвищення рівня з даними від AI
             const levelGains = {
@@ -2776,19 +3137,58 @@ function performAction(action) {
 1. The neural network fully controls the character's level progression.
 2. When you decide to level up a character, include the "level_up" field in "consequences".
 3. Suggest 5 unique perks for the player to choose from via the "available_perks" field.
-4. Levels and experience are fully controlled by you, not by the game code.`;
+4. Levels and experience are fully controlled by you, not by the game code.
+5. Use the following level-up system based on experience points:
+   - Up to level 5: every 300 experience points
+   - Up to level 10: every 600 experience points
+   - Up to level 20: every 900 experience points
+   - Up to level 30: every 1200 experience points
+   - Up to level 40: every 1800 experience points
+   - Up to level 50: every 2400 experience points
+   - Up to level 60: every 3000 experience points
+   - Up to level 70: every 3600 experience points
+   - Up to level 80: every 4200 experience points
+   - Up to level 90: every 4800 experience points
+   - Up to level 100: every 5400 experience points
+   - After level 100: every 6000 experience points`;
     } else if (gameState.language === 'ru') {
         levelUpInstructionsText = `ВАЖНО О ПОВЫШЕНИИ УРОВНЯ:
 1. Нейросеть полностью контролирует повышение уровня персонажа.
 2. Когда ты решаешь повысить уровень персонажа, включи поле "level_up" в "consequences".
 3. Предложи 5 уникальных перков на выбор игроку через поле "available_perks".
-4. Уровни и опыт полностью контролируются тобой, а не кодом игры.`;
+4. Уровни и опыт полностью контролируются тобой, а не кодом игры.
+5. Используй следующую систему повышения уровней на основе опыта:
+   - До 5-го уровня: каждые 300 очков опыта
+   - До 10-го уровня: каждые 600 очков опыта
+   - До 20-го уровня: каждые 900 очков опыта
+   - До 30-го уровня: каждые 1200 очков опыта
+   - До 40-го уровня: каждые 1800 очков опыта
+   - До 50-го уровня: каждые 2400 очков опыта
+   - До 60-го уровня: каждые 3000 очков опыта
+   - До 70-го уровня: каждые 3600 очков опыта
+   - До 80-го уровня: каждые 4200 очков опыта
+   - До 90-го уровня: каждые 4800 очков опыта
+   - До 100-го уровня: каждые 5400 очков опыта
+   - Після 100-го уровня: каждые 6000 очков опыта`;
     } else {
         levelUpInstructionsText = `ВАЖЛИВО ПРО ПІДВИЩЕННЯ РІВНЯ:
 1. Нейромережа повністю контролює підвищення рівня персонажа.
 2. Коли ти вирішуєш підвищити рівень персонажа, включи поле "level_up" в "consequences".
 3. Запропонуй 5 унікальних перків на вибір гравцю через поле "available_perks".
-4. Рівні та досвід повністю контролюються тобою, а не кодом гри.`;
+4. Рівні та досвід повністю контролюються тобою, а не кодом гри.
+5. Використовуй наступну систему підвищення рівнів на основі досвіду:
+   - До 5-го рівня: кожні 300 очків досвіду
+   - До 10-го рівня: кожні 600 очків досвіду
+   - До 20-го рівня: кожні 900 очків досвіду
+   - До 30-го рівня: кожні 1200 очків досвіду
+   - До 40-го рівня: кожні 1800 очків досвіду
+   - До 50-го рівня: кожні 2400 очків досвіду
+   - До 60-го рівня: кожні 3000 очків досвіду
+   - До 70-го рівня: кожні 3600 очків досвіду
+   - До 80-го рівня: кожні 4200 очків досвіду
+   - До 90-го рівня: кожні 4800 очків досвіду
+   - До 100-го рівня: кожні 5400 очків досвіду
+   - Після 100-го рівня: кожні 6000 очків досвіду`;
     }
     
     // Вибираємо приклад JSON-структури відповідно до мови
@@ -2876,6 +3276,21 @@ function performAction(action) {
 ${levelUpInstructionsText}
 
 ${jsonExample}`;
+
+    // Перевіряємо, чи достатньо досвіду для підвищення рівня
+    const levelUpCheck = checkLevelUpCondition();
+    let levelUpNotification = '';
+    
+    if (levelUpCheck.canLevelUp) {
+        // Додаємо нотифікацію про можливість підвищення рівня відповідно до мови
+        if (gameState.language === 'en') {
+            levelUpNotification = `\n\nNOTICE: The character has reached ${levelUpCheck.currentExp} experience points, which is enough for a level up to level ${levelUpCheck.nextLevel}. Please include a level up in your response using the level_up field in consequences.`;
+        } else if (gameState.language === 'ru') {
+            levelUpNotification = `\n\nВНИМАНИЕ: Персонаж набрал ${levelUpCheck.currentExp} очков опыта, что достаточно для повышения уровня до ${levelUpCheck.nextLevel}. Пожалуйста, включи повышение уровня в свой ответ, используя поле level_up в consequences.`;
+        } else {
+            levelUpNotification = `\n\nУВАГА: Персонаж набрав ${levelUpCheck.currentExp} очків досвіду, чого достатньо для підвищення рівня до ${levelUpCheck.nextLevel}. Будь ласка, включи підвищення рівня у свою відповідь, використовуючи поле level_up в consequences.`;
+        }
+    }
     
     // Формуємо шаблон промпту та замінюємо всі змінні
     const prompt = getText('actionPrompt')
@@ -2889,9 +3304,51 @@ ${jsonExample}`;
         .replace('{mana}', characterDetails.mana)
         .replace('{maxMana}', characterDetails.maxMana)
         .replace('{experience}', characterDetails.experience)
-        .replace('{perks}', characterDetails.perks) + levelUpInstructions;
+        .replace('{perks}', characterDetails.perks) + levelUpInstructions + levelUpNotification;
 
     callGeminiAPI(prompt, false);
+}
+
+// Функція для перевірки умови підвищення рівня
+function checkLevelUpCondition() {
+    const currentLevel = gameState.character.level;
+    const currentExp = gameState.character.experience;
+    let expNeeded = 0;
+    
+    // Визначаємо необхідну кількість досвіду для підвищення рівня
+        if (currentLevel < 5) {
+            expNeeded = currentLevel * 300;
+        } else if (currentLevel < 10) {
+            expNeeded = 1500 + (currentLevel - 5) * 600;
+        } else if (currentLevel < 20) {
+            expNeeded = 1500 + (currentLevel - 10) * 900;
+        } else if (currentLevel < 30) {
+            expNeeded = 1500 + (currentLevel - 20) * 1200;
+        } else if (currentLevel < 40) {
+            expNeeded = 1500 + (currentLevel - 30) * 1800;
+        } else if (currentLevel < 50) {
+            expNeeded = 1500 + (currentLevel - 40) * 2400;
+        } else if (currentLevel < 60) {
+            expNeeded = 1500 + (currentLevel - 50) * 3000;
+        } else if (currentLevel < 70) {
+            expNeeded = 1500 + (currentLevel - 60) * 3600;
+        } else if (currentLevel < 80) {
+            expNeeded = 1500 + (currentLevel - 70) * 4200;
+        } else if (currentLevel < 90) {
+            expNeeded = 1500 + (currentLevel - 80) * 4800;
+        } else if (currentLevel < 100) {
+            expNeeded = 1500 + (currentLevel - 90) * 5400;
+        } else {
+            expNeeded = 1500 + (currentLevel - 100) * 6000;
+        }
+    
+    // Повертаємо об'єкт з інформацією про можливість підвищення рівня
+    return {
+        canLevelUp: currentExp >= expNeeded,
+        currentExp: currentExp,
+        expNeeded: expNeeded,
+        nextLevel: currentLevel + 1
+    };
 }
 
 // Helper function to add random stuttering to text
@@ -2995,13 +3452,6 @@ function showLevelUpPopup(newLevel, levelGains) {
     popup.innerHTML = `
         <h2 style="text-align: center; color: #4ecdc4; margin-bottom: 15px;">🎉 ${getText('levelUp')} 🎉</h2>
         <p style="text-align: center; margin-bottom: 20px;">${getText('levelUpDesc')} <strong>${newLevel}</strong>!</p>
-        <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin: 10px 0;">
-            <p><strong>${getText('bonuses')}:</strong></p>
-            <ul style="margin: 10px 0 10px 20px;">
-                <li>+${levelGains.health} ${getText('health') === 'Health' ? 'to maximum health' : '❤️ ' + getText('health').toLowerCase()}</li>
-                <li>+${levelGains.mana} ${getText('mana') === 'Mana' ? 'to maximum mana' : '💙 ' + getText('mana').toLowerCase()}</li>
-            </ul>
-        </div>
         <button id="levelUpCloseBtn" style="
             display: block;
             margin: 20px auto 0 auto;
@@ -3048,6 +3498,13 @@ function showLevelUpPopup(newLevel, levelGains) {
         popup.remove();
         overlay.remove();
     });
+    
+    // Додаємо озвучування попапу підвищення рівня
+    if (window.voiceGenerator) {
+        const levelUpText = `${getText('levelUp')} ${getText('levelUpDesc')} ${newLevel}!`;
+        const instructions = generateVoiceInstructions({ text: levelUpText });
+        window.voiceGenerator.generateVoice(levelUpText, { instructions });
+    }
 }
 
 // Функція для відображення попапу вибору перків
@@ -4043,89 +4500,232 @@ function showGameOverPopup(isDead = false) {
  * @returns {Promise<string>} - підсумок історії
  */
 async function generateHistorySummary(isIncremental = false) {
-    if (gameState.isLoading) return null;
+    // Перевіряємо наявність API ключа
+    if (!gameState.apiKey) {
+        console.error('Помилка сумаризації: API ключ не налаштовано');
+        alert(getText('apiKeyNeeded') || 'Потрібен API ключ для сумаризації історії.');
+        return null;
+    }
+    
+    // Створюємо модальне затемнення для блокування інтерфейсу
+    showModalOverlay(getText('summarizing') || 'Сумаризація історії...');
     
     // Зберігаємо поточний стан завантаження
     const wasLoading = gameState.isLoading;
     gameState.isLoading = true;
     
+    console.log('Початок процесу сумаризації історії');
+    
     try {
         let prompt = '';
         let previousSummary = '';
+        
+        // Змінюємо на 10 питань-відповідей
+        const eventsToSummarize = 10;
+        
+        // Визначаємо тексти для промпту залежно від мови
+        const promptTexts = {
+            en: {
+                incrementalIntro: (summary) => `Here is the previous summary of the game story:\n\n${summary}\n\nHere are the new events that happened after this summary:\n\n`,
+                fullIntro: `Create a detailed summary of this game story based on the following events:\n\n`,
+                playerAction: `  Player action: `,
+                instructions: (perks) => `\n\nCreate a detailed summary that includes:
+1. Main events that occurred
+2. Important decisions and their consequences
+3. Current character status
+4. MANDATORY list of all character perks (${perks})
+5. Important character encounters
+6. Any items obtained or knowledge gained
+
+Important: the summary should be detailed but concise. Make the summary interesting to read, as if it's an excerpt from a book.`
+            },
+            uk: {
+                incrementalIntro: (summary) => `Ось попередній підсумок історії гри:\n\n${summary}\n\nОсь нові події, які сталися після цього підсумку:\n\n`,
+                fullIntro: `Створи детальний підсумок цієї історії гри на основі наступних подій:\n\n`,
+                playerAction: `  Дія гравця: `,
+                instructions: (perks) => `\n\nСтвори детальний підсумок, який містить:
+1. Основні події, що сталися
+2. Важливі рішення та їх наслідки
+3. Поточний статус персонажа
+4. ОБОВ'ЯЗКОВО перелік усіх перків персонажа (${perks})
+5. Важливі зустрічі з персонажами
+6. Будь-які отримані предмети чи здобуті знання
+
+Важливо: підсумок має бути детальним, але лаконічним. Зроби підсумок цікавим для читання, ніби це уривок з книги.`
+            },
+            ru: {
+                incrementalIntro: (summary) => `Вот предыдущее резюме истории игры:\n\n${summary}\n\nВот новые события, которые произошли после этого резюме:\n\n`,
+                fullIntro: `Создай подробное резюме этой истории игры на основе следующих событий:\n\n`,
+                playerAction: `  Действие игрока: `,
+                instructions: (perks) => `\n\nСоздай подробное резюме, которое включает:
+1. Основные произошедшие события
+2. Важные решения и их последствия
+3. Текущий статус персонажа
+4. ОБЯЗАТЕЛЬНО список всех перков персонажа (${perks})
+5. Важные встречи с персонажами
+6. Любые полученные предметы или знания
+
+Важно: резюме должно быть подробным, но лаконичным. Сделай резюме интересным для чтения, как будто это отрывок из книги.`
+            }
+        };
+        
+        // Використовуємо тексти для поточної мови або англійської як запасний варіант
+        const lang = gameState.language;
+        const texts = promptTexts[lang] || promptTexts.en;
         
         if (isIncremental && gameState.summarizedHistory.length > 0) {
             // Беремо останній підсумок як основу
             previousSummary = gameState.summarizedHistory[gameState.summarizedHistory.length - 1];
             
-            // Формуємо промпт для інкрементального підсумку
-            prompt = `Ось попередній підсумок історії гри:\n\n${previousSummary}\n\nОсь нові події, які сталися після цього підсумку:\n\n`;
+            // Формуємо промпт для інкрементального підсумку з локалізованим текстом
+            prompt = texts.incrementalIntro(previousSummary);
             
-            // Додаємо останні 5 взаємодій
-            const recentHistory = gameState.gameHistory.slice(-5);
+            // Додаємо останні N взаємодій
+            const recentHistory = gameState.gameHistory.slice(-eventsToSummarize);
             for (const event of recentHistory) {
+                // Пропускаємо вже сумаризовані події
+                if (event.scene.summarized) continue;
+                
                 prompt += `- ${event.scene.text}\n`;
                 if (event.action) {
-                    prompt += `  Дія гравця: ${event.action}\n`;
+                    prompt += `${texts.playerAction}${event.action}\n`;
                 }
             }
+            console.log('Підготовлено інкрементальний промпт для сумаризації');
         } else {
-            // Формуємо промпт для повного підсумку
-            prompt = `Створи детальний підсумок цієї історії гри на основі наступних подій:\n\n`;
+            // Формуємо промпт для повного підсумку з локалізованим текстом
+            prompt = texts.fullIntro;
             
-            // Додаємо всю історію або останні 5 подій
-            const historyToSummarize = gameState.gameHistory.slice(-5);
+            // Додаємо останні N подій
+            const historyToSummarize = gameState.gameHistory.slice(-eventsToSummarize);
             for (const event of historyToSummarize) {
+                // Пропускаємо вже сумаризовані події
+                if (event.scene.summarized) continue;
+                
                 prompt += `- ${event.scene.text}\n`;
                 if (event.action) {
-                    prompt += `  Дія гравця: ${event.action}\n`;
+                    prompt += `${texts.playerAction}${event.action}\n`;
                 }
             }
+            console.log('Підготовлено повний промпт для сумаризації');
         }
         
-        // Додаємо інструкції для форматування підсумку
-        prompt += `\n\nСтвори детальний підсумок, який містить:
-1. Основні події, що сталися
-2. Важливі рішення та їх наслідки
-3. Поточний статус персонажа
-4. ОБОВ'ЯЗКОВО перелік усіх перків персонажа (${gameState.character.perks.join(', ')})
-5. Важливі зустрічі з персонажами
-6. Будь-які отримані предмети чи здобуті знання
-
-Важливо: підсумок має бути детальним, але лаконічним. Зроби підсумок цікавим для читання, ніби це уривок з книги.`;
+        // Додаємо інструкції для форматування підсумку з локалізованим текстом
+        const perks = gameState.character.perks.join(', ');
+        prompt += texts.instructions(perks);
 
         // Викликаємо API для генерації підсумку
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${gameState.apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+        console.log('Відправляємо запит на генерацію сумаризації...');
+        let response;
+        try {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${gameState.apiKey}`;
+            console.log('URL API для сумаризації:', apiUrl.replace(gameState.apiKey, '***API_KEY***'));
+            console.log('Перевірка API ключа:', gameState.apiKey ? 'Ключ доступний' : 'Ключ відсутній');
+            
+            const requestBody = {
                 contents: [{
                     role: "user",
                     parts: [{ text: prompt }]
                 }],
                 generationConfig: {
-                    maxOutputTokens: 1000,
-                }
-            })
-        });
+                    maxOutputTokens: 100000,
+                    thinkingConfig: {
+                        thinkingBudget: 0
+                    }
+                },
+                safetySettings: [
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH", 
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "BLOCK_NONE"
+                    }
+                ]
+                };
+            
+            console.log('Дані запиту:', JSON.stringify(requestBody).substring(0, 150) + '...');
+            console.log('Початок відправки запиту до API Gemini...');
+            
+            response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            console.log('Відповідь отримана, статус HTTP:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                console.error('Помилка HTTP при сумаризації:', response.status, response.statusText);
+                // Спробуємо отримати текст відповіді
+                const errorText = await response.text();
+                console.error('Текст помилки відповіді:', errorText);
+                throw new Error(`HTTP помилка: ${response.status} ${response.statusText}`);
+            }
+        } catch (fetchError) {
+            console.error('Помилка запиту при сумаризації:', fetchError);
+            // Видаляємо модальне затемнення, якщо сталася помилка
+            removeModalOverlay();
+            throw fetchError;
+        }
 
-        const data = await response.json();
+        console.log('Відповідь отримана, парсимо JSON...');
+        let data;
+        try {
+            data = await response.json();
+            console.log('Відповідь API:', JSON.stringify(data).substring(0, 200) + '...');
+        } catch (jsonError) {
+            console.error('Помилка парсингу JSON:', jsonError);
+            // Спробуємо отримати текст відповіді
+            const errorText = await response.text();
+            console.error('Текст відповіді, який не вдалося розпарсити:', errorText);
+            // Видаляємо модальне затемнення, якщо сталася помилка
+            removeModalOverlay();
+            throw jsonError;
+        }
+        
         if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            console.log('Успішно отримано дані для сумаризації');
             const summary = data.candidates[0].content.parts[0].text;
+            console.log('Згенерований підсумок (перші 100 символів):', summary.substring(0, 100) + '...');
             
             // Зберігаємо підсумок у gameState
             gameState.summarizedHistory.push(summary);
+            console.log('Підсумок додано в історію');
+            
+            // Замінюємо історію сумаризованою версією
+            applySummaryToHistory(summary);
+            console.log('Історія успішно оновлена сумаризацією');
             
             gameState.isLoading = wasLoading;
+            // Видаляємо модальне затемнення після завершення сумаризації
+            removeModalOverlay();
             return summary;
         } else {
-            console.error('Помилка при генерації підсумку:', data);
+            console.error('Помилка при генерації підсумку. Дані відповіді:', data);
+            if (data.error) {
+                console.error('API повернуло помилку:', data.error);
+            }
+            // Видаляємо модальне затемнення, якщо сталася помилка
+            removeModalOverlay();
             gameState.isLoading = wasLoading;
             return null;
         }
     } catch (error) {
         console.error('Помилка при генерації підсумку:', error);
+        // Видаляємо модальне затемнення, якщо сталася помилка
+        removeModalOverlay();
         gameState.isLoading = wasLoading;
         return null;
     }
@@ -4139,6 +4739,29 @@ async function generateHistorySummary(isIncremental = false) {
 function generateVoiceInstructions(gameData) {
     // Базові інструкції
     let instructions = 'Identity: Fantasy Narrator\nAffect: Dramatic\nTone: Deep and resonant\n';
+    
+    // Перевіряємо, чи відображається попап підвищення рівня
+    const levelUpPopup = document.getElementById('levelUpPopup');
+    if (levelUpPopup && window.getComputedStyle(levelUpPopup).display !== 'none') {
+        // Якщо попап підвищення рівня відображається, додаємо спеціальні інструкції для озвучування
+        if (gameState.language === 'en') {
+            instructions = 'Identity: Fantasy Master\nAffect: Celebratory\nTone: Enthusiastic and triumphant\n';
+            instructions += 'Emotion: Excited and proud\nPace: Energetic\n';
+            instructions += `Context: Character ${gameState.character.name} has just reached level ${gameState.character.level}!\n`;
+            instructions += 'This is a special and important achievement for the player.\n';
+        } else if (gameState.language === 'ru') {
+            instructions = 'Identity: Рассказчик фэнтези\nAffect: Праздничный\nTone: Восторженный и торжественный\n';
+            instructions += 'Emotion: Взволнованный и гордый\nPace: Энергичный\n';
+            instructions += `Context: Персонаж ${gameState.character.name} только что достиг уровня ${gameState.character.level}!\n`;
+            instructions += 'Это особое и важное достижение для игрока.\n';
+        } else {
+            instructions = 'Identity: Фентезійний оповідач\nAffect: Святковий\nTone: Захоплений та урочистий\n';
+            instructions += 'Emotion: Схвильований та гордий\nPace: Енергійний\n';
+            instructions += `Context: Персонаж ${gameState.character.name} щойно досяг рівня ${gameState.character.level}!\n`;
+            instructions += 'Це особливе та важливе досягнення для гравця.\n';
+        }
+        return instructions;
+    }
     
     // Додаємо емоційний контекст на основі сцени
     if (gameData.consequences && gameData.consequences.combat) {
@@ -4200,3 +4823,324 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+// Функція для структурованого збереження гри (по персонажах, з обмеженням кількості)
+function organizedSaveGame(autoSave = false) {
+    console.log('Виконую збереження гри...', autoSave ? 'автозбереження' : 'ручне збереження');
+    
+    // Якщо це не автозбереження, показуємо модальне затемнення
+    if (!autoSave) {
+        showModalOverlay(getText('saving') || 'Збереження гри...');
+    }
+    
+    try {
+        // Отримуємо ім'я персонажа для використання як ключа групи
+        const characterKey = gameState.character.name || 'Unknown';
+        
+        // Отримуємо всі збереження для цього персонажа
+        const allSaves = getCharacterSaves(characterKey);
+        
+        // Зберігаємо всі дані крім API ключа
+        const saveData = {
+            ...gameState,
+            apiKey: undefined,
+            timestamp: new Date().toISOString()
+        };
+        
+        // Поточний час для унікального ключа
+        const timeKey = new Date().getTime();
+        const saveKey = `dndSave_${characterKey}_${timeKey}`;
+        
+        // Додаємо нове збереження
+        console.log('Збереження даних у localStorage...');
+        localStorage.setItem(saveKey, JSON.stringify(saveData));
+        console.log('Дані успішно збережені з ключем:', saveKey.replace(characterKey, '***CHARACTER***'));
+        
+        // Перевіряємо, чи потрібно видалити старі збереження
+        const saveKeys = Object.keys(allSaves);
+        if (saveKeys.length >= 20) {
+            console.log('Знайдено багато збережень (' + saveKeys.length + '). Видаляємо старі...');
+            // Сортуємо за часом створення і видаляємо найстаріші
+            saveKeys.sort((a, b) => allSaves[a].timestamp - allSaves[b].timestamp);
+            
+            // Видаляємо найстаріші збереження, залишаючи максимум 19 (включаючи нове)
+            for (let i = 0; i < saveKeys.length - 19; i++) {
+                localStorage.removeItem(saveKeys[i]);
+                console.log('Видалено старе збереження:', saveKeys[i].replace(characterKey, '***CHARACTER***'));
+            }
+        }
+        
+        // Якщо це не автозбереження, показуємо повідомлення
+        if (!autoSave) {
+            // Видаляємо модальне затемнення
+            removeModalOverlay();
+            alert(getText('gameSaved'));
+        } else {
+            // Показуємо індикатор автозбереження
+            showAutoSaveIndicator(getText('autoSaving'), true);
+        }
+    } catch (error) {
+        console.error('Помилка збереження:', error);
+        
+        // Видаляємо модальне затемнення, якщо воно є
+        removeModalOverlay();
+        
+        if (!autoSave) {
+            alert(getText('saveError'));
+        }
+    }
+}
+
+// Функція для показу індикатора автозбереження або сумаризації
+function showAutoSaveIndicator(text, autoRemove = true) {
+    // Перевіряємо, чи не існує вже індикатора
+    let indicator = document.getElementById('autoSaveIndicator');
+    
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'autoSaveIndicator';
+        indicator.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(78, 205, 196, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            ${autoRemove ? 'animation: fadeInOut 2s forwards;' : 'animation: pulse 1.5s infinite;'}
+        `;
+        
+        // Додаємо анімацію, якщо її ще немає
+        if (!document.getElementById('autoSaveAnimation')) {
+            const style = document.createElement('style');
+            style.id = 'autoSaveAnimation';
+            style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; }
+                    20% { opacity: 1; }
+                    80% { opacity: 1; }
+                    100% { opacity: 0; display: none; }
+                }
+                @keyframes pulse {
+                    0% { opacity: 0.8; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0.8; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Використовуємо переданий текст або текст автозбереження за замовчуванням
+        indicator.textContent = text || getText('autoSaving');
+        document.body.appendChild(indicator);
+        
+        // Видаляємо індикатор після закінчення анімації, якщо autoRemove == true
+        if (autoRemove) {
+            setTimeout(() => {
+                if (indicator && indicator.parentNode) {
+                    indicator.parentNode.removeChild(indicator);
+                }
+            }, 2000);
+        }
+    }
+    
+    return indicator;
+}
+
+// Функція для отримання збережень конкретного персонажа
+function getCharacterSaves(characterKey) {
+    const saves = {};
+    
+    // Перебираємо всі ключі в localStorage і фільтруємо за характером
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(`dndSave_${characterKey}_`)) {
+            try {
+                const saveData = JSON.parse(localStorage.getItem(key));
+                saves[key] = {
+                    name: saveData.character.name || 'Невідомий герой',
+                    level: saveData.character.level || 1,
+                    class: saveData.character.class || 'Невідомий клас',
+                    timestamp: saveData.timestamp || new Date().toISOString(),
+                    data: localStorage.getItem(key)
+                };
+            } catch (e) {
+                console.error('Помилка парсингу збереження:', e);
+            }
+        }
+    }
+    
+    return saves;
+}
+
+// Функція для застосування сумаризації до історії гри
+function applySummaryToHistory(summary) {
+    console.log('Застосовую сумаризацію до історії гри та контексту розмови');
+    
+    // Ховаємо індикатор автозбереження, який показувався під час сумаризації
+    const indicator = document.getElementById('autoSaveIndicator');
+    if (indicator && indicator.parentNode) {
+        indicator.parentNode.removeChild(indicator);
+    }
+    
+    // Видаляємо модальне затемнення, якщо воно є
+    removeModalOverlay();
+    
+    // Видаляємо останні питання-відповіді з історії (відповідно до eventsToSummarize)
+    const historyLength = gameState.gameHistory.length;
+    const eventsToSummarize = 10; // Має відповідати значенню в generateHistorySummary
+    const recentHistory = gameState.gameHistory.slice(Math.max(0, historyLength - eventsToSummarize));
+    
+    // Замінюємо їх на один запис з сумаризацією
+    gameState.gameHistory.splice(Math.max(0, historyLength - eventsToSummarize), eventsToSummarize, {
+        scene: { 
+            text: summary,
+            summarized: true 
+        },
+        character: { ...gameState.character },
+        timestamp: new Date().toLocaleString()
+    });
+    
+    // Також оновлюємо conversationHistory, якщо вона містить достатньо питань-відповідей
+    if (gameState.conversationHistory && gameState.conversationHistory.length >= eventsToSummarize * 2) {
+        console.log('Знайдено багато взаємодій в історії розмови:', gameState.conversationHistory.length);
+        
+        // Визначаємо локалізовані тексти
+        const summaryTexts = {
+            en: {
+                summaryIntro: `Summary of previous interactions:\n\n${summary}\n\n[History has been condensed to save context]`,
+                modelResponse: "Understood. Continuing with this summary in mind."
+            },
+            uk: {
+                summaryIntro: `Підсумок попередніх взаємодій:\n\n${summary}\n\n[Історію було скорочено для економії контексту]`,
+                modelResponse: "Зрозуміло. Продовжую з урахуванням цього підсумку."
+            },
+            ru: {
+                summaryIntro: `Резюме предыдущих взаимодействий:\n\n${summary}\n\n[История была сокращена для экономии контекста]`,
+                modelResponse: "Понятно. Продолжаю с учетом этого резюме."
+            }
+        };
+        
+        // Використовуємо тексти для поточної мови або англійської як запасний варіант
+        const lang = gameState.language;
+        const texts = summaryTexts[lang] || summaryTexts.en;
+        
+        // Створюємо новий об'єкт для збереження підсумку
+        const summaryMessage = {
+            role: "user",
+            parts: [{ 
+                text: texts.summaryIntro
+            }]
+        };
+        
+        // Відповідь моделі на сумаризацію
+        const modelResponse = {
+            role: "model",
+            parts: [{ 
+                text: texts.modelResponse
+            }]
+        };
+        
+        // Видаляємо останні питання-відповіді (20 повідомлень для 10 пар) і замінюємо їх на одне підсумкове повідомлення
+        const conversationLength = gameState.conversationHistory.length;
+        const messagesToRemove = eventsToSummarize * 2; // 2 повідомлення на кожну взаємодію (user + model)
+        
+        // Якщо достатньо повідомлень для видалення
+        if (conversationLength >= messagesToRemove) {
+            // Зберігаємо перші повідомлення, видаляємо останні (відповідно до кількості пар)
+            const preservedHistory = gameState.conversationHistory.slice(0, Math.max(0, conversationLength - messagesToRemove));
+            
+            // Додаємо сумаризоване повідомлення та відповідь моделі
+            gameState.conversationHistory = [...preservedHistory, summaryMessage, modelResponse];
+            console.log('Історію розмови скорочено до', gameState.conversationHistory.length, 'повідомлень');
+        } else {
+            // Якщо повідомлень менше, просто додаємо підсумок після наявних
+            gameState.conversationHistory.push(summaryMessage);
+            gameState.conversationHistory.push(modelResponse);
+        }
+    }
+    
+    // Автоматично зберігаємо гру після сумаризації
+    organizedSaveGame(true);
+    
+    return true;
+}
+
+// Функція для створення модального затемнення, що блокує інтерфейс під час важливих операцій
+function showModalOverlay(message = '') {
+    // Видаляємо існуюче затемнення, якщо воно є
+    removeModalOverlay();
+    
+    // Створюємо елемент затемнення
+    const overlay = document.createElement('div');
+    overlay.id = 'modalProcessingOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(3px);
+    `;
+    
+    // Якщо є повідомлення, додаємо контейнер з текстом
+    if (message) {
+        const messageBox = document.createElement('div');
+        messageBox.style.cssText = `
+            background: rgba(78, 205, 196, 0.9);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            text-align: center;
+            max-width: 80%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        `;
+        
+        // Додаємо анімацію завантаження
+        messageBox.innerHTML = `
+            <div>${message}</div>
+            <div style="margin-top: 15px; display: flex; justify-content: center;">
+                <div style="width: 10px; height: 10px; margin: 0 5px; background: white; border-radius: 50%; animation: loading-dots 1.4s infinite ease-in-out both;"></div>
+                <div style="width: 10px; height: 10px; margin: 0 5px; background: white; border-radius: 50%; animation: loading-dots 1.4s 0.2s infinite ease-in-out both;"></div>
+                <div style="width: 10px; height: 10px; margin: 0 5px; background: white; border-radius: 50%; animation: loading-dots 1.4s 0.4s infinite ease-in-out both;"></div>
+            </div>
+        `;
+        
+        // Додаємо анімацію крапок, якщо її ще немає
+        if (!document.getElementById('loadingDotsAnimation')) {
+            const style = document.createElement('style');
+            style.id = 'loadingDotsAnimation';
+            style.textContent = `
+                @keyframes loading-dots {
+                    0%, 100% { transform: scale(0.5); opacity: 0.5; }
+                    50% { transform: scale(1); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        overlay.appendChild(messageBox);
+    }
+    
+    document.body.appendChild(overlay);
+    console.log('Модальне затемнення показано:', message);
+    
+    return overlay;
+}
+
+// Функція для видалення модального затемнення
+function removeModalOverlay() {
+    const overlay = document.getElementById('modalProcessingOverlay');
+    if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+        console.log('Модальне затемнення видалено');
+    }
+}

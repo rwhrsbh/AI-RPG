@@ -8,6 +8,7 @@ let isGeneratingVoice = false;
 let voiceQueue = [];
 let currentlyPlaying = null;
 let isVoiceStopRequested = false;  // Новий прапорець для зупинки обробки голосу
+let currentTTSAbortController = null; // Контролер для скасування мережевих запитів
 let voiceContext = {
     voice: 'Zephyr',
     isEnabled: true,
@@ -28,6 +29,111 @@ const AVAILABLE_VOICES = [
 ];
 
 /**
+ * Створює і показує візуальний індикатор стану TTS
+ * @param {string} status - Статус TTS ('generating', 'error', 'playing', 'off')
+ * @param {string} message - Повідомлення для відображення
+ */
+function showTTSIndicator(status, message = '') {
+    // Видаляємо попередній індикатор, якщо він існує
+    removeTTSIndicator();
+    
+    // Створюємо індикатор
+    const indicator = document.createElement('div');
+    indicator.id = 'tts-status-indicator';
+    indicator.style.position = 'fixed';
+    indicator.style.bottom = '20px';
+    indicator.style.left = '20px';
+    indicator.style.padding = '10px 15px';
+    indicator.style.borderRadius = '5px';
+    indicator.style.fontSize = '14px';
+    indicator.style.zIndex = '9999';
+    indicator.style.display = 'flex';
+    indicator.style.alignItems = 'center';
+    indicator.style.gap = '10px';
+    indicator.style.transition = 'opacity 0.3s ease';
+    indicator.style.opacity = '0.9';
+    
+    // Встановлюємо колір та повідомлення в залежності від статусу
+    switch (status) {
+        case 'generating':
+            indicator.style.backgroundColor = '#4285f4'; // Синій
+            indicator.style.color = 'white';
+            indicator.innerHTML = `
+                <span style="display: inline-block; width: 16px; height: 16px; border: 3px solid white; 
+                border-top-color: transparent; border-radius: 50%; animation: tts-spin 1s linear infinite;"></span>
+                <span>${message || 'Generating speech...'}</span>
+            `;
+            break;
+        case 'error':
+            indicator.style.backgroundColor = '#ea4335'; // Червоний
+            indicator.style.color = 'white';
+            indicator.innerHTML = `
+                <span style="font-weight: bold;">⚠️</span>
+                <span>${message || 'Speech generation error'}</span>
+            `;
+            // Встановлюємо автоматичне приховування через 5 секунд
+            setTimeout(() => {
+                removeTTSIndicator();
+            }, 1000);
+            break;
+        case 'playing':
+            indicator.style.backgroundColor = '#34a853'; // Зелений
+            indicator.style.color = 'white';
+            indicator.innerHTML = `
+                <span style="font-weight: bold;">🔊</span>
+                <span>${message || 'Playing speech'}</span>
+            `;
+            break;
+        case 'off':
+            indicator.style.backgroundColor = '#9aa0a6'; // Сірий
+            indicator.style.color = 'white';
+            indicator.innerHTML = `
+                <span style="font-weight: bold;">🔇</span>
+                    <span>${message || 'Speech disabled'}</span>
+                `;
+            // Встановлюємо автоматичне приховування через 3 секунди
+            setTimeout(() => {
+                removeTTSIndicator();
+            }, 3000);
+            break;
+    }
+    
+    // Додаємо стиль для анімації
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes tts-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Додаємо індикатор до DOM
+    document.body.appendChild(indicator);
+    
+    // Анімуємо появу
+    setTimeout(() => {
+        indicator.style.opacity = '1';
+    }, 10);
+}
+
+/**
+ * Видаляє візуальний індикатор стану TTS
+ */
+function removeTTSIndicator() {
+    const indicator = document.getElementById('tts-status-indicator');
+    if (indicator) {
+        // Анімуємо зникнення перед видаленням
+        indicator.style.opacity = '0';
+        setTimeout(() => {
+            if (indicator.parentNode) {
+                indicator.parentNode.removeChild(indicator);
+            }
+        }, 300);
+    }
+}
+
+/**
  * Генерує озвучування тексту
  * @param {string} text - Текст для озвучування
  * @param {Object} options - Додаткові параметри
@@ -44,6 +150,7 @@ async function generateVoice(text, options = {}) {
     // Якщо озвучування вимкнено, одразу виходимо
     if (!voiceContext.isEnabled) {
         console.log('Озвучування вимкнено в налаштуваннях');
+        showTTSIndicator('off');
         return;
     }
     
@@ -51,6 +158,16 @@ async function generateVoice(text, options = {}) {
     if (!text || typeof text !== 'string' || text.trim() === '') {
         console.log('Порожній текст, пропускаємо озвучування');
         return;
+    }
+    
+    // Скасовуємо попередній запит TTS, якщо він існує
+    if (currentTTSAbortController) {
+        console.log('Скасування попереднього запиту TTS...');
+        currentTTSAbortController.abort();
+        currentTTSAbortController = null;
+        
+        // Видаляємо індикатор, якщо він відображається
+        removeTTSIndicator();
     }
     
     // Скидаємо прапорець зупинки голосу
@@ -84,6 +201,9 @@ async function generateVoice(text, options = {}) {
     if (currentlyPlaying) {
         stopVoice();
     }
+    
+    // Показуємо індикатор генерації
+    showTTSIndicator('generating');
     
     // Розбиваємо текст на частини для кращої обробки
     const textChunks = splitTextIntoChunks(text);
@@ -146,6 +266,7 @@ async function processVoiceQueue() {
         if (isVoiceStopRequested) {
             console.log('Обробку черги озвучування зупинено на вимогу');
             voiceQueue = [];  // Очищаємо чергу
+            removeTTSIndicator();
             break;
         }
         
@@ -173,14 +294,19 @@ async function processVoiceQueue() {
             if (isVoiceStopRequested) {
                 console.log('Обробку черги озвучування зупинено на вимогу після отримання аудіо');
                 voiceQueue = [];
+                removeTTSIndicator();
                 break;
             }
             
             if (!audioBlob) {
                 console.error('Не вдалося отримати аудіо blob');
+                showTTSIndicator('error', 'Не вдалося отримати аудіо');
                 errorCount++;
                 continue;
             }
+            
+            // Оновлюємо індикатор на статус відтворення
+            showTTSIndicator('playing');
             
             // Відтворюємо аудіо, використовуючи всі доступні методи послідовно
             console.log('Аудіо отримано, починаємо відтворення...');
@@ -203,6 +329,7 @@ async function processVoiceQueue() {
                 if (isVoiceStopRequested) {
                     console.log(`Відтворення через ${method.name} метод скасовано на вимогу`);
                     voiceQueue = [];
+                    removeTTSIndicator();
                     break;
                 }
                 
@@ -220,13 +347,16 @@ async function processVoiceQueue() {
             
             if (!played && !isVoiceStopRequested) {
                 console.error('Усі методи відтворення аудіо зазнали невдачі');
-                throw lastError || new Error('Не вдалося відтворити аудіо жодним методом');
+                showTTSIndicator('error', 'Error playing audio');
+                throw lastError || new Error('Error playing audio');
             }
             
             console.log('Відтворення елемента завершено');
+            removeTTSIndicator();
             
         } catch (error) {
             console.error('Помилка генерації або відтворення озвучування:', error);
+            showTTSIndicator('error', 'Error generating or playing audio');
             errorCount++;
             
             // Якщо забагато помилок підряд, очищаємо чергу
@@ -253,6 +383,10 @@ async function processVoiceQueue() {
  */
 async function fetchGeminiVoiceAudio(text, voice, instructions) {
     try {
+        // Створюємо новий AbortController для цього запиту
+        currentTTSAbortController = new AbortController();
+        const signal = currentTTSAbortController.signal;
+        
         // Використовуємо API ключ з gameState
         const apiKey = gameState.apiKey;
         console.log(`Генерація озвучування через Gemini API: ${text.substring(0, 50)}... (голос: ${voice})`);
@@ -316,14 +450,15 @@ async function fetchGeminiVoiceAudio(text, voice, instructions) {
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
         console.log('TTS API URL:', apiUrl.replace(apiKey, '****'));
         
-        // Відправляємо запит
+        // Відправляємо запит з сигналом AbortController
         console.log('Відправляємо запит до TTS API...');
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            signal: signal
         });
         
         console.log('TTS відповідь статус:', response.status, response.statusText);
@@ -337,6 +472,9 @@ async function fetchGeminiVoiceAudio(text, voice, instructions) {
         // Отримуємо JSON відповідь замість потокової обробки
         const data = await response.json();
         console.log('TTS отримано повну відповідь:', JSON.stringify(data, null, 2).substring(0, 200) + '...');
+        
+        // Очищаємо поточний AbortController після успішного завершення
+        currentTTSAbortController = null;
         
         let audioData = null;
         let mimeType = 'audio/wav'; // За замовчуванням
@@ -569,8 +707,20 @@ async function fetchGeminiVoiceAudio(text, voice, instructions) {
         
         return audioData;
     } catch (error) {
+        // Перевіряємо, чи запит був скасований
+        if (error.name === 'AbortError') {
+            console.log('Запит TTS був скасований');
+            throw new Error('Запит TTS був скасований');
+        }
+        
         console.error('Помилка отримання аудіо з Gemini API:', error);
         throw error;
+    } finally {
+        // В будь-якому випадку очищаємо AbortController
+        if (currentTTSAbortController) {
+            // Якщо це той самий контролер, який ми використовували для цього запиту
+            currentTTSAbortController = null;
+        }
     }
 }
 
@@ -842,6 +992,13 @@ function stopVoice() {
     // Встановлюємо прапорець для зупинки обробки черги
     isVoiceStopRequested = true;
     
+    // Скасовуємо поточний запит TTS, якщо він існує
+    if (currentTTSAbortController) {
+        console.log('Скасування поточного запиту TTS...');
+        currentTTSAbortController.abort();
+        currentTTSAbortController = null;
+    }
+    
     if (currentlyPlaying) {
         try {
             currentlyPlaying.pause();
@@ -861,6 +1018,9 @@ function stopVoice() {
     // Очищаємо чергу
     voiceQueue = [];
     isGeneratingVoice = false;
+    
+    // Видаляємо індикатор, якщо він відображається
+    removeTTSIndicator();
 }
 
 /**
@@ -1015,6 +1175,10 @@ function pcmToWav(pcmData, sampleRate = 24000, numChannels = 1) {
  */
 async function fetchElevenLabsVoiceAudio(text, voice, instructions) {
     try {
+        // Створюємо новий AbortController для цього запиту
+        currentTTSAbortController = new AbortController();
+        const signal = currentTTSAbortController.signal;
+        
         // Використовуємо API ключ з налаштувань
         const apiKey = voiceContext.elevenLabsApiKey;
         if (!apiKey) {
@@ -1026,7 +1190,8 @@ async function fetchElevenLabsVoiceAudio(text, voice, instructions) {
         // Підготовка даних для запиту
         const payload = {
             text: text,
-            model_id: "eleven_multilingual_v2"        };
+            model_id: "eleven_multilingual_v2"
+        };
         
         // Якщо voice не є ID, використовуємо EXAVITQu4vr4xnSDxMaL (Rachel) за замовчуванням
         const voiceId = voice && voice.length > 10 ? voice : "EXAVITQu4vr4xnSDxMaL";
@@ -1037,7 +1202,7 @@ async function fetchElevenLabsVoiceAudio(text, voice, instructions) {
         console.log('ElevenLabs TTS URL:', apiUrl);
         console.log('ElevenLabs запит:', JSON.stringify(payload, null, 2));
         
-        // Відправляємо запит
+        // Відправляємо запит з сигналом AbortController
         console.log('Відправляємо запит до ElevenLabs TTS API...');
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -1045,7 +1210,8 @@ async function fetchElevenLabsVoiceAudio(text, voice, instructions) {
                 'Xi-Api-Key': apiKey,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: signal
         });
         
         console.log('ElevenLabs TTS відповідь статус:', response.status, response.statusText);
@@ -1060,10 +1226,25 @@ async function fetchElevenLabsVoiceAudio(text, voice, instructions) {
         const audioBlob = await response.blob();
         console.log('ElevenLabs TTS отримано аудіо blob, розмір:', audioBlob.size);
         
+        // Очищаємо поточний AbortController після успішного завершення
+        currentTTSAbortController = null;
+        
         return audioBlob;
     } catch (error) {
+        // Перевіряємо, чи запит був скасований
+        if (error.name === 'AbortError') {
+            console.log('Запит ElevenLabs TTS був скасований');
+            throw new Error('Запит TTS був скасований');
+        }
+        
         console.error('Помилка отримання аудіо з ElevenLabs API:', error);
         throw error;
+    } finally {
+        // В будь-якому випадку очищаємо AbortController
+        if (currentTTSAbortController) {
+            // Якщо це той самий контролер, який ми використовували для цього запиту
+            currentTTSAbortController = null;
+        }
     }
 }
 
