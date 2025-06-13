@@ -3508,10 +3508,22 @@ function showLevelUpPopup(newLevel, levelGains) {
     `;
     document.head.appendChild(style);
     
+    // Зберігаємо текст поточної сцени для озвучування після закриття попапу
+    const currentSceneText = gameState.currentScene.text;
+    const sceneVoiceInstructions = gameState.currentScene.instructions || generateVoiceInstructions(gameState.currentScene);
+    
     // Обробник для закриття
     document.getElementById('levelUpCloseBtn').addEventListener('click', () => {
         popup.remove();
         overlay.remove();
+        
+        // Відновлюємо озвучування основного сюжетного тексту після закриття попапу
+        if (window.voiceGenerator && currentSceneText) {
+            console.log('Відновлення озвучування сюжетного тексту після закриття попапу підвищення рівня');
+            window.voiceGenerator.generateVoice(currentSceneText, {
+                instructions: sceneVoiceInstructions
+            });
+        }
     });
     
     // Додаємо озвучування попапу підвищення рівня
