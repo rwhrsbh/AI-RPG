@@ -13,6 +13,7 @@ let voiceContext = {
     voice: 'Zephyr',
     isEnabled: true,
     volume: 1.0,
+    playbackRate: 1.0, // Швидкість відтворення за замовчуванням
     service: 'gemini', // 'gemini' або 'elevenlabs'
     elevenLabsApiKey: '', // API ключ для ElevenLabs
     elevenLabsVoice: 'EXAVITQu4vr4xnSDxMaL' // ID голосу ElevenLabs (Rachel за замовчуванням)
@@ -79,10 +80,61 @@ function showTTSIndicator(status, message = '') {
         case 'playing':
             indicator.style.backgroundColor = '#34a853'; // Зелений
             indicator.style.color = 'white';
-            indicator.innerHTML = `
+            
+            // Створюємо основний контейнер
+            const contentContainer = document.createElement('div');
+            contentContainer.style.display = 'flex';
+            contentContainer.style.flexDirection = 'column';
+            contentContainer.style.alignItems = 'flex-start';
+            contentContainer.style.gap = '8px';
+            
+            // Додаємо верхній рядок з іконкою та текстом
+            const topRow = document.createElement('div');
+            topRow.style.display = 'flex';
+            topRow.style.alignItems = 'center';
+            topRow.style.gap = '10px';
+            topRow.innerHTML = `
                 <span style="font-weight: bold;">🔊</span>
-                <span>${message || 'Playing speech'}</span>
+                <span>${message || 'Playing speech'} (${voiceContext.playbackRate}x)</span>
             `;
+            
+            // Створюємо контейнер для кнопок швидкості
+            const speedButtons = document.createElement('div');
+            speedButtons.style.display = 'flex';
+            speedButtons.style.gap = '5px';
+            speedButtons.style.marginTop = '5px';
+            
+            // Швидкості відтворення
+            const speeds = [1, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0];
+            
+            // Додаємо кнопки швидкості
+            speeds.forEach(speed => {
+                const button = document.createElement('button');
+                button.textContent = speed + 'x';
+                button.style.padding = '3px 6px';
+                button.style.border = voiceContext.playbackRate === speed ? '2px solid white' : '1px solid rgba(255,255,255,0.5)';
+                button.style.borderRadius = '3px';
+                button.style.background = voiceContext.playbackRate === speed ? 'rgba(255,255,255,0.3)' : 'transparent';
+                button.style.color = 'white';
+                button.style.fontSize = '12px';
+                button.style.cursor = 'pointer';
+                button.style.margin = '0';
+                button.style.lineHeight = '1';
+                
+                // Додаємо обробник кліку для зміни швидкості
+                button.onclick = () => {
+                    setPlaybackRate(speed);
+                };
+                
+                speedButtons.appendChild(button);
+            });
+            
+            // Додаємо рядки до контейнера
+            contentContainer.appendChild(topRow);
+            contentContainer.appendChild(speedButtons);
+            
+            // Додаємо контейнер до індикатора
+            indicator.appendChild(contentContainer);
             break;
         case 'off':
             indicator.style.backgroundColor = '#9aa0a6'; // Сірий
@@ -725,6 +777,33 @@ async function fetchGeminiVoiceAudio(text, voice, instructions) {
 }
 
 /**
+ * Встановлює швидкість відтворення аудіо
+ * @param {number} rate - Швидкість відтворення (від 0.5 до 3.0)
+ */
+function setPlaybackRate(rate) {
+    // Обмеження швидкості в допустимому діапазоні
+    const normalizedRate = Math.max(0.5, Math.min(3.0, rate));
+    
+    console.log(`Зміна швидкості відтворення на ${normalizedRate}x`);
+    
+    // Зберігаємо нову швидкість в контексті
+    voiceContext.playbackRate = normalizedRate;
+    
+    // Застосовуємо швидкість до поточного аудіо, якщо воно відтворюється
+    if (currentlyPlaying) {
+        currentlyPlaying.playbackRate = normalizedRate;
+    }
+    
+    // Оновлюємо індикатор відтворення
+    if (document.getElementById('tts-status-indicator')) {
+        showTTSIndicator('playing');
+    }
+    
+    // Зберігаємо налаштування
+    saveVoiceSettings();
+}
+
+/**
  * Відтворює аудіо
  * @param {Blob} audioBlob - Blob з аудіо
  * @returns {Promise<void>}
@@ -745,6 +824,7 @@ function playAudio(audioBlob) {
             // Створюємо аудіо елемент
             const audioElement = new Audio(audioUrl);
             audioElement.volume = voiceContext.volume;
+            audioElement.playbackRate = voiceContext.playbackRate; // Застосовуємо швидкість відтворення
             
             // Зберігаємо посилання на поточний аудіо елемент
             currentlyPlaying = audioElement;
@@ -812,6 +892,7 @@ function playAudioViaDom(audioBlob) {
             audioElement.style.display = 'none';
             audioElement.src = audioUrl;
             audioElement.volume = voiceContext.volume;
+            audioElement.playbackRate = voiceContext.playbackRate; // Застосовуємо швидкість відтворення
             document.body.appendChild(audioElement);
             
             // Зберігаємо посилання на поточний аудіо елемент
@@ -894,6 +975,7 @@ function playAudioViaURL(audioBlob) {
             audioElement.controls = true; // Додаємо елементи керування
             audioElement.src = audioUrl;
             audioElement.volume = voiceContext.volume;
+            audioElement.playbackRate = voiceContext.playbackRate; // Застосовуємо швидкість відтворення
             
             // Додаємо елемент до DOM
             document.body.appendChild(audioElement);
@@ -1029,6 +1111,7 @@ function stopVoice() {
  * @param {boolean} settings.isEnabled - Чи увімкнено озвучування
  * @param {string} settings.voice - Голос для озвучування (Gemini)
  * @param {number} settings.volume - Гучність (0-1)
+ * @param {number} settings.playbackRate - Швидкість відтворення (0.5-3)
  * @param {string} settings.service - Сервіс для озвучування ('gemini' або 'elevenlabs')
  * @param {string} settings.elevenLabsApiKey - API ключ для ElevenLabs
  * @param {string} settings.elevenLabsVoice - ID голосу для ElevenLabs
@@ -1069,6 +1152,11 @@ function setVoiceSettings(settings) {
     if (typeof settings.volume === 'number' && !isNaN(settings.volume)) {
         // Обмежуємо значення від 0 до 1
         voiceContext.volume = Math.max(0, Math.min(1, settings.volume));
+    }
+    
+    if (typeof settings.playbackRate === 'number' && !isNaN(settings.playbackRate)) {
+        // Обмежуємо значення від 0.5 до 3
+        voiceContext.playbackRate = Math.max(0.5, Math.min(3, settings.playbackRate));
     }
     
     // Зберігаємо налаштування
