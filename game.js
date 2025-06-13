@@ -326,6 +326,8 @@ const localization = {
         zoomer: "Zoomer",
         zoomerDesc: "Modern adventurer with meme powers",
         zoomerStats: "HP: 70, Mana: 120, Memes: Infinite",
+        lastScene: "Last Scene",
+        lastAIResponse: "Last AI Response"
     },
     uk: {
         // Інтерфейс
@@ -605,6 +607,8 @@ const localization = {
         zoomer: "Зумер",
         zoomerDesc: "Сучасний шукач пригод з силою мемів",
         zoomerStats: "HP: 70, Mana: 120, Меми: Нескінченні",
+        lastScene: "Остання сцена",
+        lastAIResponse: "Остання відповідь ШІ"
     },
     ru: {
         // Интерфейс
@@ -883,6 +887,8 @@ const localization = {
         zoomer: "Зумер",
         zoomerDesc: "Современный искатель приключений с силой мемов",
         zoomerStats: "HP: 70, Mana: 120, Мемы: Бесконечные",
+        lastScene: "Last Scene",
+        lastAIResponse: "Last AI Response"
     }
 };
 
@@ -1519,6 +1525,15 @@ function updateLanguage(lang) {
     updateClassInfo("karen", "👩‍💼", "karen", "karenDesc", "karenStats");
     updateClassInfo("boomer", "👴", "boomer", "boomerDesc", "boomerStats");
     updateClassInfo("zoomer", "👶", "zoomer", "zoomerDesc", "zoomerStats");
+    
+    // Додаємо нові локалізації
+    localization.en.lastScene = "Last Scene";
+    localization.uk.lastScene = "Остання сцена";
+    localization.ru.lastScene = "Последняя сцена";
+    
+    localization.en.lastAIResponse = "Final";
+    localization.uk.lastAIResponse = "Фінал";
+    localization.ru.lastAIResponse = "Финал";
     
     // Кнопка початку гри
     const startButton = document.querySelector('#setupScreen button');
@@ -4404,7 +4419,9 @@ function showGameOverPopup(isDead = false) {
         padding: 25px;
         z-index: 1000;
         min-width: 300px;
-        max-width: 500px;
+        max-width: 80%;
+        max-height: 85%;
+        overflow-y: auto;
         box-shadow: 0 0 25px rgba(${isDead ? '255, 107, 107' : '78, 205, 196'}, 0.5);
         backdrop-filter: blur(10px);
         text-align: center;
@@ -4423,15 +4440,43 @@ function showGameOverPopup(isDead = false) {
         desc = getText('deathMessage');
     }
     
+    // Get the last AI response from the game history
+    let lastResponse = '';
+    if (gameState.gameHistory.length > 0) {
+        const lastHistoryEntry = gameState.gameHistory[gameState.gameHistory.length - 1];
+        if (lastHistoryEntry && lastHistoryEntry.scene && lastHistoryEntry.scene.text) {
+            lastResponse = lastHistoryEntry.scene.text;
+        }
+    }
+    
     // Populate popup
     popup.innerHTML = `
         <h2 style="text-align: center; color: ${isDead ? '#ff6b6b' : '#4ecdc4'}; margin-bottom: 15px;">${icon} ${title} ${icon}</h2>
         <p style="text-align: center; margin-bottom: 10px; font-size: 1.2em;">${desc}</p>
+        
         <div style="margin: 20px 0; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 10px;">
             <p style="margin-bottom: 5px;"><strong>${gameState.character.name}</strong> (${getCharacterClassName(gameState.character.class)})</p>
             <p>Level ${gameState.character.level} • XP: ${gameState.character.experience}</p>
             <p>Survived through ${gameState.gameHistory.length} turns</p>
         </div>
+        
+        ${window.lastGeneratedImage ? `
+            <div style="margin: 20px 0;">
+                <h3 style="margin-bottom: 10px; color: ${isDead ? '#ff6b6b' : '#4ecdc4'};">${getText('lastScene')}</h3>
+                <img src="${window.lastGeneratedImage}" 
+                     style="max-width: 100%; max-height: 300px; border-radius: 10px; margin-bottom: 15px; cursor: pointer;"
+                     onclick="if(window.imageGenerator) window.imageGenerator.showFullScreenImage(this.src)" 
+                     alt="Остання сцена">
+            </div>
+        ` : ''}
+        
+        ${lastResponse ? `
+            <div style="margin: 20px 0; text-align: left; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 10px; border-left: 3px solid ${isDead ? '#ff6b6b' : '#4ecdc4'};">
+                <h3 style="margin-bottom: 10px; color: ${isDead ? '#ff6b6b' : '#4ecdc4'}; text-align: center;">${getText('lastAIResponse')}</h3>
+                <p style="white-space: pre-line;">${lastResponse}</p>
+            </div>
+        ` : ''}
+        
         <button id="restartButton" class="action-btn" style="margin-top: 15px; padding: 12px 25px;">${getText('restartGame')}</button>
     `;
     

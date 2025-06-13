@@ -13,6 +13,9 @@ let lastImagePrompt = null; // Зберігаємо останній промп�
 let lastSafeImagePrompt = null; // Зберігаємо безпечний промпт
 let isUsingSafePrompt = false; // Прапорець використання безпечного промпту
 
+// Експортуємо змінну в глобальний об'єкт window для доступу з інших модулів
+window.lastGeneratedImage = null;
+
 /**
  * Генерує зображення за допомогою Gemini API
  * @param {string} prompt - Опис зображення англійською мовою
@@ -71,6 +74,7 @@ async function generateImage(prompt, apiKey, safePrompt = null) {
         
         if (imageContent) {
             lastGeneratedImage = imageContent;
+            window.lastGeneratedImage = imageContent; // Зберігаємо в глобальний об'єкт window
             imageResponseReady = true;
             checkAndDisplayContent(imageContent);
             return imageContent;
@@ -415,6 +419,11 @@ function displayGeneratedImage(imageContent) {
  * @param {string} imageUrl - URL або Base64 зображення
  */
 function showFullScreenImage(imageUrl) {
+    // Додаємо перевірку, щоб уникнути помилок з шаблонними рядками
+    if (imageUrl && imageUrl.indexOf('${') !== -1) {
+        console.error('Отримано неправильне значення URL зображення:', imageUrl);
+        return;
+    }
     // Створюємо модальне вікно
     const modal = document.createElement('div');
     modal.style.cssText = `
@@ -590,5 +599,6 @@ window.imageGenerator = {
     generateImage,
     displayGeneratedImage,
     lastGeneratedImage,
-    setTextResponseReady
+    setTextResponseReady,
+    showFullScreenImage
 }; 
