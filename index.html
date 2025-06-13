@@ -342,6 +342,10 @@
             <h3>🔑 Налаштування API</h3>
             <p>Введіть ваш Gemini API ключ для початку гри:</p>
             <input type="password" id="apiKey" class="api-input" placeholder="API ключ Gemini">
+            <div class="voice-option">
+                <input type="checkbox" id="shortResponsesEnabled">
+                <label for="shortResponsesEnabled" id="shortResponsesEnabledLabel">Короткі відповіді</label>
+            </div>
             
             <div class="voice-settings">
                 <h4 style="margin-top: 0;">🎤 <span id="voiceSettingsTitle">Налаштування озвучування</span></h4>
@@ -350,6 +354,7 @@
                     <input type="checkbox" id="voiceEnabled" checked>
                     <label for="voiceEnabled" id="voiceEnabledLabel">Увімкнути озвучування</label>
                 </div>
+                
                 
                 <div style="margin-top: 15px;">
                     <label for="voiceService" id="voiceServiceLabel">Виберіть сервіс озвучування:</label>

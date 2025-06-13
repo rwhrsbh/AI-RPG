@@ -12,11 +12,17 @@ let gameState = {
         level: 1,
         perks: ['Базові навички']
     },
-    currentScene: null,
+    currentScene: {
+        text: '',
+        options: []
+    },
     isLoading: false,
     gameHistory: [], // Для збереження контексту
     conversationHistory: [], // Для API контексту
-    availablePerks: [] // Доступні перки для вибору
+    availablePerks: [], // Доступні перки для вибору
+    interactionCount: 0, // Лічильник взаємодій для створення підсумків
+    summarizedHistory: [], // Масив для зберігання підсумків історії
+    shortResponses: false // Прапорець для режиму коротких відповідей
 };
 window.gameState = gameState;
 
@@ -110,6 +116,7 @@ const localization = {
         elevenLabsApiKey: "ElevenLabs API key:",
         elevenLabsApiKeyPlaceholder: "Enter your ElevenLabs API key",
         elevenLabsApiNote: "To use ElevenLabs, enter your API key.",
+        shortResponses: "Short responses",
         
         // Попапи
         levelUp: "Level Up!",
@@ -303,6 +310,8 @@ const localization = {
         gameOverDesc: "Your adventure has ended.",
         restartGame: "Start New Adventure",
         deathMessage: "You have died!",
+        adventureSummary: "Adventure Summary",
+        processingActionWithSummary: "Processing your action and generating a summary...",
         programmer: "Programmer",
         programmerDesc: "Master of code with infinite mana but low health",
         programmerStats: "HP: 60, Mana: 200, Debug: High",
@@ -348,6 +357,7 @@ const localization = {
         elevenLabsApiKey: "API ключ ElevenLabs:",
         elevenLabsApiKeyPlaceholder: "Введіть ваш API ключ ElevenLabs",
         elevenLabsApiNote: "Для використання ElevenLabs введіть ваш API ключ.",
+        shortResponses: "Короткі відповіді",
         
         warriorStats: "HP: 120, Mana: 30, Сила: Висока",
         mage: "Маг",
@@ -407,6 +417,8 @@ const localization = {
         gameLoaded: "Гру завантажено успішно!",
         loadError: "Помилка при завантаженні гри. Перевірте консоль для деталей.",
         apiError: "Помилка зʼєднання з API. Перевірте ключ та спробуйте ще раз.",
+        adventureSummary: "Підсумок пригоди",
+        processingActionWithSummary: "Обробка вашої дії та створення підсумку...",
         
         // API промпти
         initialScenePrompt: `Ти - майстер гри у D&D. Створи початкову сцену для персонажа {name} класу {class}. 
@@ -621,6 +633,7 @@ const localization = {
         elevenLabsApiKey: "API ключ ElevenLabs:",
         elevenLabsApiKeyPlaceholder: "Введите ваш API ключ ElevenLabs",
         elevenLabsApiNote: "Для использования ElevenLabs введите ваш API ключ.",
+        shortResponses: "Короткие ответы",
         
         characterNamePlaceholder: "Имя персонажа",
         warrior: "Воин",
@@ -1076,13 +1089,15 @@ function showSaveSelectionModal(saves) {
 function loadSpecificSave(saveData) {
     try {
         const loadedData = JSON.parse(saveData);
-        // Зберігаємо поточний API ключ
+        // Зберігаємо поточні налаштування
         const currentApiKey = gameState.apiKey;
+        const shortResponses = gameState.shortResponses;
         
         // Відновлюємо gameState
         gameState = {
             ...loadedData,
-            apiKey: currentApiKey
+            apiKey: currentApiKey,
+            shortResponses: shortResponses
         };
         
         // Оновлюємо мову інтерфейсу
@@ -1274,6 +1289,9 @@ function saveApiKey() {
             const voiceEnabled = document.getElementById('voiceEnabled').checked;
             const voiceService = document.getElementById('voiceService').value;
             const elevenLabsApiKey = document.getElementById('elevenLabsApiKey').value.trim();
+            
+            // Зберігаємо налаштування коротких відповідей
+            gameState.shortResponses = document.getElementById('shortResponsesEnabled').checked;
             
             // Вибираємо голос залежно від сервісу
             let voiceSettings = {
@@ -1939,6 +1957,16 @@ async function callGeminiAPI(prompt, isInitial = false) {
     // Зберігаємо останній промпт для можливого повторного виклику
     lastPrompt = prompt;
     
+    // Збільшуємо лічильник взаємодій для підсумків
+    if (!isInitial) {
+        gameState.interactionCount++;
+    }
+    
+    // Перевіряємо, чи потрібно додати інструкції для коротких відповідей
+    if (gameState.shortResponses) {
+        prompt += "\n\nIMPORTANT: Please provide a concise and brief response. Aim for maximum brevity while still conveying all necessary information. Keep descriptions minimal but impactful.";
+    }
+    
     // Add special instructions for loser class
     if (gameState.character.class === 'loser') {
         // Add harsh treatment instruction for the loser class
@@ -2288,8 +2316,33 @@ function updateGameState(gameData) {
             );
         }
         
-        // Передаємо текстову відповідь до модуля зображень
-        window.imageGenerator.setTextResponseReady(gameData.text);
+        // Перевіряємо, чи потрібно генерувати підсумок (кожні 5 взаємодій)
+        const needSummary = gameState.interactionCount > 0 && gameState.interactionCount % 5 === 0;
+        
+        if (needSummary) {
+            // Генеруємо підсумок (інкрементальний, якщо вже є попередні підсумки)
+            const isIncremental = gameState.summarizedHistory.length > 0;
+            generateHistorySummary(isIncremental).then(summaryText => {
+                if (summaryText) {
+                                         // Створюємо текст з підсумком і передаємо його модулю зображень
+                     const fullText = `
+                         <div style="background: rgba(78, 205, 196, 0.1); border: 1px solid #4ecdc4; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                             <h3 style="color: #4ecdc4; margin-top: 0;">📜 ${getText('adventureSummary')}</h3>
+                             ${summaryText}
+                         </div>
+                        <hr style="border: none; border-top: 1px dashed rgba(255, 255, 255, 0.2); margin: 20px 0;">
+                        <p>${gameData.text}</p>
+                    `;
+                    window.imageGenerator.setTextResponseReady(fullText);
+                } else {
+                    // Якщо підсумок не вдалося згенерувати, передаємо тільки текст сцени
+                    window.imageGenerator.setTextResponseReady(gameData.text);
+                }
+            });
+        } else {
+            // Передаємо звичайну текстову відповідь до модуля зображень
+            window.imageGenerator.setTextResponseReady(gameData.text);
+        }
         
         // Додаємо озвучування після генерації зображення і тексту
         if (window.voiceGenerator && gameData.text) {
@@ -2327,8 +2380,40 @@ function updateGameState(gameData) {
             });
         }
     } else {
+        // Перевіряємо, чи потрібно генерувати підсумок (кожні 5 взаємодій)
+        const needSummary = gameState.interactionCount > 0 && gameState.interactionCount % 5 === 0;
+        
         // Якщо не потрібно генерувати зображення, просто оновлюємо текст
-        document.getElementById('storyText').innerHTML = `<p>${gameData.text}</p>`;
+        if (needSummary) {
+            // Показуємо індикатор завантаження для підсумку
+            document.getElementById('storyText').innerHTML = `<div class="loading">${getText('processingActionWithSummary')}</div>`;
+            document.getElementById('customActionBtn').disabled = true;
+            
+            // Генеруємо підсумок (інкрементальний, якщо вже є попередні підсумки)
+            const isIncremental = gameState.summarizedHistory.length > 0;
+            generateHistorySummary(isIncremental).then(summaryText => {
+                if (summaryText) {
+                    // Показуємо підсумок разом із текстом сцени
+                    document.getElementById('storyText').innerHTML = `
+                        <div style="background: rgba(78, 205, 196, 0.1); border: 1px solid #4ecdc4; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                            <h3 style="color: #4ecdc4; margin-top: 0;">📜 ${getText('adventureSummary')}</h3>
+                            ${summaryText}
+                        </div>
+                        <hr style="border: none; border-top: 1px dashed rgba(255, 255, 255, 0.2); margin: 20px 0;">
+                        <p>${gameData.text}</p>
+                    `;
+                } else {
+                    // Якщо підсумок не вдалося згенерувати, показуємо лише текст сцени
+                    document.getElementById('storyText').innerHTML = `<p>${gameData.text}</p>`;
+                }
+                
+                document.getElementById('customActionBtn').disabled = false;
+                gameState.isLoading = false;
+            });
+        } else {
+            // Звичайний випадок без підсумку
+            document.getElementById('storyText').innerHTML = `<p>${gameData.text}</p>`;
+        }
         
         // Додаємо озвучування одразу, без очікування зображення
         if (window.voiceGenerator && gameData.text) {
@@ -2395,68 +2480,45 @@ function updateGameState(gameData) {
             return; // Stop further processing
         }
         
-        // Level up check
-        const newLevel = Math.floor(gameState.character.experience / 100) + 1;
-        if (newLevel > gameState.character.level) {
-            // Оновлено: AI тепер визначає підвищення характеристик при підвищенні рівня
-            if (cons.level_up) {
-                // Застосовуємо підвищення рівня з даних від AI
-                gameState.character.level = newLevel;
-                
-                // Якщо AI надіслала нові значення maxHealth та maxMana, застосовуємо їх
-                if (cons.level_up.maxHealth !== undefined) {
-                    gameState.character.maxHealth = cons.level_up.maxHealth;
-                }
-                
-                if (cons.level_up.maxMana !== undefined) {
-                    gameState.character.maxMana = cons.level_up.maxMana;
-                }
-                
-                // Якщо AI надіслала збільшення maxHealth та maxMana, застосовуємо їх
-                if (cons.level_up.healthGain !== undefined) {
-                    gameState.character.maxHealth += cons.level_up.healthGain;
-                }
-                
-                if (cons.level_up.manaGain !== undefined) {
-                    gameState.character.maxMana += cons.level_up.manaGain;
-                }
-                
-                // Заповнюємо здоров'я та ману
-                gameState.character.health = gameState.character.maxHealth;
-                gameState.character.mana = gameState.character.maxMana;
-                
-                // Показуємо попап про підвищення рівня з даними від AI
-                const levelGains = {
-                    health: cons.level_up.healthGain || 0,
-                    mana: cons.level_up.manaGain || 0
-                };
-                
-                showLevelUpPopup(newLevel, levelGains);
+        // Обробка підвищення рівня через AI
+        if (cons.level_up) {
+            // Застосовуємо підвищення рівня з даних від AI
+            if (cons.level_up.newLevel) {
+                gameState.character.level = cons.level_up.newLevel;
             } else {
-                // Фоллбек на випадок, якщо AI не надала даних про підвищення рівня
-                const levelGains = {
-                    health: 10,
-                    mana: 5
-                };
-                
-                // Додаткові бонуси в залежності від класу
-                if (gameState.character.class === 'warrior') levelGains.health += 5;
-                if (gameState.character.class === 'mage') levelGains.mana += 10;
-                if (gameState.character.class === 'cleric') {
-                    levelGains.health += 3;
-                    levelGains.mana += 5;
-                }
-                
-                // Застосовуємо підвищення рівня
-                gameState.character.level = newLevel;
-                gameState.character.maxHealth += levelGains.health;
-                gameState.character.maxMana += levelGains.mana;
-                gameState.character.health = gameState.character.maxHealth;
-                gameState.character.mana = gameState.character.maxMana;
-                
-                // Показуємо попап про підвищення рівня
-                showLevelUpPopup(newLevel, levelGains);
+                // Якщо не вказано явний рівень, збільшуємо на 1
+                gameState.character.level += 1;
             }
+            
+            // Якщо AI надіслала нові значення maxHealth та maxMana, застосовуємо їх
+            if (cons.level_up.maxHealth !== undefined) {
+                gameState.character.maxHealth = cons.level_up.maxHealth;
+            }
+            
+            if (cons.level_up.maxMana !== undefined) {
+                gameState.character.maxMana = cons.level_up.maxMana;
+            }
+            
+            // Якщо AI надіслала збільшення maxHealth та maxMana, застосовуємо їх
+            if (cons.level_up.healthGain !== undefined) {
+                gameState.character.maxHealth += cons.level_up.healthGain;
+            }
+            
+            if (cons.level_up.manaGain !== undefined) {
+                gameState.character.maxMana += cons.level_up.manaGain;
+            }
+            
+            // Заповнюємо здоров'я та ману
+            gameState.character.health = gameState.character.maxHealth;
+            gameState.character.mana = gameState.character.maxMana;
+            
+            // Показуємо попап про підвищення рівня з даними від AI
+            const levelGains = {
+                health: cons.level_up.healthGain || 0,
+                mana: cons.level_up.manaGain || 0
+            };
+            
+            showLevelUpPopup(gameState.character.level, levelGains);
         }
         
         // Оновлено: Тепер перки управляються повністю через AI
@@ -2705,20 +2767,35 @@ function performAction(action) {
         perks: gameState.character.perks.map(perk => translatePerk(perk)).join(', ')
     };
     
-    // Перевіряємо, чи має відбутися підвищення рівня
-    const newLevel = Math.floor(gameState.character.experience / 100) + 1;
-    const willLevelUp = newLevel > gameState.character.level;
+    // Додаємо інструкції для AI щодо управління рівнем та перками в залежності від мови
+    let levelUpInstructionsText = '';
     
-    // Додаємо інструкції для AI щодо управління рівнем та перками
-    let levelUpInstructions = '';
-    if (willLevelUp) {
-        levelUpInstructions = `
-Персонаж досягне нового рівня ${newLevel}! Будь ласка, врахуй це у своїй відповіді, та:
-1. Визнач нові значення для maxHealth та maxMana, або значення збільшення (healthGain, manaGain).
-2. Запропонуй 5 унікальних перків на вибір гравцю, які відповідають класу та стилю гри.
-3. У своїй JSON-відповіді, додай поле "level_up" з цими даними, та поле "available_perks" з масивом перків.
-
-Приклад JSON структури:
+    // Вибираємо інструкції відповідно до поточної мови
+    if (gameState.language === 'en') {
+        levelUpInstructionsText = `IMPORTANT ABOUT LEVELING UP:
+1. The neural network fully controls the character's level progression.
+2. When you decide to level up a character, include the "level_up" field in "consequences".
+3. Suggest 5 unique perks for the player to choose from via the "available_perks" field.
+4. Levels and experience are fully controlled by you, not by the game code.`;
+    } else if (gameState.language === 'ru') {
+        levelUpInstructionsText = `ВАЖНО О ПОВЫШЕНИИ УРОВНЯ:
+1. Нейросеть полностью контролирует повышение уровня персонажа.
+2. Когда ты решаешь повысить уровень персонажа, включи поле "level_up" в "consequences".
+3. Предложи 5 уникальных перков на выбор игроку через поле "available_perks".
+4. Уровни и опыт полностью контролируются тобой, а не кодом игры.`;
+    } else {
+        levelUpInstructionsText = `ВАЖЛИВО ПРО ПІДВИЩЕННЯ РІВНЯ:
+1. Нейромережа повністю контролює підвищення рівня персонажа.
+2. Коли ти вирішуєш підвищити рівень персонажа, включи поле "level_up" в "consequences".
+3. Запропонуй 5 унікальних перків на вибір гравцю через поле "available_perks".
+4. Рівні та досвід повністю контролюються тобою, а не кодом гри.`;
+    }
+    
+    // Вибираємо приклад JSON-структури відповідно до мови
+    let jsonExample = '';
+    
+    if (gameState.language === 'en') {
+        jsonExample = `Example JSON structure for leveling up:
 {
   "text": "...",
   "options": [...],
@@ -2727,10 +2804,61 @@ function performAction(action) {
     "mana": 0,
     "experience": 10,
     "level_up": {
-      "healthGain": 15,
-      "manaGain": 10,
-      "maxHealth": 120, // Опціонально - абсолютне значення
-      "maxMana": 100    // Опціонально - абсолютне значення
+      "newLevel": 2,  // New character level (required)
+      "healthGain": 15,  // How much to add to maximum health
+      "manaGain": 10,  // How much to add to maximum mana
+      "maxHealth": 120,  // Or specify absolute new value (optional)
+      "maxMana": 100  // Or specify absolute new value (optional)
+    },
+    "available_perks": [
+      "Endurance: +20 to maximum health",
+      "Wisdom: +15 to maximum mana",
+      "Speed: Chance to dodge attacks",
+      "Regeneration: Restores 1 health each turn",
+      "Might: Increases physical attack damage"
+    ]
+  }
+}`;
+    } else if (gameState.language === 'ru') {
+        jsonExample = `Пример JSON структуры для повышения уровня:
+{
+  "text": "...",
+  "options": [...],
+  "consequences": {
+    "health": 0,
+    "mana": 0,
+    "experience": 10,
+    "level_up": {
+      "newLevel": 2,  // Новый уровень персонажа (обязательно)
+      "healthGain": 15,  // Сколько добавить к максимальному здоровью
+      "manaGain": 10,  // Сколько добавить к максимальной мане
+      "maxHealth": 120,  // Или указать абсолютное новое значение (опционально)
+      "maxMana": 100  // Или указать абсолютное новое значение (опционально)
+    },
+    "available_perks": [
+      "Выносливость: +20 к максимальному здоровью",
+      "Мудрость: +15 к максимальной мане",
+      "Скорость: Шанс уклониться от атаки",
+      "Регенерация: Восстанавливает 1 здоровья каждый ход",
+      "Мощь: Увеличивает урон от физических атак"
+    ]
+  }
+}`;
+    } else {
+        jsonExample = `Приклад JSON структури для підвищення рівня:
+{
+  "text": "...",
+  "options": [...],
+  "consequences": {
+    "health": 0,
+    "mana": 0,
+    "experience": 10,
+    "level_up": {
+      "newLevel": 2,  // Новий рівень персонажа (обов'язково)
+      "healthGain": 15,  // Скільки додати до максимального здоров'я
+      "manaGain": 10,  // Скільки додати до максимальної мани
+      "maxHealth": 120,  // Або вказати абсолютне нове значення (опціонально)
+      "maxMana": 100  // Або вказати абсолютне нове значення (опціонально)
     },
     "available_perks": [
       "Витривалість: +20 до максимального здоров'я",
@@ -2742,6 +2870,12 @@ function performAction(action) {
   }
 }`;
     }
+    
+    const levelUpInstructions = `
+
+${levelUpInstructionsText}
+
+${jsonExample}`;
     
     // Формуємо шаблон промпту та замінюємо всі змінні
     const prompt = getText('actionPrompt')
@@ -3577,6 +3711,10 @@ function initVoiceSettingsUI() {
         document.getElementById('voiceEnabledLabel').textContent = getText('voiceEnabled');
     }
     
+    if (document.getElementById('shortResponsesEnabledLabel')) {
+        document.getElementById('shortResponsesEnabledLabel').textContent = getText('shortResponses');
+    }
+    
     if (document.getElementById('voiceServiceLabel')) {
         document.getElementById('voiceServiceLabel').textContent = getText('voiceService');
     }
@@ -3617,9 +3755,14 @@ function initVoiceSettingsUI() {
     if (window.voiceGenerator) {
         const settings = window.voiceGenerator.getVoiceSettings();
         
-        // Встановлюємо значення для чекбоксу
+        // Встановлюємо значення для чекбоксу озвучування
         if (document.getElementById('voiceEnabled')) {
             document.getElementById('voiceEnabled').checked = settings.isEnabled;
+        }
+        
+        // Встановлюємо значення для чекбоксу коротких відповідей
+        if (document.getElementById('shortResponsesEnabled')) {
+            document.getElementById('shortResponsesEnabled').checked = gameState.shortResponses;
         }
         
         // Встановлюємо значення для вибору сервісу
@@ -3892,6 +4035,100 @@ function showGameOverPopup(isDead = false) {
         document.getElementById('gameArea').style.display = 'none';
         document.getElementById('setupScreen').style.display = 'block';
     });
+}
+
+/**
+ * Генерує підсумок історії гри на основі останніх взаємодій або попереднього підсумку
+ * @param {boolean} isIncremental - чи генерувати інкрементальний підсумок з використанням попереднього
+ * @returns {Promise<string>} - підсумок історії
+ */
+async function generateHistorySummary(isIncremental = false) {
+    if (gameState.isLoading) return null;
+    
+    // Зберігаємо поточний стан завантаження
+    const wasLoading = gameState.isLoading;
+    gameState.isLoading = true;
+    
+    try {
+        let prompt = '';
+        let previousSummary = '';
+        
+        if (isIncremental && gameState.summarizedHistory.length > 0) {
+            // Беремо останній підсумок як основу
+            previousSummary = gameState.summarizedHistory[gameState.summarizedHistory.length - 1];
+            
+            // Формуємо промпт для інкрементального підсумку
+            prompt = `Ось попередній підсумок історії гри:\n\n${previousSummary}\n\nОсь нові події, які сталися після цього підсумку:\n\n`;
+            
+            // Додаємо останні 5 взаємодій
+            const recentHistory = gameState.gameHistory.slice(-5);
+            for (const event of recentHistory) {
+                prompt += `- ${event.scene.text}\n`;
+                if (event.action) {
+                    prompt += `  Дія гравця: ${event.action}\n`;
+                }
+            }
+        } else {
+            // Формуємо промпт для повного підсумку
+            prompt = `Створи детальний підсумок цієї історії гри на основі наступних подій:\n\n`;
+            
+            // Додаємо всю історію або останні 5 подій
+            const historyToSummarize = gameState.gameHistory.slice(-5);
+            for (const event of historyToSummarize) {
+                prompt += `- ${event.scene.text}\n`;
+                if (event.action) {
+                    prompt += `  Дія гравця: ${event.action}\n`;
+                }
+            }
+        }
+        
+        // Додаємо інструкції для форматування підсумку
+        prompt += `\n\nСтвори детальний підсумок, який містить:
+1. Основні події, що сталися
+2. Важливі рішення та їх наслідки
+3. Поточний статус персонажа
+4. ОБОВ'ЯЗКОВО перелік усіх перків персонажа (${gameState.character.perks.join(', ')})
+5. Важливі зустрічі з персонажами
+6. Будь-які отримані предмети чи здобуті знання
+
+Важливо: підсумок має бути детальним, але лаконічним. Зроби підсумок цікавим для читання, ніби це уривок з книги.`;
+
+        // Викликаємо API для генерації підсумку
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${gameState.apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    maxOutputTokens: 1000,
+                }
+            })
+        });
+
+        const data = await response.json();
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            const summary = data.candidates[0].content.parts[0].text;
+            
+            // Зберігаємо підсумок у gameState
+            gameState.summarizedHistory.push(summary);
+            
+            gameState.isLoading = wasLoading;
+            return summary;
+        } else {
+            console.error('Помилка при генерації підсумку:', data);
+            gameState.isLoading = wasLoading;
+            return null;
+        }
+    } catch (error) {
+        console.error('Помилка при генерації підсумку:', error);
+        gameState.isLoading = wasLoading;
+        return null;
+    }
 }
 
 /**
