@@ -2695,20 +2695,7 @@ async function callGeminiAPI(prompt, isInitial = false) {
                     if (!gameData) {
                         console.log('🔄 СПРОБА 3: Очищаємо управляючі символи...');
                         // Очищаємо управляючі символи, які можуть викликати помилки
-                        let cleanedText = responseText
-                            .replace(/[\u0000-\u001f\u007f-\u009f]/g, function(match) {
-                                switch (match) {
-                                    case '\n': return '\\n';
-                                    case '\r': return '\\r';
-                                    case '\t': return '\\t';
-                                    case '\b': return '\\b';
-                                    case '\f': return '\\f';
-                                    case '\v': return '\\v';
-                                    case '\\': return '\\\\';
-                                    case '"': return '\\"';
-                                    default: return '';  // Видаляємо інші управляючі символи
-                                }
-                            });
+                        let cleanedText = JSON.stringify(JSON.parse(responseText.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')));
                         
                         console.log('🔍 Очищений текст (перші 200 символів):', cleanedText.substring(0, 200));
                         
@@ -2750,19 +2737,7 @@ async function callGeminiAPI(prompt, isInitial = false) {
                                     // Спробуємо очистити цей JSON від управляючих символів
                                     try {
                                         console.log(`🔄 Спробуємо очистити JSON ${i + 1} від управляючих символів...`);
-                                        const cleanedMatch = match.replace(/[\u0000-\u001f\u007f-\u009f]/g, function(char) {
-                                            switch (char) {
-                                                case '\n': return '\\n';
-                                                case '\r': return '\\r';
-                                                case '\t': return '\\t';
-                                                case '\b': return '\\b';
-                                                case '\f': return '\\f';
-                                                case '\v': return '\\v';
-                                                case '\\': return '\\\\';
-                                                case '"': return '\\"';
-                                                default: return '';
-                                            }
-                                        });
+                                        const cleanedMatch = JSON.stringify(JSON.parse(match.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')));
                                         const cleanedData = JSON.parse(cleanedMatch);
                                         if (cleanedData.text && cleanedData.options && cleanedData.consequences) {
                                             gameData = cleanedData;
