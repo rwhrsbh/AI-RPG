@@ -2588,24 +2588,43 @@ async function callGeminiAPI(prompt, isInitial = false) {
             isRetrying = false;
             
             try {
+                console.log('🔍 ПОЧАТОК ПАРСИНГУ - Оригінальна відповідь (перші 500 символів):', responseText.substring(0, 500));
+                console.log('🔍 Довжина оригінальної відповіді:', responseText.length);
+                
                 // Розширена очистка відповіді від markdown та JSON обгорток
                 // Видаляємо markdown-блоки початку та кінця JSON
                 responseText = responseText.replace(/```(?:json)?\s*\n?/g, '').trim();
+                console.log('🔍 ПІСЛЯ ОЧИСТКИ MARKDOWN - Перші 500 символів:', responseText.substring(0, 500));
                 
                 // Перевіряємо, чи не повернуто вкладений JSON у вигляді рядка
-                if (responseText.includes('"text": "```json') || responseText.includes('"text":"```json')) {
+                const hasNestedJson = responseText.includes('"text": "```json') || responseText.includes('"text":"```json');
+                console.log('🔍 ПЕРЕВІРКА ВКЛАДЕНОГО JSON:', hasNestedJson);
+                
+                if (hasNestedJson) {
+                    console.log('🔍 ЗНАЙДЕНО ВКЛАДЕНИЙ JSON - починаємо обробку');
                     try {
                         // Спочатку парсимо верхній рівень
                         const outerObj = JSON.parse(responseText);
+                        console.log('🔍 УСПІШНО РОЗПАРСИЛИ ЗОВНІШНІЙ РІВЕНЬ, ключі:', Object.keys(outerObj));
+                        
                         // Якщо text містить JSON-рядок, витягуємо і парсимо його
                         if (outerObj.text && outerObj.text.includes('```json')) {
+                            console.log('🔍 ЗНАЙДЕНО ```json В ПОЛІ TEXT, починаємо витягування');
+                            console.log('🔍 Оригінальний text (перші 200 символів):', outerObj.text.substring(0, 200));
+                            
                             let innerJson = outerObj.text.replace(/```(?:json)?\s*\n?/g, '').replace(/```\s*$/g, '').trim();
+                            console.log('🔍 ПІСЛЯ ОЧИСТКИ innerJson (перші 200 символів):', innerJson.substring(0, 200));
+                            
                             const innerObj = JSON.parse(innerJson);
+                            console.log('🔍 УСПІШНО РОЗПАРСИЛИ ВНУТРІШНІЙ JSON, ключі:', Object.keys(innerObj));
                             // Використовуємо внутрішній об'єкт як результат
                             responseText = innerJson;
+                            console.log('🔍 ЗАМІНИЛИ responseText на innerJson');
                         }
                     } catch (nestedError) {
-                        console.error('Помилка при обробці вкладеного JSON:', nestedError);
+                        console.error('❌ ПОМИЛКА ПРИ ОБРОБЦІ ВКЛАДЕНОГО JSON:', nestedError);
+                        console.error('❌ Деталі помилки:', nestedError.message);
+                        console.error('❌ Стек помилки:', nestedError.stack);
                     }
                 }
                 
@@ -2635,15 +2654,19 @@ async function callGeminiAPI(prompt, isInitial = false) {
                 }
                 
                 // Логуємо отриману відповідь для налагодження
-                console.log('Отримана відповідь від API:', responseText.substring(0, 200) + '...');
+                console.log('🔍 ОСТАТОЧНА ВІДПОВІДЬ для парсингу (перші 200 символів):', responseText.substring(0, 200) + '...');
+                console.log('🔍 ОСТАТОЧНА ВІДПОВІДЬ довжина:', responseText.length);
+                console.log('🔍 ОСТАТОЧНА ВІДПОВІДЬ перший символ:', responseText.charAt(0));
+                console.log('🔍 ОСТАТОЧНА ВІДПОВІДЬ останній символ:', responseText.charAt(responseText.length - 1));
                 
                 // Спробуємо виправити можливі проблеми з відповіддю та витягти валідний JSON
                 let gameData = null;
                 
                 // Спроба 1: Парсинг як є
                 try {
+                    console.log('🔄 СПРОБА 1: Парсинг як є...');
                     gameData = JSON.parse(responseText);
-                    console.log('Парсинг успішний, дані мають структуру:', Object.keys(gameData).join(', '));
+                    console.log('✅ СПРОБА 1 УСПІШНА: дані мають структуру:', Object.keys(gameData).join(', '));
                     
                     // Перевіряємо наявність інструкцій для озвучування
                     if (gameData.instructions) {
@@ -2655,10 +2678,18 @@ async function callGeminiAPI(prompt, isInitial = false) {
                         console.log('Інструкції для озвучування не знайдені в даних');
                     }
                 } catch (error) {
-                    console.log('Не вдалося розпарсити відповідь як є, пробуємо виправлення...');
+                    console.log('❌ СПРОБА 1 НЕВДАЛА: Не вдалося розпарсити відповідь як є');
+                    console.log('❌ Помилка парсингу:', error.message);
+                    console.log('❌ Позиція помилки:', error.toString());
                     
                     // Спроба 2: Витягуємо JSON з тексту
+                    console.log('🔄 СПРОБА 2: Витягуємо JSON з тексту...');
                     gameData = extractJsonFromText(responseText);
+                    if (gameData) {
+                        console.log('✅ СПРОБА 2 УСПІШНА: витягнуто JSON, ключі:', Object.keys(gameData).join(', '));
+                    } else {
+                        console.log('❌ СПРОБА 2 НЕВДАЛА: не вдалося витягти JSON');
+                    }
                     
                     // Спроба 3: Шукаємо JSON в тексті, який може бути розбитий або містити зайві символи
                     if (!gameData) {
@@ -2996,7 +3027,7 @@ function updateGameState(gameData) {
         gameState.character.experience += cons.experience;
         
         // Check for game over
-        if (cons.gameover || gameState.character.health <= 0) {
+        if (cons.gameover) {
             // Ensure health is 0 if player is dead
             if (gameState.character.health <= 0) {
                 gameState.character.health = 0;
