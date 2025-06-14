@@ -2593,13 +2593,13 @@ async function callGeminiAPI(prompt, isInitial = false) {
                 responseText = responseText.replace(/```(?:json)?\s*\n?/g, '').trim();
                 
                 // Перевіряємо, чи не повернуто вкладений JSON у вигляді рядка
-                if (responseText.includes('"text": "```json')) {
+                if (responseText.includes('"text": "```json') || responseText.includes('"text":"```json')) {
                     try {
                         // Спочатку парсимо верхній рівень
                         const outerObj = JSON.parse(responseText);
                         // Якщо text містить JSON-рядок, витягуємо і парсимо його
                         if (outerObj.text && outerObj.text.includes('```json')) {
-                            let innerJson = outerObj.text.replace(/```(?:json)?\s*\n?/g, '').trim();
+                            let innerJson = outerObj.text.replace(/```(?:json)?\s*\n?/g, '').replace(/```\s*$/g, '').trim();
                             const innerObj = JSON.parse(innerJson);
                             // Використовуємо внутрішній об'єкт як результат
                             responseText = innerJson;
@@ -2801,12 +2801,7 @@ function retryGeneration() {
 }
 
 function updateGameState(gameData) {
-    // Витягуємо тільки основні поля для gameState.currentScene
-    gameState.currentScene = {
-        text: gameData.text,
-        options: gameData.options,
-        consequences: gameData.consequences
-    };
+    gameState.currentScene = gameData;
     
     // Зберігаємо опис персонажа при першій генерації для консистентності
     if (gameData.character_appearance && !gameState.character.appearance) {
@@ -3001,7 +2996,7 @@ function updateGameState(gameData) {
         gameState.character.experience += cons.experience;
         
         // Check for game over
-        if (cons.gameover) {
+        if (cons.gameover || gameState.character.health <= 0) {
             // Ensure health is 0 if player is dead
             if (gameState.character.health <= 0) {
                 gameState.character.health = 0;
