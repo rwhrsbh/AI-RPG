@@ -1446,6 +1446,144 @@ function loadSpecificSave(saveData) {
 function getText(key) {
     return localization[gameState.language][key] || key;
 }
+// Додаємо локалізацію для мультиплеєра
+if (!localization.en.multiplayer) {
+    // Англійська
+    localization.en.multiplayer = "Multiplayer (BETA)";
+    localization.en.multiplayerBetaWarning = "WARNING: BETA VERSION";
+    localization.en.multiplayerBetaDesc = "Multiplayer is in beta testing. Balance and stability issues are possible.";
+    localization.en.createLobby = "Create Lobby";
+    localization.en.joinLobby = "Join Lobby";
+    localization.en.lobbyCode = "Your lobby code:";
+    localization.en.shareLobbyCode = "Share this code with friends";
+    localization.en.startGame = "Start Game";
+    localization.en.enterLobbyCode = "Enter lobby code:";
+    localization.en.lobbyCodePlaceholder = "Lobby code (6 characters)";
+    localization.en.connect = "Connect";
+    localization.en.playersInSession = "Players in session:";
+    localization.en.waitingForPlayers = "Waiting for players' actions...";
+    localization.en.leaveGame = "Leave Game";
+    localization.en.online = "Online";
+    localization.en.offline = "Offline";
+    localization.en.waiting = "Waiting";
+    localization.en.ready = "Ready";
+    localization.en.actionsReceived = "Actions received";
+    localization.en.processingActions = "Processing actions...";
+    localization.en.connectionLost = "Connection Lost";
+    localization.en.connectionLostDesc = "Lost connection to server. What would you like to do?";
+    localization.en.reconnect = "Reconnect";
+    localization.en.continueAlone = "Continue Alone";
+    localization.en.exitGame = "Exit Game";
+    localization.en.continueAloneMessage = "Continuing game in single player mode";
+    localization.en.multiplayerError = "Error";
+    localization.en.lobbyNotFound = "Lobby not found";
+    localization.en.lobbyFull = "Lobby is full";
+    localization.en.gameAlreadyStarted = "Game already started";
+    localization.en.onlyHostCanStart = "Only host can start the game";
+    localization.en.needMinPlayers = "Need at least 2 players to start";
+    localization.en.gameNotStarted = "Game not started";
+    localization.en.multiplayerActive = "Players:";
+    localization.en.confirmLeaveGame = "Are you sure you want to leave the game?";
+    localization.en.enterPlayerName = "Enter your name:";
+    localization.en.playerNamePlaceholder = "Your name";
+    localization.en.waitingForOthers = "Waiting for other players to create characters...";
+    localization.en.yourTurn = "Your turn";
+    localization.en.waitingForTurn = "Waiting for";
+    localization.en.allPlayersReady = "All players ready!";
+    localization.en.hostApiKeyRequired = "Host must provide Gemini API key";
+    localization.en.multiplayerNotLoaded = "Multiplayer module not loaded";
+    
+    // Українська
+    localization.uk.multiplayer = "Мультиплеєр (БЕТА)";
+    localization.uk.multiplayerBetaWarning = "УВАГА: БЕТА ВЕРСІЯ";
+    localization.uk.multiplayerBetaDesc = "Мультиплеєр знаходиться в стадії бета-тестування. Можливі проблеми з балансом та стабільністю.";
+    localization.uk.createLobby = "Створити лобі";
+    localization.uk.joinLobby = "Приєднатися до лобі";
+    localization.uk.lobbyCode = "Ваш код лобі:";
+    localization.uk.shareLobbyCode = "Поділіться цим кодом з друзями";
+    localization.uk.startGame = "Почати гру";
+    localization.uk.enterLobbyCode = "Введіть код лобі:";
+    localization.uk.lobbyCodePlaceholder = "Код лобі (6 символів)";
+    localization.uk.connect = "Підключитися";
+    localization.uk.playersInSession = "Гравці в сесії:";
+    localization.uk.waitingForPlayers = "Очікування дій гравців...";
+    localization.uk.leaveGame = "Покинути гру";
+    localization.uk.online = "Онлайн";
+    localization.uk.offline = "Офлайн";
+    localization.uk.waiting = "Очікує";
+    localization.uk.ready = "Готовий";
+    localization.uk.actionsReceived = "Дії отримано";
+    localization.uk.processingActions = "Обробка дій...";
+    localization.uk.connectionLost = "З'єднання втрачено";
+    localization.uk.connectionLostDesc = "Втрачено з'єднання з сервером. Що бажаєте зробити?";
+    localization.uk.reconnect = "Переподключитися";
+    localization.uk.continueAlone = "Продовжити без інших";
+    localization.uk.exitGame = "Вийти з гри";
+    localization.uk.continueAloneMessage = "Продовжуєте гру в одиночному режимі";
+    localization.uk.multiplayerError = "Помилка";
+    localization.uk.lobbyNotFound = "Лобі не знайдено";
+    localization.uk.lobbyFull = "Лобі переповнене";
+    localization.uk.gameAlreadyStarted = "Гра вже розпочата";
+    localization.uk.onlyHostCanStart = "Тільки хост може розпочати гру";
+    localization.uk.needMinPlayers = "Потрібно мінімум 2 гравці для початку гри";
+    localization.uk.gameNotStarted = "Гра не розпочата";
+    localization.uk.multiplayerActive = "Гравців:";
+    localization.uk.confirmLeaveGame = "Ви впевнені, що хочете покинути гру?";
+    localization.uk.enterPlayerName = "Введіть ваше ім'я:";
+    localization.uk.playerNamePlaceholder = "Ваше ім'я";
+    localization.uk.waitingForOthers = "Очікування створення персонажів іншими гравцями...";
+    localization.uk.yourTurn = "Ваш хід";
+    localization.uk.waitingForTurn = "Очікування ходу";
+    localization.uk.allPlayersReady = "Всі гравці готові!";
+    localization.uk.hostApiKeyRequired = "Хост повинен надати Gemini API ключ";
+    localization.uk.multiplayerNotLoaded = "Мультиплеєр модуль не завантажено";
+    
+    // Російська
+    localization.ru.multiplayer = "Мультиплеер (БЕТА)";
+    localization.ru.multiplayerBetaWarning = "ВНИМАНИЕ: БЕТА ВЕРСИЯ";
+    localization.ru.multiplayerBetaDesc = "Мультиплеер находится в стадии бета-тестирования. Возможны проблемы с балансом и стабильностью.";
+    localization.ru.createLobby = "Создать лобби";
+    localization.ru.joinLobby = "Присоединиться к лобби";
+    localization.ru.lobbyCode = "Ваш код лобби:";
+    localization.ru.shareLobbyCode = "Поделитесь этим кодом с друзьями";
+    localization.ru.startGame = "Начать игру";
+    localization.ru.enterLobbyCode = "Введите код лобби:";
+    localization.ru.lobbyCodePlaceholder = "Код лобби (6 символов)";
+    localization.ru.connect = "Подключиться";
+    localization.ru.playersInSession = "Игроки в сессии:";
+    localization.ru.waitingForPlayers = "Ожидание действий игроков...";
+    localization.ru.leaveGame = "Покинуть игру";
+    localization.ru.online = "Онлайн";
+    localization.ru.offline = "Офлайн";
+    localization.ru.waiting = "Ожидает";
+    localization.ru.ready = "Готов";
+    localization.ru.actionsReceived = "Действия получены";
+    localization.ru.processingActions = "Обработка действий...";
+    localization.ru.connectionLost = "Соединение потеряно";
+    localization.ru.connectionLostDesc = "Потеряно соединение с сервером. Что желаете сделать?";
+    localization.ru.reconnect = "Переподключиться";
+    localization.ru.continueAlone = "Продолжить без других";
+    localization.ru.exitGame = "Выйти из игры";
+    localization.ru.continueAloneMessage = "Продолжаете игру в одиночном режиме";
+    localization.ru.multiplayerError = "Ошибка";
+    localization.ru.lobbyNotFound = "Лобби не найдено";
+    localization.ru.lobbyFull = "Лобби переполнено";
+    localization.ru.gameAlreadyStarted = "Игра уже начата";
+    localization.ru.onlyHostCanStart = "Только хост может начать игру";
+    localization.ru.needMinPlayers = "Нужно минимум 2 игрока для начала";
+    localization.ru.gameNotStarted = "Игра не начата";
+    localization.ru.multiplayerActive = "Игроков:";
+    localization.ru.confirmLeaveGame = "Вы уверены, что хотите покинуть игру?";
+    localization.ru.enterPlayerName = "Введите ваше имя:";
+    localization.ru.playerNamePlaceholder = "Ваше имя";
+    localization.ru.waitingForOthers = "Ожидание создания персонажей другими игроками...";
+    localization.ru.yourTurn = "Ваш ход";
+    localization.ru.waitingForTurn = "Ожидание хода";
+    localization.ru.allPlayersReady = "Все игроки готовы!";
+    localization.ru.hostApiKeyRequired = "Хост должен предоставить Gemini API ключ";
+    localization.ru.multiplayerNotLoaded = "Мультиплеер модуль не загружен";
+}
+
 
 // Додаємо нові локалізації для автозбереження і сумаризації
 if (!localization.en.autoSaving) {
@@ -2663,7 +2801,12 @@ function retryGeneration() {
 }
 
 function updateGameState(gameData) {
-    gameState.currentScene = gameData;
+    // Витягуємо тільки основні поля для gameState.currentScene
+    gameState.currentScene = {
+        text: gameData.text,
+        options: gameData.options,
+        consequences: gameData.consequences
+    };
     
     // Зберігаємо опис персонажа при першій генерації для консистентності
     if (gameData.character_appearance && !gameState.character.appearance) {
@@ -2858,7 +3001,7 @@ function updateGameState(gameData) {
         gameState.character.experience += cons.experience;
         
         // Check for game over
-        if (cons.gameover || gameState.character.health <= 0) {
+        if (cons.gameover) {
             // Ensure health is 0 if player is dead
             if (gameState.character.health <= 0) {
                 gameState.character.health = 0;
@@ -5248,7 +5391,7 @@ function showMultiplayerModal() {
     if (window.multiplayerManager) {
         window.multiplayerManager.showModal();
     } else {
-        alert('Мультиплеєр модуль не завантажено');
+        alert(getText('multiplayerNotLoaded'));
     }
 }
 
