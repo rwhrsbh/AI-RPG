@@ -10,7 +10,8 @@ let gameState = {
         maxMana: 50,
         experience: 0,
         level: 1,
-        perks: ['Базові навички']
+        perks: ['Базові навички'],
+        appearance: '' // Збереження опису зовнішності персонажа для консистентності
     },
     currentScene: {
         text: '',
@@ -21,7 +22,10 @@ let gameState = {
     conversationHistory: [], // Для API контексту
     availablePerks: [], // Доступні перки для вибору
     summarizedHistory: [], // Масив для зберігання підсумків історії
-    shortResponses: false // Прапорець для режиму коротких відповідей
+    shortResponses: false, // Прапорець для режиму коротких відповідей
+    isMultiplayer: false, // Чи активний мультиплеєр режим
+    multiplayerTurn: false, // Чи очікуємо дії від інших гравців
+    pendingAction: null // Збереження дії гравця до відправки на сервер
 };
 window.gameState = gameState;
 
@@ -215,12 +219,15 @@ const localization = {
         7. If character health reaches 0 or a definitive ending is reached, set gameover to true
         8. Don't be afraid to cause damage to the character during normal activities
         9. For peaceful choices, introduce unforeseen complications
+        10. EXPERIENCE POINTS: Award experience based on merit - simple actions (based on level and your choice XP), moderate challenges (based on level and your choice XP), significant achievements (based on level and your choice XP), major accomplishments (based on level and your choice XP). Don't over-reward routine activities. "consequences": {"experience": number} what you write here means what quantity of exp will be added to players current exp.
+        11. Perks should not be repeated. Sometimes, perks can be very unique. To avoid repetition, perks can depend on the player's level.
         
         Example perks with stronger trade-offs:
         - "Crystal Harmony: +15 to maximum mana but -5 to maximum health and -10% fire resistance"
         - "Warrior's Fervor: +10% critical hit chance but -5% dodge chance and occasional recklessness"
         - "Shadow Pact: Ability to become invisible for a short time but -10% movement speed and occasional dark whispers"
-        
+        - “Magic Diarrhea”: You can attack the enemy with powerful organic attacks +50% - 350% damage (depending on the dice roll), but -30% health for use.
+
         Response format:
         {
             "text": "detailed description of the action result and the new situation, including description of perks gained",
@@ -498,12 +505,14 @@ const localization = {
 7. Гравці повинні зіткнутися зі значними наслідками своїх дій.
 8. Початкова ситуація не обов'язково має бути складною, але гра не повинна бути легкою.
 9. Включайте моральні дилеми та важкі вибори.
-        
+10. ОЧКИ ДОСВІДУ: Нагороджуйте досвід за заслуги — прості дії (залежно від рівня та вашого вибору XP), помірні виклики (залежно від рівня та вашого вибору XP), значні досягнення (залежно від рівня та вашого вибору XP), великі досягнення (залежно від рівня та вашого вибору XP). Не переоцінюйте рутинні дії. «consequences»: {«experience»: number} те, що ви тут напишете, означає, яка кількість досвіду буде додана до поточного досвіду гравця.
+11. Перки не мають повторюватися. Іноді, можуть бути дуже унікальні перки. Щоб уникнути повторів, перки можуть залежати від рівня гравця.
+
         Приклад перків із сильнішими компромісами:
         - "Кришталева Гармонія: +15 до максимальної мани, але -5 до максимального здоров'я та -10% стійкості до вогню"
         - "Воїнський запал: +10% до шансу критичного удару, але -5% до шансу ухилення та періодична нерозсудливість"
         - "Тіньовий пакт: Вміння на короткий час ставати невидимим, але -10% до швидкості руху та періодичні темні шепоти"
-        
+        - «Чарівна діарея»: Ви можете атакувати ворога за допомогою сильних органічних атак +50% - 350% до шкоди (залежно від кидка кубика), але -30% здоров'я за використання.
         Формат відповіді:
         {
             "text": "детальний опис результату дії та нової ситуації, включаючи опис отриманих перків",
@@ -778,11 +787,15 @@ const localization = {
         7. Если здоровье персонажа достигает 0 или достигнуто окончательное завершение, установи gameover в true
         8. Не бойся наносить урон персонажу во время обычных действий
         9. Для мирных выборов, добавляй непредвиденные осложнения
+        10. ОЧКИ ОПЫТА: Награждайте опытом в зависимости от заслуг — простые действия (в зависимости от уровня и выбранного вами XP), умеренные испытания (в зависимости от уровня и выбранного вами XP), значительные достижения (в зависимости от уровня и выбранного вами XP), крупные достижения (в зависимости от уровня и выбранного вами XP). Не переоценивайте рутинные действия. «consequences»: {«experience»: number} то, что вы здесь напишете, означает, какое количество очков опыта будет добавлено к текущему опыту игрока.
+        11. Перки не должны повторяться. Иногда могут быть очень уникальные перки. Чтобы избежать повторов, перки могут зависеть от уровня игрока.
         
+
         Пример перков с более сильными компромиссами:
         - "Кристальная Гармония: +15 к максимальной мане, но -5 к максимальному здоровью и -10% устойчивости к огню"
         - "Воинский пыл: +10% к шансу критического удара, но -5% к шансу уклонения и периодическая безрассудность"
         - "Теневой пакт: Умение на короткое время становиться невидимым, но -10% к скорости движения и периодические темные шепоты"
+        - "Волшебная диарея": Вы можете атаковать врага с помощью сильных органических атак +50% - 350% к урону (в зависимости от броска кубика), но -30% здоровья за использоване.
         
         Формат ответа:
         {
@@ -2335,8 +2348,18 @@ async function callGeminiAPI(prompt, isInitial = false) {
         }
     }
 
+    // Додаємо збережений опис персонажа для консистентності, якщо він є
+    if (gameState.character.appearance && !isInitial) {
+        prompt += `\n\nIMPORTANT: For character consistency, the main character (player) should always have this appearance: ${gameState.character.appearance}. Use this description in all image prompts to maintain visual consistency.`;
+    }
+
     // Додаємо інструкції для генерації двох варіантів промпту для зображення та інструкцій для озвучування
-    prompt += "\n\nYou should generate TWO image prompts describing the current scene: \n\n1. 'image_prompt': This is a detailed prompt with full visual description. Example: 'A heroic warrior battles a fierce dragon in a dark cave, flames illuminating the scene, fantasy style'\n\n2. 'safe_image_prompt': This is a simplified, safer version that avoids potentially problematic content. Focus on landscapes, objects, or simple character poses without combat or controversial elements. Example: 'A warrior standing in a cave entrance, light filtering in from outside, fantasy style'";
+    prompt += "\n\nYou should generate TWO image prompts describing the current scene with detailed description of characters (the most important main character (player)) so they should be the same style all the time on pics.: \n\n1. 'image_prompt': This is a detailed prompt with full visual description. Example: 'A heroic warrior with a huge beard (and much more detailes) battles a fierce dragon in a dark cave, flames illuminating the scene, fantasy style'\n\n2. 'safe_image_prompt': This is a simplified, safer version that avoids potentially problematic content. Focus on landscapes, objects, or simple character poses without combat or controversial elements but with detailed description of characters. Example: 'A warrior with huge beard (much more details) standing in a cave entrance, light filtering in from outside, fantasy style'";
+
+    // Додаємо інструкцію для збереження опису персонажа при першій генерації
+    if (isInitial) {
+        prompt += "\n\nIMPORTANT: In your response, also include a field called 'character_appearance' with a detailed description of the main character's physical appearance (if its famous person you should include his name) (extracted from the image_prompt). This will be used to maintain visual consistency in future scenes. Example: 'A tall warrior with a magnificent braided beard, wearing leather armor with metal studs, carrying a large two-handed sword, with piercing blue eyes and weathered hands'.";
+    }
     
     // Додаємо інструкції для генерації вказівок для озвучування
     prompt += "\n\nAlso, generate instructions for voice narration in a field called 'instructions'. These must be a SIMPLE STRING value, not an object or array. These should specify the tone, emotion, and style for narrating the scene, using exactly this format:\nIdentity: Fantasy Narrator\nAffect: Dramatic and mysterious\nTone: Deep and resonant\nEmotion: Tense and suspenseful\nPronunciation: Clear and articulate\nPause: Brief pauses after important moments\n\nDo not include any quotes, brackets, or special characters around the instructions text. Just plain text.";
@@ -2356,7 +2379,7 @@ async function callGeminiAPI(prompt, isInitial = false) {
             parts: [{ text: prompt }]
         });
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${gameState.apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gameState.apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2366,9 +2389,9 @@ async function callGeminiAPI(prompt, isInitial = false) {
                 generationConfig: {
                     responseMimeType: 'text/plain',
                     maxOutputTokens: 1000000,
-                    thinkingConfig: {
-                        thinkingBudget: 0
-                    }
+                    // thinkingConfig: {
+                    //     thinkingBudget: 0
+                    // }
                 },
                 safetySettings: [
                     {
@@ -2642,6 +2665,12 @@ function retryGeneration() {
 function updateGameState(gameData) {
     gameState.currentScene = gameData;
     
+    // Зберігаємо опис персонажа при першій генерації для консистентності
+    if (gameData.character_appearance && !gameState.character.appearance) {
+        gameState.character.appearance = gameData.character_appearance;
+        console.log('Збережено опис персонажа:', gameState.character.appearance);
+    }
+    
     // Додаємо до історії гри
     gameState.gameHistory.push({
         scene: gameData,
@@ -2694,11 +2723,6 @@ function updateGameState(gameData) {
                 if (summaryText) {
                     // Створюємо текст з підсумком і передаємо його модулю зображень
                     const fullText = `
-                        <div style="background: rgba(78, 205, 196, 0.1); border: 1px solid #4ecdc4; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
-                            <h3 style="color: #4ecdc4; margin-top: 0;">📜 ${getText('adventureSummary')}</h3>
-                            ${summaryText}
-                        </div>
-                        <hr style="border: none; border-top: 1px dashed rgba(255, 255, 255, 0.2); margin: 20px 0;">
                         <p>${gameData.text}</p>
                     `;
                     window.imageGenerator.setTextResponseReady(fullText);
@@ -2916,6 +2940,21 @@ function updateGameState(gameData) {
             if (gameState.availablePerks.length > 0) {
                 showPerkSelectionPopup();
             }
+        }
+        
+        // Обробка автоматичних перків (new_perks) - додаються без вибору гравця
+        if (cons.new_perks && Array.isArray(cons.new_perks) && cons.new_perks.length > 0) {
+            cons.new_perks.forEach(perk => {
+                if (typeof perk === 'string' && perk.trim() !== '') {
+                    // Перевіряємо, чи немає вже такого перку (уникаємо дублювання)
+                    if (!gameState.character.perks.includes(perk)) {
+                        gameState.character.perks.push(perk);
+                        // Застосовуємо бонуси перку
+                        applyPerkBonuses(perk);
+                        console.log('Автоматично додано перк:', perk);
+                    }
+                }
+            });
         }
         
         // Combat mode
@@ -3526,11 +3565,11 @@ function showLevelUpPopup(newLevel, levelGains) {
         }
     });
     
-    // Додаємо озвучування попапу підвищення рівня
+    // Додаємо озвучування попапу підвищення рівня до черги
     if (window.voiceGenerator) {
         const levelUpText = `${getText('levelUp')} ${getText('levelUpDesc')} ${newLevel}!`;
         const instructions = generateVoiceInstructions({ text: levelUpText });
-        window.voiceGenerator.generateVoice(levelUpText, { instructions });
+        window.voiceGenerator.generateVoice(levelUpText, { instructions, addToQueue: true });
     }
 }
 
@@ -3890,25 +3929,25 @@ function applyPerkBonuses(perk) {
         }
     }
     
-    // Перевіряємо на додаткові спеціальні перки
+    // Перевіряємо на додаткові спеціальні перки (перк уже додано до списку, тут тільки застосовуємо ефекти)
     if (lowerPerk.includes('регенер') || lowerPerk.includes('восстановл') || lowerPerk.includes('heal') || lowerPerk.includes('regen')) {
-        // Додаємо запис про регенерацію до перків персонажа
-        gameState.character.perks.push(perk);
+        // Ефект регенерації буде застосовуватися автоматично
+        console.log('Застосовано перк регенерації:', perk);
     }
     
     if (lowerPerk.includes('атака') || lowerPerk.includes('атаки') || lowerPerk.includes('урон') || lowerPerk.includes('damage') || lowerPerk.includes('атаку')) {
-        // Додаємо запис про бонус до атаки до перків персонажа
-        gameState.character.perks.push(perk);
+        // Ефект бонусу до атаки буде застосовуватися автоматично
+        console.log('Застосовано перк атаки:', perk);
     }
     
     if (lowerPerk.includes('захист') || lowerPerk.includes('броня') || lowerPerk.includes('armor') || lowerPerk.includes('defense') || lowerPerk.includes('protection')) {
-        // Додаємо запис про бонус до захисту до перків персонажа
-        gameState.character.perks.push(perk);
+        // Ефект бонусу до захисту буде застосовуватися автоматично
+        console.log('Застосовано перк захисту:', perk);
     }
     
     if (lowerPerk.includes('швидк') || lowerPerk.includes('ухил') || lowerPerk.includes('dodge') || lowerPerk.includes('speed') || lowerPerk.includes('evasion')) {
-        // Додаємо запис про бонус до швидкості до перків персонажа
-        gameState.character.perks.push(perk);
+        // Ефект бонусу до швидкості буде застосовуватися автоматично
+        console.log('Застосовано перк швидкості:', perk);
     }
     
     // Показуємо сообщение об изменениях характеристик от перка (если они были)
@@ -4469,7 +4508,7 @@ function showGameOverPopup(isDead = false) {
         <div style="margin: 20px 0; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 10px;">
             <p style="margin-bottom: 5px;"><strong>${gameState.character.name}</strong> (${getCharacterClassName(gameState.character.class)})</p>
             <p>Level ${gameState.character.level} • XP: ${gameState.character.experience}</p>
-            <p>Survived through ${gameState.gameHistory.length} turns</p>
+           
         </div>
         
         ${window.lastGeneratedImage ? `
@@ -4675,7 +4714,7 @@ Important: the summary should be detailed but concise. Make the summary interest
         console.log('Відправляємо запит на генерацію сумаризації...');
         let response;
         try {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${gameState.apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gameState.apiKey}`;
             console.log('URL API для сумаризації:', apiUrl.replace(gameState.apiKey, '***API_KEY***'));
             console.log('Перевірка API ключа:', gameState.apiKey ? 'Ключ доступний' : 'Ключ відсутній');
             
@@ -4686,9 +4725,9 @@ Important: the summary should be detailed but concise. Make the summary interest
                 }],
                 generationConfig: {
                     maxOutputTokens: 100000,
-                    thinkingConfig: {
-                        thinkingBudget: 0
-                    }
+                    // thinkingConfig: {
+                    //     thinkingBudget: 0
+                    // }
                 },
                 safetySettings: [
                     {
@@ -5201,3 +5240,169 @@ function removeModalOverlay() {
         console.log('Модальне затемнення видалено');
     }
 }
+
+// ===== МУЛЬТИПЛЕЄР ФУНКЦІЇ =====
+
+// Показати модальне вікно мультиплеєра
+function showMultiplayerModal() {
+    if (window.multiplayerManager) {
+        window.multiplayerManager.showModal();
+    } else {
+        alert('Мультиплеєр модуль не завантажено');
+    }
+}
+
+// Інтеграція мультиплеєра з основною грою
+function initializeMultiplayerIntegration() {
+    // Перевизначаємо функцію performCustomAction для мультиплеєра
+    const originalPerformCustomAction = window.performCustomAction;
+    
+    window.performCustomAction = function() {
+        const action = document.getElementById('customAction').value.trim();
+        
+        if (!action) {
+            alert(getText('enterAction'));
+            return;
+        }
+        
+        // Якщо мультиплеєр активний, відправляємо дію на сервер
+        if (gameState.isMultiplayer && window.multiplayerManager && window.multiplayerManager.isMultiplayerActive()) {
+            handleMultiplayerAction(action);
+        } else {
+            // Звичайна одиночна гра
+            originalPerformCustomAction();
+        }
+    };
+}
+
+// Обробка дії в мультиплеєрі
+function handleMultiplayerAction(action) {
+    // Зберігаємо дію гравця
+    gameState.pendingAction = action;
+    gameState.multiplayerTurn = true;
+    
+    // Відправляємо дію на сервер
+    window.multiplayerManager.sendPlayerAction(action);
+    
+    // Блокуємо інтерфейс до отримання результатів
+    document.getElementById('customActionBtn').disabled = true;
+    document.getElementById('customAction').disabled = true;
+    
+    // Показуємо індикатор очікування
+    document.getElementById('storyText').innerHTML = `
+        <div class="loading">
+            ${getText('waitingForPlayers') || 'Очікування дій інших гравців...'}
+        </div>
+    `;
+    
+    // Очищуємо поле введення
+    document.getElementById('customAction').value = '';
+}
+
+// Обробка результатів мультиплеєрного ходу
+function handleMultiplayerTurnResults(results) {
+    gameState.multiplayerTurn = false;
+    gameState.pendingAction = null;
+    
+    // Розблоковуємо інтерфейс
+    document.getElementById('customActionBtn').disabled = false;
+    document.getElementById('customAction').disabled = false;
+    
+    // Оновлюємо стан гри
+    if (results.gameState) {
+        // Зберігаємо мультиплеєр статус
+        const wasMultiplayer = gameState.isMultiplayer;
+        Object.assign(gameState, results.gameState);
+        gameState.isMultiplayer = wasMultiplayer;
+    }
+    
+    // Оновлюємо текст історії
+    if (results.storyText) {
+        document.getElementById('storyText').innerHTML = results.storyText;
+        
+        // Додаємо до історії
+        gameState.gameHistory.push({
+            type: 'multiplayer_turn',
+            text: results.storyText,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Генеруємо озвучування
+        if (window.voiceGenerator) {
+            const instructions = generateVoiceInstructions({ text: results.storyText });
+            window.voiceGenerator.generateVoice(results.storyText, { instructions });
+        }
+        
+        // Генеруємо зображення
+        if (window.imageGenerator) {
+            window.imageGenerator.generateImage(results.storyText);
+        }
+    }
+    
+    // Оновлюємо панель персонажа
+    updateCharacterPanel();
+}
+
+// Активація мультиплеєрного режиму
+function activateMultiplayerMode() {
+    gameState.isMultiplayer = true;
+    
+    // Додаємо індикатор мультиплеєра
+    const header = document.querySelector('.header h1');
+    if (header && !header.querySelector('.multiplayer-indicator')) {
+        const indicator = document.createElement('span');
+        indicator.className = 'multiplayer-indicator';
+        indicator.innerHTML = ' 🎮 МУЛЬТИПЛЕЄР';
+        indicator.style.cssText = `
+            font-size: 0.6em;
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        `;
+        header.appendChild(indicator);
+        
+        // Додаємо анімацію пульсації
+        if (!document.querySelector('#multiplayerAnimation')) {
+            const style = document.createElement('style');
+            style.id = 'multiplayerAnimation';
+            style.textContent = `
+                @keyframes pulse {
+                    0% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.7; transform: scale(1.05); }
+                    100% { opacity: 1; transform: scale(1); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+}
+
+// Деактивація мультиплеєрного режиму
+function deactivateMultiplayerMode() {
+    gameState.isMultiplayer = false;
+    gameState.multiplayerTurn = false;
+    gameState.pendingAction = null;
+    
+    // Видаляємо індикатор мультиплеєра
+    const indicator = document.querySelector('.multiplayer-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+    
+    // Розблоковуємо інтерфейс
+    document.getElementById('customActionBtn').disabled = false;
+    document.getElementById('customAction').disabled = false;
+}
+
+// Ініціалізація мультиплеєра при завантаженні сторінки
+document.addEventListener('DOMContentLoaded', function() {
+    // Чекаємо завантаження мультиплеєр модуля
+    setTimeout(() => {
+        if (window.multiplayerManager) {
+            initializeMultiplayerIntegration();
+            console.log('Мультиплеєр інтеграція ініціалізована');
+        }
+    }, 100);
+});

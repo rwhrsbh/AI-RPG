@@ -192,6 +192,7 @@ function removeTTSIndicator() {
  * @param {string} options.voice - Голос для озвучування
  * @param {string} options.instructions - Інструкції для озвучування (тон, емоції тощо)
  * @param {string} options.service - Сервіс для озвучування ('gemini' або 'elevenlabs')
+ * @param {boolean} options.addToQueue - Якщо true, додає до черги без зупинки поточного відтворення
  * @returns {Promise<void>}
  */
 async function generateVoice(text, options = {}) {
@@ -249,8 +250,8 @@ async function generateVoice(text, options = {}) {
         }
     }
     
-    // Зупиняємо поточне відтворення перед додаванням нового
-    if (currentlyPlaying) {
+    // Зупиняємо поточне відтворення перед додаванням нового, якщо не вказано addToQueue
+    if (currentlyPlaying && !options.addToQueue) {
         stopVoice();
     }
     
