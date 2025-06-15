@@ -10,7 +10,7 @@ let gameState = {
         maxMana: 50,
         experience: 0,
         level: 1,
-        perks: ['Базові навички'],
+        perks: [],
         appearance: '' // Збереження опису зовнішності персонажа для консистентності
     },
     currentScene: {
@@ -1446,6 +1446,63 @@ function loadSpecificSave(saveData) {
 function getText(key) {
     return localization[gameState.language][key] || key;
 }
+
+// Функція для отримання локалізованих базових навичок
+function getLocalizedBasicSkills() {
+    return getText('basicSkills');
+}
+
+// Функція для локалізації перків класу
+function localizeClassPerks(perks) {
+    const perkTranslations = {
+        'Майстерність мечем': { en: 'Sword Mastery', ru: 'Мастерство меча' },
+        'Берсерк': { en: 'Berserk', ru: 'Берсерк' },
+        'Магічна стріла': { en: 'Magic Arrow', ru: 'Магическая стрела' },
+        'Щит магії': { en: 'Magic Shield', ru: 'Щит магии' },
+        'Скритність': { en: 'Stealth', ru: 'Скрытность' },
+        'Критичний удар': { en: 'Critical Strike', ru: 'Критический удар' },
+        'Лікування': { en: 'Healing', ru: 'Лечение' },
+        'Священна аура': { en: 'Sacred Aura', ru: 'Священная аура' },
+        'Влучний постріл': { en: 'Precise Shot', ru: 'Точный выстрел' },
+        'Око яструба': { en: 'Hawk Eye', ru: 'Глаз ястреба' },
+        'Контроль нежиті': { en: 'Undead Control', ru: 'Контроль нежити' },
+        'Темна аура': { en: 'Dark Aura', ru: 'Темная аура' },
+        'Виживання': { en: 'Survival', ru: 'Выживание' },
+        'Знахідка': { en: 'Scavenging', ru: 'Находчивость' },
+        'Шостий сенс': { en: 'Sixth Sense', ru: 'Шестое чувство' },
+        'Чуття небезпеки': { en: 'Danger Sense', ru: 'Чувство опасности' },
+        'Ельфійська спритність': { en: 'Elven Agility', ru: 'Эльфийская ловкость' },
+        'Стародавня мудрість': { en: 'Ancient Wisdom', ru: 'Древняя мудрость' },
+        'Отаку знання': { en: 'Otaku Knowledge', ru: 'Знания отаку' },
+        'Фанатизм': { en: 'Fanaticism', ru: 'Фанатизм' },
+        'Харизма': { en: 'Charisma', ru: 'Харизма' },
+        'Кавайність': { en: 'Kawaii', ru: 'Каваи' },
+        'Міцні кулаки': { en: 'Strong Fists', ru: 'Крепкие кулаки' },
+        'Витривалість': { en: 'Endurance', ru: 'Выносливость' },
+        'Сила замаху': { en: 'Swing Power', ru: 'Сила замаха' },
+        'Стійкість': { en: 'Resilience', ru: 'Стойкость' },
+        'Невдача': { en: 'Bad Luck', ru: 'Неудача' },
+        'Нікчемність': { en: 'Worthlessness', ru: 'Никчемность' },
+        'Баг-фікс': { en: 'Bug Fix', ru: 'Исправление багов' },
+        'Оптимізація': { en: 'Optimization', ru: 'Оптимизация' },
+        'Стримерська харизма': { en: 'Streamer Charisma', ru: 'Стримерская харизма' },
+        'Донати': { en: 'Donations', ru: 'Донаты' },
+        'Хочу поговорити з менеджером': { en: 'I Want to Speak to Manager', ru: 'Хочу поговорить с менеджером' },
+        'Скарги': { en: 'Complaints', ru: 'Жалобы' },
+        'В молодості було краще': { en: 'It Was Better in My Youth', ru: 'В молодости было лучше' },
+        'Грамофон': { en: 'Gramophone', ru: 'Граммофон' },
+        'Тікток танці': { en: 'TikTok Dances', ru: 'Танцы ТикТок' },
+        'Мемологія': { en: 'Memology', ru: 'Мемология' }
+    };
+    
+    return perks.map(perk => {
+        const translation = perkTranslations[perk];
+        if (translation && gameState.language !== 'uk') {
+            return translation[gameState.language] || perk;
+        }
+        return perk;
+    });
+}
 // Добавим в начало game.js после существующих локализаций мультиплеера
 
 // Добавляем локализацию для мультиплеер промптов
@@ -1481,6 +1538,8 @@ Response format:
         "combat": false,
         "enemy": null,
         "new_perks": [],
+        "available_perks": [],
+        "level_up": null,
         "gameover": false
       }
     },
@@ -1553,9 +1612,10 @@ IMPORTANT:
 9. For peaceful choices, introduce unforeseen complications
 10. EXPERIENCE POINTS: Award experience based on merit - simple actions (based on level and your choice XP), moderate challenges (based on level and your choice XP), significant achievements (based on level and your choice XP), major accomplishments (based on level and your choice XP). Don't over-reward routine activities. "consequences": {"experience": number} what you write here means what quantity of exp will be added to players current exp.
 11. Perks should not be repeated. Sometimes, perks can be very unique. To avoid repetition, perks can depend on the player's level.
-12. Consider all player actions together and create meaningful interactions between them
-13. Include collaborative opportunities and conflicts between players
-14. Each player should get personalized results based on their action
+12. When player levels up (reaches experience thresholds), provide "available_perks" field with 5 unique perks to choose from, format: ["Perk Name: Description with benefits and drawbacks"]
+13. Consider all player actions together and create meaningful interactions between them
+14. Include collaborative opportunities and conflicts between players
+15. Each player should get personalized results based on their action
 
 Response format:
 {
@@ -1571,6 +1631,8 @@ Response format:
         "combat": false,
         "enemy": null,
         "new_perks": [],
+        "available_perks": [],
+        "level_up": null,
         "gameover": false
       }
     }
@@ -1628,10 +1690,10 @@ The 'gameover' field should be set to true if the character has died (health rea
 
 Формат відповіді:
 {
-  "common_story": "детальний опис ситуації, що стосується всіх гравців",
+  "text": "детальний опис загальної ситуації, що стосується всіх гравців",
   "players": {
     "{playerId1}": {
-      "personal_text": "специфічний опис для цього гравця",
+      "personal_text": "специфічний опис для цього гравця на основі його класу і передісторії",
       "options": ["варіант 1", "варіант 2", "варіант 3", "варіант 4"],
       "consequences": {
         "health": 0,
@@ -1640,11 +1702,13 @@ The 'gameover' field should be set to true if the character has died (health rea
         "combat": false,
         "enemy": null,
         "new_perks": [],
+        "available_perks": [],
+        "level_up": null,
         "gameover": false
       }
     },
     "{playerId2}": {
-      "personal_text": "специфічний опис для цього гравця",
+      "personal_text": "специфічний опис для цього гравця на основі його класу і передісторії",
       "options": ["варіант 1", "варіант 2", "варіант 3", "варіант 4"],
       "consequences": {
         "health": 0,
@@ -1653,13 +1717,46 @@ The 'gameover' field should be set to true if the character has died (health rea
         "combat": false,
         "enemy": null,
         "new_perks": [],
+        "available_perks": [],
+        "level_up": null,
         "gameover": false
       }
     }
   }
 }
 
-Якщо combat є true для будь-якого гравця, надавай правильну структуру ворога.`;
+Якщо combat є true для будь-якого гравця, завжди повертай інформацію про ворога в такому форматі:
+- Для одного ворога: 
+  "enemy": {
+    "name": "Ім'я ворога", 
+    "health": числове_значення_або_опис, 
+    "description": "короткий опис"
+  }
+
+- Для кількох ворогів або групи:
+  "enemy": {
+    "name": "Назва групи", 
+    "count": кількість_ворогів, 
+    "health": здоров'я_кожного_індивіда, 
+    "type": "тип_бою",
+    "description": "опис групи",
+    "elements": [  // Необов'язково: надавай деталі для окремих ворогів
+      {
+        "name": "Ім'я ворога 1",
+        "health": "Здоров'я ворога 1",
+        "description": "Опис ворога 1"
+      },
+      {
+        "name": "Ім'я ворога 2",
+        "health": "Здоров'я ворога 2",
+        "description": "Опис ворога 2"
+      }
+    ]
+  }
+
+НІКОЛИ не повертай ворога як простий рядок. Завжди використовуй правильну структуру об'єкта.
+
+Поле 'gameover' має бути встановлено в true якщо персонаж помер (здоров'я досягло 0) або пригода досягла остаточного завершення.`;
 
     localization.uk.multiplayerActionPrompt = `Продовжи мультиплеєрну D&D пригоду. Попередня ситуація: "{prevSituation}"
 
@@ -1677,10 +1774,13 @@ The 'gameover' field should be set to true if the character has died (health rea
 5. Кожен гравець повинен отримати персоналізовані результати на основі своєї дії
 6. Підтримуй безперервність історії та розвиток персонажів
 7. Нагороджуй досвід на основі співпраці та індивідуальних досягнень
+8. Всі перки ПОВИННІ мати як переваги, ТАК І недоліки - створюй збалансовані компроміси
+9. Перки не повинні повторюватися. Перки можуть залежати від рівня гравця
+10. Коли гравець підвищує рівень (досягає порогів досвіду), надавай поле "available_perks" з 5 унікальними перками для вибору, формат: ["Назва Перка: Опис з перевагами та недоліками"]
 
 Формат відповіді:
 {
-  "common_story": "опис того, що відбувається в результаті всіх дій разом",
+  "text": "опис того, що відбувається в результаті всіх дій разом",
   "players": {
     "{playerId1}": {
       "personal_text": "специфічний результат для дії цього гравця",
@@ -1692,11 +1792,46 @@ The 'gameover' field should be set to true if the character has died (health rea
         "combat": false,
         "enemy": null,
         "new_perks": [],
+        "available_perks": [],
+        "level_up": null,
         "gameover": false
       }
     }
   }
-}`;
+}
+
+Якщо combat є true для будь-якого гравця, завжди повертай інформацію про ворога в такому форматі:
+- Для одного ворога: 
+  "enemy": {
+    "name": "Ім'я ворога", 
+    "health": числове_значення_або_опис, 
+    "description": "короткий опис"
+  }
+
+- Для кількох ворогів або групи:
+  "enemy": {
+    "name": "Назва групи", 
+    "count": кількість_ворогів, 
+    "health": здоров'я_кожного_індивіда, 
+    "type": "тип_бою",
+    "description": "опис групи",
+    "elements": [  // Необов'язково: надавай деталі для окремих ворогів
+      {
+        "name": "Ім'я ворога 1",
+        "health": "Здоров'я ворога 1",
+        "description": "Опис ворога 1"
+      },
+      {
+        "name": "Ім'я ворога 2",
+        "health": "Здоров'я ворога 2",
+        "description": "Опис ворога 2"
+      }
+    ]
+  }
+
+НІКОЛИ не повертай ворога як простий рядок. Завжди використовуй правильну структуру об'єкта.
+
+Поле 'gameover' має бути встановлено в true якщо персонаж помер (здоров'я досягло 0) або пригода досягла остаточного завершення.`;
 
     // Русская локализация
     localization.ru.multiplayerInitialPrompt = `Ты - мастер игры в D&D для мультиплеерной сессии с {playerCount} игроками. Создай начальную сцену, которая вовлекает ВСЕХ игроков вместе.
@@ -1716,10 +1851,10 @@ The 'gameover' field should be set to true if the character has died (health rea
 
 Формат ответа:
 {
-  "common_story": "детальное описание ситуации, касающейся всех игроков",
+  "text": "детальное описание общей ситуации, касающейся всех игроков",
   "players": {
     "{playerId1}": {
-      "personal_text": "специфическое описание для этого игрока",
+      "personal_text": "специфическое описание для этого игрока на основе его класса и предыстории",
       "options": ["вариант 1", "вариант 2", "вариант 3", "вариант 4"],
       "consequences": {
         "health": 0,
@@ -1728,11 +1863,13 @@ The 'gameover' field should be set to true if the character has died (health rea
         "combat": false,
         "enemy": null,
         "new_perks": [],
+        "available_perks": [],
+        "level_up": null,
         "gameover": false
       }
     },
     "{playerId2}": {
-      "personal_text": "специфическое описание для этого игрока",
+      "personal_text": "специфическое описание для этого игрока на основе его класса и предыстории",
       "options": ["вариант 1", "вариант 2", "вариант 3", "вариант 4"],
       "consequences": {
         "health": 0,
@@ -1741,13 +1878,46 @@ The 'gameover' field should be set to true if the character has died (health rea
         "combat": false,
         "enemy": null,
         "new_perks": [],
+        "available_perks": [],
+        "level_up": null,
         "gameover": false
       }
     }
   }
 }
 
-Если combat равен true для любого игрока, предоставляй правильную структуру врага как в одиночной игре.`;
+Если combat равен true для любого игрока, всегда возвращай информацию о враге в таком формате:
+- Для одного врага: 
+  "enemy": {
+    "name": "Имя врага", 
+    "health": числовое_значение_или_описание, 
+    "description": "краткое описание"
+  }
+
+- Для нескольких врагов или группы:
+  "enemy": {
+    "name": "Название группы", 
+    "count": количество_врагов, 
+    "health": здоровье_каждого_индивида, 
+    "type": "тип_боя",
+    "description": "описание группы",
+    "elements": [  // Необязательно: предоставляй детали для отдельных врагов
+      {
+        "name": "Имя врага 1",
+        "health": "Здоровье врага 1",
+        "description": "Описание врага 1"
+      },
+      {
+        "name": "Имя врага 2",
+        "health": "Здоровье врага 2",
+        "description": "Описание врага 2"
+      }
+    ]
+  }
+
+НИКОГДА не возвращай врага как простую строку. Всегда используй правильную структуру объекта.
+
+Поле 'gameover' должно быть установлено в true если персонаж умер (здоровье достигло 0) или приключение достигло окончательного завершения.`;
 
     localization.ru.multiplayerActionPrompt = `Продолжи мультиплеерное D&D приключение. Предыдущая ситуация: "{prevSituation}"
 
@@ -1765,13 +1935,16 @@ The 'gameover' field should be set to true if the character has died (health rea
 5. Каждый игрок должен получить персонализированные результаты на основе своего действия
 6. Поддерживай непрерывность истории и развитие персонажей
 7. Награждай опыт на основе сотрудничества и индивидуальных достижений
+8. Все перки ДОЛЖНЫ иметь как преимущества, ТАК И недостатки - создавай сбалансированные компромиссы
+9. Перки не должны повторяться. Перки могут зависеть от уровня игрока
+10. Когда игрок повышает уровень (достигает порогов опыта), предоставляй поле "available_perks" с 5 уникальными перками для выбора, формат: ["Название Перка: Описание с преимуществами и недостатками"]
 
 Формат ответа:
 {
-  "common_story": "описание того, что происходит в результате всех действий вместе",
+  "text": "описание того, что происходит в результате всех действий вместе",
   "players": {
     "{playerId1}": {
-      "personal_text: "специфический результат для действия этого игрока",
+      "personal_text": "специфический результат для действия этого игрока",
       "options": ["вариант 1", "вариант 2", "вариант 3", "вариант 4"],
       "consequences": {
         "health": 0,
@@ -1780,12 +1953,46 @@ The 'gameover' field should be set to true if the character has died (health rea
         "combat": false,
         "enemy": null,
         "new_perks": [],
+        "available_perks": [],
+        "level_up": null,
         "gameover": false
       }
     }
   }
-  
-}`;
+}
+
+Если combat равен true для любого игрока, всегда возвращай информацию о враге в таком формате:
+- Для одного врага: 
+  "enemy": {
+    "name": "Имя врага", 
+    "health": числовое_значение_или_описание, 
+    "description": "краткое описание"
+  }
+
+- Для нескольких врагов или группы:
+  "enemy": {
+    "name": "Название группы", 
+    "count": количество_врагов, 
+    "health": здоровье_каждого_индивида, 
+    "type": "тип_боя",
+    "description": "описание группы",
+    "elements": [  // Необязательно: предоставляй детали для отдельных врагов
+      {
+        "name": "Имя врага 1",
+        "health": "Здоровье врага 1",
+        "description": "Описание врага 1"
+      },
+      {
+        "name": "Имя врага 2",
+        "health": "Здоровье врага 2",
+        "description": "Описание врага 2"
+      }
+    ]
+  }
+
+НИКОГДА не возвращай врага как простую строку. Всегда используй правильную структуру объекта.
+
+Поле 'gameover' должно быть установлено в true если персонаж умер (здоровье достигло 0) или приключение достигло окончательного завершения.`;
 }
 
 // Добавляем локализацию для главного меню
@@ -1805,6 +2012,13 @@ if (!localization.en.multiplayerMenu) {
     localization.en.multiplayerMenu = "🎮 Multiplayer";
     localization.uk.multiplayerMenu = "🎮 Мультиплеєр";
     localization.ru.multiplayerMenu = "🎮 Мультиплеер";
+}
+
+// Додаємо локалізацію для повідомлень про перки
+if (!localization.en.perkObtained) {
+    localization.en.perkObtained = "Perk Obtained!";
+    localization.uk.perkObtained = "Отримано перк!";
+    localization.ru.perkObtained = "Получен перк!";
 }
 
 // Глобальные переменные для мультиплеера
@@ -2135,7 +2349,7 @@ window.startGame = function() {
     gameState.character.maxHealth = stats.health;
     gameState.character.mana = stats.mana;
     gameState.character.maxMana = stats.mana;
-    gameState.character.perks = [...stats.perks];
+    gameState.character.perks = [getLocalizedBasicSkills(), ...localizeClassPerks(stats.perks)];
 
     console.log('Проверяем состояние мультиплеера:', {
         isActive: multiplayerState.isActive,
@@ -2638,10 +2852,23 @@ Action: ${actionData.action}`;
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                contents: [{
-                    role: "user",
-                    parts: [{ text: prompt }]
-                }],
+                contents: (() => {
+                    let contents = [];
+                    
+                    // Додаємо попередню історію розмови для контексту (як в одиночному режимі)
+                    if (window.gameState.conversationHistory && window.gameState.conversationHistory.length > 0) {
+                        contents.push(...window.gameState.conversationHistory);
+                        console.log('🕒 Додано історію розмови до мультиплеєр запиту:', window.gameState.conversationHistory.length, 'повідомлень');
+                    }
+                    
+                    // Додаємо поточний промпт
+                    contents.push({
+                        role: "user",
+                        parts: [{ text: prompt }]
+                    });
+                    
+                    return contents;
+                })(),
                 generationConfig: {
                     responseMimeType: 'text/plain',
                     maxOutputTokens: 1000000
@@ -2681,6 +2908,29 @@ Action: ${actionData.action}`;
             try {
                 const gameData = JSON.parse(responseText);
                 console.log('Получены результаты обработки действий:', gameData);
+                
+                // Зберігаємо історію розмови в мультиплеєрі (як в одиночному режимі)
+                window.gameState.conversationHistory.push({
+                    role: "user",
+                    parts: [{ text: prompt }]
+                });
+                
+                window.gameState.conversationHistory.push({
+                    role: "model",
+                    parts: [{ text: responseText }]
+                });
+                
+                console.log('🕒 Збережено історію мультиплеєр розмови:', window.gameState.conversationHistory.length, 'повідомлень');
+                
+                // Перевіряємо, чи потрібен саммарайз (кожні 10 обмінів)
+                const needSummary = window.gameState.conversationHistory.length >= 20; // 20 = 10 пар user+model
+                if (needSummary) {
+                    console.log('🔄 Потрібен саммарайз історії мультиплеєра');
+                    // Запускаємо саммарайз асинхронно, щоб не блокувати гру
+                    setTimeout(() => {
+                        generateMultiplayerHistorySummary();
+                    }, 1000);
+                }
                 
                 // Отправляем результаты всем игрокам через WebSocket
                 if (window.multiplayerManager && window.multiplayerManager.socket) {
@@ -2844,6 +3094,59 @@ function applyMultiplayerConsequences(consequences) {
                 }
             }
         });
+    }
+    
+    // Обрабатываем level up
+    if (consequences.level_up) {
+        // Обновляем уровень персонажа
+        if (consequences.level_up.newLevel) {
+            window.gameState.character.level = consequences.level_up.newLevel;
+        } else {
+            window.gameState.character.level += 1;
+        }
+        
+        // Обновляем максимальные характеристики
+        if (consequences.level_up.maxHealth !== undefined) {
+            window.gameState.character.maxHealth = consequences.level_up.maxHealth;
+        }
+        if (consequences.level_up.maxMana !== undefined) {
+            window.gameState.character.maxMana = consequences.level_up.maxMana;
+        }
+        
+        // Применяем прирост здоровья/маны
+        if (consequences.level_up.healthGain !== undefined) {
+            window.gameState.character.health = Math.min(
+                window.gameState.character.maxHealth,
+                window.gameState.character.health + consequences.level_up.healthGain
+            );
+        }
+        if (consequences.level_up.manaGain !== undefined) {
+            window.gameState.character.mana = Math.min(
+                window.gameState.character.maxMana,
+                window.gameState.character.mana + consequences.level_up.manaGain
+            );
+        }
+        
+        // Показываем попап уровня в мультиплеере
+        const levelGains = {
+            healthGain: consequences.level_up.healthGain || 0,
+            manaGain: consequences.level_up.manaGain || 0,
+            maxHealthIncrease: consequences.level_up.maxHealth ? (consequences.level_up.maxHealth - (window.gameState.character.maxHealth - (consequences.level_up.healthGain || 0))) : 0,
+            maxManaIncrease: consequences.level_up.maxMana ? (consequences.level_up.maxMana - (window.gameState.character.maxMana - (consequences.level_up.manaGain || 0))) : 0
+        };
+        
+        showLevelUpPopup(window.gameState.character.level, levelGains);
+        
+        // В мультиплеере повідомляємо сервер про level up
+        if (multiplayerState.isActive && window.multiplayerManager && window.multiplayerManager.socket) {
+            window.multiplayerManager.socket.send(JSON.stringify({
+                type: 'level_up',
+                playerId: multiplayerState.playerId,
+                newLevel: window.gameState.character.level,
+                character: window.gameState.character
+            }));
+            console.log('📈 Level up відправлено на сервер:', window.gameState.character.level);
+        }
     }
     
     // Обрабатываем доступные перки для выбора
@@ -3663,7 +3966,7 @@ function startGame() {
     gameState.character.maxHealth = stats.health;
     gameState.character.mana = stats.mana;
     gameState.character.maxMana = stats.mana;
-    gameState.character.perks = [...stats.perks];
+    gameState.character.perks = [getLocalizedBasicSkills(), ...localizeClassPerks(stats.perks)];
 
     document.getElementById('setupScreen').style.display = 'none';
     document.getElementById('gameArea').style.display = 'block';
@@ -5687,17 +5990,289 @@ function showPerkSelectionPopup(isMultiplayer = false) {
             // Застосовуємо бонуси перку
             applyPerkBonuses(selectedPerk);
             
+            // Показуємо повідомлення про отримання перка
+            showPerkNotification(selectedPerk);
+            
             // Очищаємо список доступних перків
             gameState.availablePerks = [];
             
             // Оновлюємо панель персонажа
             updateCharacterPanel();
             
+            // В мультиплеєрі повідомляємо сервер про вибір перка
+            if (isMultiplayer && multiplayerState.isActive && window.multiplayerManager && window.multiplayerManager.socket) {
+                window.multiplayerManager.socket.send(JSON.stringify({
+                    type: 'perk_selected',
+                    playerId: multiplayerState.playerId,
+                    selectedPerk: selectedPerk,
+                    character: gameState.character
+                }));
+                console.log('🎯 Вибір перка відправлено на сервер:', selectedPerk);
+            }
+            
             // Закриваємо попап
             popup.remove();
             overlay.remove();
         }
     });
+}
+
+// Функція для показу повідомлення про отримання перка
+function showPerkNotification(perk) {
+    // Створюємо повідомлення
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        z-index: 2000;
+        max-width: 300px;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.5s ease;
+        font-weight: bold;
+        border: 2px solid rgba(255,255,255,0.2);
+    `;
+    
+    // Розділяємо назву перку та опис
+    let perkName = perk;
+    let perkDesc = '';
+    
+    if (perk.includes(':')) {
+        const parts = perk.split(':');
+        perkName = parts[0].trim();
+        perkDesc = parts.slice(1).join(':').trim();
+    }
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; margin-bottom: 5px;">
+            <span style="font-size: 18px; margin-right: 8px;">✨</span>
+            <span style="font-size: 14px; opacity: 0.9;">${getText('perkObtained') || 'Отримано перк!'}</span>
+        </div>
+        <div style="font-size: 16px; margin-bottom: ${perkDesc ? '5px' : '0'};">${perkName}</div>
+        ${perkDesc ? `<div style="font-size: 12px; opacity: 0.8;">${perkDesc}</div>` : ''}
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Анімація появи
+    setTimeout(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Автоматичне приховування через 4 секунди
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 500);
+    }, 4000);
+}
+
+// Функція для генерації саммарайзу історії в мультиплеєрі
+async function generateMultiplayerHistorySummary(isIncremental = false) {
+    console.log('🔄 Запуск генерації саммарайзу для мультиплеєра...');
+    
+    if (!window.gameState || !window.gameState.apiKey) {
+        console.warn('⚠️ Немає API ключа для генерації саммарайзу мультиплеєра');
+        return null;
+    }
+
+    try {
+        const language = window.gameState.language || 'en';
+        const eventsToSummarize = 10; // Кількість обмінів для саммарайзу (20 повідомлень = 10 пар)
+        
+        // Створюємо промпт для саммарайзу мультиплеєра
+        let prompt = '';
+        
+        if (language === 'uk') {
+            prompt = `Створи короткий саммарайз останніх подій у мультиплеєрній D&D грі. Включи:
+1. Важливі дії всіх гравців
+2. Ключові рішення та наслідки
+3. Зміни у характеристиках персонажів
+4. Отримані перки та підвищення рівнів
+5. Боротьбу з ворогами (якщо була)
+6. Важливі знахідки та досягнення
+
+Відповідай українською мовою. Саммарайз має бути детальним але стислим.`;
+        } else if (language === 'ru') {
+            prompt = `Создай краткий саммарайз последних событий в мультиплеерной D&D игре. Включи:
+1. Важные действия всех игроков
+2. Ключевые решения и последствия
+3. Изменения в характеристиках персонажей
+4. Полученные перки и повышения уровней
+5. Борьбу с врагами (если была)
+6. Важные находки и достижения
+
+Отвечай на русском языке. Саммарайз должен быть детальным но кратким.`;
+        } else {
+            prompt = `Create a brief summary of recent events in this multiplayer D&D game. Include:
+1. Important actions by all players
+2. Key decisions and consequences
+3. Character stat changes
+4. Gained perks and level ups
+5. Combat encounters (if any)
+6. Important discoveries and achievements
+
+Respond in English. Summary should be detailed but concise.`;
+        }
+
+        // Додаємо останні повідомлення з історії
+        const recentHistory = window.gameState.conversationHistory.slice(-20); // Останні 20 повідомлень (10 пар)
+        prompt += '\n\nОстанні події для саммарайзу:\n';
+        recentHistory.forEach((message, index) => {
+            const role = message.role === 'user' ? 'Промпт' : 'Відповідь ШІ';
+            prompt += `\n${role} ${Math.floor(index/2) + 1}: ${message.parts[0].text.substring(0, 500)}...\n`;
+        });
+
+        // Додаємо інформацію про поточних гравців
+        if (multiplayerState.players && multiplayerState.players.size > 0) {
+            prompt += '\n\nІнформація про гравців:\n';
+            multiplayerState.players.forEach((player, playerId) => {
+                if (player.character) {
+                    prompt += `- ${player.character.name} (${player.character.class}): Рівень ${player.character.level}, HP ${player.character.health}/${player.character.maxHealth}\n`;
+                    if (player.character.perks && player.character.perks.length > 0) {
+                        prompt += `  Перки: ${player.character.perks.join(', ')}\n`;
+                    }
+                }
+            });
+        }
+
+        console.log('📝 Відправка запиту на саммарайз мультиплеєра...');
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${window.gameState.apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    responseMimeType: 'text/plain',
+                    maxOutputTokens: 1000000
+                },
+                safetySettings: [
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH",
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "BLOCK_NONE"
+                    }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            const summary = data.candidates[0].content.parts[0].text;
+            console.log('✅ Саммарайз мультиплеєра згенеровано:', summary.substring(0, 200) + '...');
+
+            // Зберігаємо саммарайз
+            if (!window.gameState.summarizedHistory) {
+                window.gameState.summarizedHistory = [];
+            }
+            window.gameState.summarizedHistory.push(summary);
+
+            // Застосовуємо саммарайз до історії мультиплеєра
+            applyMultiplayerSummaryToHistory(summary);
+
+            return summary;
+        } else {
+            throw new Error('Не отримано валідну відповідь від ШІ');
+        }
+
+    } catch (error) {
+        console.error('❌ Помилка генерації саммарайзу мультиплеєра:', error);
+        return null;
+    }
+}
+
+// Функція для застосування саммарайзу до історії мультиплеєра
+function applyMultiplayerSummaryToHistory(summary) {
+    try {
+        const eventsToSummarize = 10;
+        const language = window.gameState.language || 'en';
+        
+        // Текти для різних мов
+        const texts = {
+            en: {
+                summaryIntro: `Previous events summary:\n${summary}\n\nContinuing the multiplayer adventure...`,
+                modelResponse: "Understood. I'll continue the multiplayer adventure taking into account the summarized events and character progression."
+            },
+            uk: {
+                summaryIntro: `Саммарайз попередніх подій:\n${summary}\n\nПродовжуємо мультиплеєрну пригоду...`,
+                modelResponse: "Зрозуміло. Я продовжу мультиплеєрну пригоду, враховуючи підсумовані події та прогрес персонажів."
+            },
+            ru: {
+                summaryIntro: `Саммарайз предыдущих событий:\n${summary}\n\nПродолжаем мультиплеерное приключение...`,
+                modelResponse: "Понятно. Я продолжу мультиплеерное приключение, учитывая обобщенные события и прогресс персонажей."
+            }
+        };
+        
+        const selectedTexts = texts[language] || texts.en;
+
+        // Замінюємо останні повідомлення в conversationHistory на саммарайз
+        const messagesToReplace = eventsToSummarize * 2; // 20 повідомлень (10 пар user+model)
+        if (window.gameState.conversationHistory.length >= messagesToReplace) {
+            // Видаляємо останні повідомлення
+            window.gameState.conversationHistory.splice(-messagesToReplace, messagesToReplace);
+            
+            // Додаємо саммарайз як нову пару повідомлень
+            window.gameState.conversationHistory.push({
+                role: "user",
+                parts: [{ text: selectedTexts.summaryIntro }]
+            });
+            
+            window.gameState.conversationHistory.push({
+                role: "model",
+                parts: [{ text: selectedTexts.modelResponse }]
+            });
+            
+            console.log('✅ Саммарайз застосовано до історії мультиплеєра');
+        }
+
+        // Також оновлюємо gameHistory, додавши саммаризовану подію
+        if (window.gameState.gameHistory.length >= eventsToSummarize) {
+            window.gameState.gameHistory.splice(-eventsToSummarize, eventsToSummarize, {
+                scene: {
+                    text: summary,
+                    summarized: true
+                },
+                character: { ...window.gameState.character },
+                timestamp: new Date().toLocaleString(),
+                multiplayer: true
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ Помилка застосування саммарайзу до історії мультиплеєра:', error);
+    }
 }
 
 // Функція для застосування бонусів від перків
@@ -6476,7 +7051,7 @@ function showGameOverPopup(isDead = false) {
                 maxMana: 50,
                 experience: 0,
                 level: 1,
-                perks: ['Базові навички']
+                perks: [getLocalizedBasicSkills()]
             },
             currentScene: null,
             isLoading: false,

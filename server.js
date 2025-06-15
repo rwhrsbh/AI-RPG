@@ -276,6 +276,10 @@ function handleMessage(playerId, message) {
             handleKickPlayer(playerId, message);
             break;
             
+        case 'ping':
+            handlePing(playerId, message);
+            break;
+            
         default:
             console.log(`Невідомий тип повідомлення: ${message.type}`);
     }
@@ -635,6 +639,22 @@ function handleKickPlayer(playerId, message) {
     });
     
     console.log(`Гравець ${kickedPlayerId} кикнутий з лобі ${lobby.code}`);
+}
+
+// Обробка пінгу від клієнта
+function handlePing(playerId, message) {
+    const player = players.get(playerId);
+    if (!player || !player.socket || player.socket.readyState !== WebSocket.OPEN) {
+        return;
+    }
+    
+    // Отвечаем понгом на пинг
+    player.socket.send(JSON.stringify({
+        type: 'pong',
+        timestamp: message.timestamp || Date.now()
+    }));
+    
+    console.log(`📡 Отправлен понг игроку ${playerId}`);
 }
 
 // Обробка відключення гравця

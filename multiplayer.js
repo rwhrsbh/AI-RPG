@@ -15,12 +15,80 @@ class MultiplayerManager {
         this.playerId = null; // Добавляем ID игрока
         this.gameIntegration = null; // Интеграция с game.js
         
+        // Пинг система для поддержания соединения
+        this.pingInterval = null;
+        this.pongTimeout = null;
+        this.pingIntervalTime = 30000; // 30 секунд между пингами
+        this.pongTimeoutTime = 10000; // 10 секунд ожидание понга
+        
         this.initializeUI();
     }
 
     // Генерация уникального ID игрока
     generatePlayerId() {
         return 'player_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Запуск пинг системы
+    startPing() {
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+        }
+        
+        this.pingInterval = setInterval(() => {
+            if (this.socket && this.isConnected) {
+                console.log('📡 Отправка пинга серверу...');
+                this.socket.send(JSON.stringify({
+                    type: 'ping',
+                    timestamp: Date.now()
+                }));
+                
+                // Устанавливаем таймаут для получения понга
+                this.pongTimeout = setTimeout(() => {
+                    console.warn('⚠️ Не получен понг от сервера, переподключение...');
+                    this.handleConnectionTimeout();
+                }, this.pongTimeoutTime);
+            }
+        }, this.pingIntervalTime);
+        
+        console.log('🔄 Пинг система запущена (интервал:', this.pingIntervalTime / 1000, 'сек)');
+    }
+
+    // Остановка пинг системы
+    stopPing() {
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = null;
+        }
+        
+        if (this.pongTimeout) {
+            clearTimeout(this.pongTimeout);
+            this.pongTimeout = null;
+        }
+        
+        console.log('⏹️ Пинг система остановлена');
+    }
+
+    // Обработка полученного понга
+    handlePong() {
+        console.log('🏓 Получен понг от сервера');
+        if (this.pongTimeout) {
+            clearTimeout(this.pongTimeout);
+            this.pongTimeout = null;
+        }
+    }
+
+    // Обработка таймаута соединения
+    handleConnectionTimeout() {
+        console.error('❌ Таймаут соединения WebSocket');
+        this.isConnected = false;
+        this.stopPing();
+        
+        if (this.socket) {
+            this.socket.close();
+        }
+        
+        this.handleDisconnection();
     }
 
     // Ініціалізація UI для мультиплеєра
@@ -485,6 +553,9 @@ class MultiplayerManager {
                 this.isConnected = true;
                 this.reconnectAttempts = 0;
                 
+                // Запускаем пинг систему для поддержания соединения
+                this.startPing();
+                
                 if (this.isHost) {
                     // Створюємо лобі
                     this.socket.send(JSON.stringify({
@@ -514,6 +585,7 @@ class MultiplayerManager {
             this.socket.onclose = () => {
                 console.log('З\'єднання з сервером закрито');
                 this.isConnected = false;
+                this.stopPing(); // Останавливаем пинг систему при закрытии соединения
                 this.handleDisconnection();
             };
             
@@ -743,7 +815,11 @@ class MultiplayerManager {
                 }
                 break;
                 
-                case 'error':
+                case 'pong':
+                this.handlePong();
+                break;
+                
+            case 'error':
                     if (this.gameIntegration && this.gameIntegration.onError) {
                         this.gameIntegration.onError(message);
                     } else {
@@ -821,6 +897,9 @@ class MultiplayerManager {
 
     // Покинути гру
     leaveGame() {
+        // Останавливаем пинг систему перед закрытием соединения
+        this.stopPing();
+        
         if (this.socket) {
             this.socket.close();
             this.socket = null;
