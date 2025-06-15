@@ -12,7 +12,7 @@ class MultiplayerManager {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.gameState = null;
-        this.playerId = null; // Добавляем ID игрока
+        this.playerId = this.getPersistentPlayerId(); // Используем постоянный ID игрока
         this.gameIntegration = null; // Интеграция с game.js
         
         // Пинг система для поддержания соединения
@@ -29,6 +29,19 @@ class MultiplayerManager {
         return 'player_' + Math.random().toString(36).substr(2, 9);
     }
 
+    // Получение постоянного ID игрока из localStorage или создание нового
+    getPersistentPlayerId() {
+        let playerId = localStorage.getItem('dndPlayerId');
+        if (!playerId) {
+            playerId = this.generatePlayerId();
+            localStorage.setItem('dndPlayerId', playerId);
+            console.log('🆔 Создан новый постоянный ID игрока:', playerId);
+        } else {
+            console.log('🆔 Загружен существующий ID игрока:', playerId);
+        }
+        return playerId;
+    }
+
     // Запуск пинг системы
     startPing() {
         if (this.pingInterval) {
@@ -40,6 +53,7 @@ class MultiplayerManager {
                 console.log('📡 Отправка пинга серверу...');
                 this.socket.send(JSON.stringify({
                     type: 'ping',
+                    playerId: this.playerId,
                     timestamp: Date.now()
                 }));
                 
@@ -89,6 +103,417 @@ class MultiplayerManager {
         }
         
         this.handleDisconnection();
+    }
+
+    // Обработка сброса состояния хода
+    handleTurnStateReset(message) {
+        console.log('🔄 Получен сброс состояния хода:', message);
+        
+        // Разблокируем интерфейс
+        if (document.getElementById('customActionBtn')) {
+            document.getElementById('customActionBtn').disabled = false;
+        }
+        if (document.getElementById('customAction')) {
+            document.getElementById('customAction').disabled = false;
+        }
+        
+        // Включаем кнопки действий
+        document.querySelectorAll('.option-btn').forEach(btn => {
+            btn.disabled = false;
+        });
+        
+        // Показываем сообщение о возможности повторить действие
+        if (window.showMultiplayerError) {
+            window.showMultiplayerError(message.message || 'Состояние хода сброшено, можете выполнить новые действия');
+        }
+    }
+
+    // Обработка уведомления об ошибке AI
+    handleAIErrorNotification(message) {
+        console.error('❌ Получено уведомление об ошибке AI:', message);
+        
+        // Разблокируем интерфейс
+        if (document.getElementById('customActionBtn')) {
+            document.getElementById('customActionBtn').disabled = false;
+        }
+        if (document.getElementById('customAction')) {
+            document.getElementById('customAction').disabled = false;
+        }
+        
+        // Включаем кнопки действий
+        document.querySelectorAll('.option-btn').forEach(btn => {
+            btn.disabled = false;
+        });
+        
+        // Показываем ошибку (указываем что это от уведомления чтобы избежать бесконечного цикла)
+        if (window.showMultiplayerError) {
+            window.showMultiplayerError(message.message, true);
+        }
+    }
+
+    // Показ попапа выбора персонажа
+    showCharacterSelectionPopup(message) {
+        console.log('Показ выбора персонажа:', message);
+        
+        // Удаляем существующий попап если есть
+        const existingPopup = document.getElementById('characterSelectionPopup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+        
+        // Создаем новый попап
+        const popup = document.createElement('div');
+        popup.id = 'characterSelectionPopup';
+        popup.className = 'modal';
+        popup.style.display = 'block';
+        
+        const getText = (key) => {
+            if (typeof window.getText === 'function') {
+                return window.getText(key);
+            }
+            if (window.localization && window.gameState && window.localization[window.gameState.language]) {
+                return window.localization[window.gameState.language][key] || key;
+            }
+            return key;
+        };
+        
+        popup.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
+                    <h2>🎮 ${getText('selectCharacter') || 'Выберите персонажа'}</h2>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 20px;">${getText('selectCharacterInfo') || 'Игра уже началась. Выберите персонажа для подключения:'}</p>
+                    
+                    <div class="character-selection-list">
+                        ${message.availableCharacters.map(char => `
+                            <div class="character-option" onclick="window.multiplayerManager.selectCharacter('${char.id}', '${message.lobbyCode}')" 
+                                 style="padding: 15px; margin: 10px 0; background: rgba(76, 175, 80, 0.1); border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
+                                <h3 style="margin: 0 0 10px 0; color: #4CAF50;">${char.name}</h3>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                                    <div><strong>${getText('characterName') || 'Имя'}:</strong> ${char.character.name}</div>
+                                    <div><strong>${getText('class') || 'Класс'}:</strong> ${char.character.class}</div>
+                                    <div><strong>${getText('level') || 'Уровень'}:</strong> ${char.character.level}</div>
+                                    <div><strong>${getText('health') || 'Здоровье'}:</strong> ${char.character.health}/${char.character.maxHealth}</div>
+                                </div>
+                                ${char.character.perks && char.character.perks.length > 0 ? `
+                                    <div style="margin-top: 10px;">
+                                        <strong>${getText('perks') || 'Перки'}:</strong>
+                                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                            ${char.character.perks.slice(0, 3).join(', ')}${char.character.perks.length > 3 ? '...' : ''}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="mp-btn secondary" onclick="window.multiplayerManager.cancelCharacterSelection()">${getText('cancel') || 'Отмена'}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(popup);
+        
+        // Добавляем hover эффект
+        popup.querySelectorAll('.character-option').forEach(option => {
+            option.addEventListener('mouseenter', () => {
+                option.style.borderColor = '#4CAF50';
+                option.style.background = 'rgba(76, 175, 80, 0.2)';
+            });
+            option.addEventListener('mouseleave', () => {
+                option.style.borderColor = 'transparent';
+                option.style.background = 'rgba(76, 175, 80, 0.1)';
+            });
+        });
+    }
+
+    // Выбор персонажа
+    selectCharacter(characterId, lobbyCode) {
+        console.log('Выбран персонаж:', characterId);
+        
+        if (this.socket && this.isConnected) {
+            this.socket.send(JSON.stringify({
+                type: 'take_over_character',
+                targetPlayerId: characterId,
+                lobbyCode: lobbyCode
+            }));
+        }
+    }
+
+    // Отмена выбора персонажа
+    cancelCharacterSelection() {
+        const popup = document.getElementById('characterSelectionPopup');
+        if (popup) {
+            popup.remove();
+        }
+        this.hideModal();
+    }
+
+    // Обработка успешного взятия персонажа
+    handleCharacterTakenOver(message) {
+        console.log('Персонаж успешно взят:', message);
+        
+        // Закрываем попап выбора
+        const popup = document.getElementById('characterSelectionPopup');
+        if (popup) {
+            popup.remove();
+        }
+        
+        // Обновляем ID игрока
+        this.playerId = message.playerId;
+        this.lobbyCode = message.lobbyCode;
+        
+        // Уведомляем игровую интеграцию
+        if (this.gameIntegration && this.gameIntegration.onCharacterTakenOver) {
+            this.gameIntegration.onCharacterTakenOver(message);
+        }
+        
+        // Обновляем список игроков
+        this.updatePlayersList(message.players);
+        
+        console.log('Игрок успешно подключился как:', message.character.name);
+    }
+
+    // Обработка переподключения игрока
+    handlePlayerReconnected(message) {
+        console.log('Игрок переподключился:', message);
+        
+        // Обновляем список игроков
+        this.updatePlayersList(message.players);
+        
+        if (this.gameIntegration && this.gameIntegration.onPlayerReconnected) {
+            this.gameIntegration.onPlayerReconnected(message);
+        }
+    }
+
+    // Обработка отключения хоста
+    handleHostDisconnected(message) {
+        console.log('🚨 Хост отключился:', message);
+        
+        // Проверяем, запущен ли обратный отсчет
+        if (message.countdownStarted) {
+            console.log('⏰ Запускаем 2-минутный обратный отсчет ожидания хоста');
+            this.showHostReconnectionCountdown(message);
+        }
+        
+        // Обновляем список игроков
+        this.updatePlayersList(message.players);
+        
+        if (this.gameIntegration && this.gameIntegration.onHostDisconnected) {
+            this.gameIntegration.onHostDisconnected(message);
+        }
+    }
+
+    // Обработка ситуации когда все игроки оффлайн
+    handleAllPlayersOffline(message) {
+        console.log('⚠️ Все игроки оффлайн:', message);
+        
+        if (this.gameIntegration && this.gameIntegration.onAllPlayersOffline) {
+            this.gameIntegration.onAllPlayersOffline(message);
+        }
+    }
+
+    // Обработка создания восстановительного лобби
+    handleRecoveryLobbyCreated(message) {
+        console.log('✅ Восстановительное лобби создано:', message);
+        
+        // Обновляем данные лобби
+        this.lobbyCode = message.code;
+        this.isHost = true;
+        
+        // Обновляем список игроков
+        this.updatePlayersList(message.players);
+        
+        if (this.gameIntegration && this.gameIntegration.onRecoveryLobbyCreated) {
+            this.gameIntegration.onRecoveryLobbyCreated(message);
+        }
+    }
+    
+    // Обработка возвращения хоста
+    handleHostReconnected(message) {
+        console.log('✅ Хост переподключился:', message);
+        
+        // Закрываем окно обратного отсчета если оно открыто
+        this.hideHostReconnectionCountdown();
+        
+        // Обновляем список игроков
+        this.updatePlayersList(message.players);
+        
+        if (this.gameIntegration && this.gameIntegration.onHostReconnected) {
+            this.gameIntegration.onHostReconnected(message);
+        }
+    }
+    
+    // Обработка закрытия лобби из-за неявки хоста
+    handleLobbyClosedHostTimeout(message) {
+        console.log('❌ Лобби закрыто из-за неявки хоста:', message);
+        
+        // Закрываем окно обратного отсчета
+        this.hideHostReconnectionCountdown();
+        
+        // Показываем уведомление
+        alert(message.message || 'Лобби закрыто - хост не вернулся');
+        
+        // Возвращаемся в главное меню
+        this.leaveGame();
+        
+        if (this.gameIntegration && this.gameIntegration.onLobbyClosedHostTimeout) {
+            this.gameIntegration.onLobbyClosedHostTimeout(message);
+        }
+    }
+    
+    // Обработка закрытия лобби из-за выхода хоста
+    handleLobbyClosedHostLeft(message) {
+        console.log('❌ Лобби закрыто из-за выхода хоста:', message);
+        
+        // Показываем уведомление
+        alert(message.message || 'Лобби закрыто - хост покинул игру');
+        
+        // Возвращаемся в главное меню
+        this.leaveGame();
+        
+        if (this.gameIntegration && this.gameIntegration.onLobbyClosedHostLeft) {
+            this.gameIntegration.onLobbyClosedHostLeft(message);
+        }
+    }
+    
+    // Показать окно обратного отсчета ожидания хоста
+    showHostReconnectionCountdown(message) {
+        // Удаляем предыдущее окно если есть
+        this.hideHostReconnectionCountdown();
+        
+        const countdownDuration = message.countdownDuration || 120; // секунды
+        let remainingTime = countdownDuration;
+        
+        // Создаем попап
+        const popup = document.createElement('div');
+        popup.id = 'hostReconnectionCountdown';
+        popup.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #ff6b6b;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+        `;
+        
+        content.innerHTML = `
+            <h2 style="margin: 0 0 20px 0; color: #ff6b6b;">🚨 Хост отключился</h2>
+            <p style="margin: 0 0 20px 0; font-size: 18px;">Ожидаем возвращения хоста...</p>
+            <div id="countdownTimer" style="font-size: 48px; font-weight: bold; color: #4ecdc4; margin: 20px 0;">
+                ${this.formatTime(remainingTime)}
+            </div>
+            <p style="margin: 0; opacity: 0.8;">Если хост не вернется, лобби будет закрыто</p>
+            
+            <div style="margin-top: 30px;">
+                <h3 style="margin: 0 0 10px 0; color: #4ecdc4;">Игроки в лобби:</h3>
+                <div id="countdownPlayersList" style="text-align: left; margin-top: 15px;"></div>
+            </div>
+        `;
+        
+        popup.appendChild(content);
+        document.body.appendChild(popup);
+        
+        // Обновляем список игроков в попапе
+        this.updateCountdownPlayersList(message.players);
+        
+        // Запускаем таймер
+        this.hostCountdownInterval = setInterval(() => {
+            remainingTime--;
+            const timerElement = document.getElementById('countdownTimer');
+            if (timerElement) {
+                timerElement.textContent = this.formatTime(remainingTime);
+                
+                // Меняем цвет когда остается мало времени
+                if (remainingTime <= 30) {
+                    timerElement.style.color = '#ff6b6b';
+                } else if (remainingTime <= 60) {
+                    timerElement.style.color = '#ffa726';
+                }
+            }
+            
+            if (remainingTime <= 0) {
+                clearInterval(this.hostCountdownInterval);
+                // Сервер должен сам закрыть лобби, но на всякий случай
+                console.log('⏰ Время ожидания хоста истекло');
+            }
+        }, 1000);
+        
+        console.log('⏰ Окно обратного отсчета показано');
+    }
+    
+    // Скрыть окно обратного отсчета
+    hideHostReconnectionCountdown() {
+        const popup = document.getElementById('hostReconnectionCountdown');
+        if (popup) {
+            popup.remove();
+        }
+        
+        if (this.hostCountdownInterval) {
+            clearInterval(this.hostCountdownInterval);
+            this.hostCountdownInterval = null;
+        }
+        
+        console.log('⏰ Окно обратного отсчета скрыто');
+    }
+    
+    // Обновить список игроков в окне обратного отсчета
+    updateCountdownPlayersList(players) {
+        const listElement = document.getElementById('countdownPlayersList');
+        if (!listElement || !players) return;
+        
+        listElement.innerHTML = players.map(player => {
+            const statusColor = player.status === 'online' ? '#4CAF50' : '#f44336';
+            const statusIcon = player.status === 'online' ? '🟢' : '🔴';
+            
+            return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                    <span>${player.character?.name || player.name}</span>
+                    <span style="color: ${statusColor};">${statusIcon} ${this.getStatusText(player.status)}</span>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // Форматирование времени для отображения (мм:сс)
+    formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
+    // Создание восстановительного лобби
+    createRecoveryLobby(gameData, originalLobbyCode) {
+        console.log('🔄 Создание восстановительного лобби...');
+        
+        if (this.socket && this.isConnected) {
+            this.socket.send(JSON.stringify({
+                type: 'create_recovery_lobby',
+                gameData: gameData,
+                originalLobbyCode: originalLobbyCode
+            }));
+        }
     }
 
     // Ініціалізація UI для мультиплеєра
@@ -455,66 +880,79 @@ class MultiplayerManager {
     hostGame() {
         // Проверяем наличие API ключа перед созданием лобби
         if (!window.gameState || !window.gameState.apiKey) {
-            const getText = window.getText || ((key) => key);
-            alert(getText('hostApiKeyRequired') || 'Хост должен предоставить Gemini API ключ перед созданием лобби');
-            
-            // Показываем экран API setup
-            this.hideModal();
-            document.getElementById('mainMenu').style.display = 'none';
-            document.getElementById('apiSetup').style.display = 'block';
-            
-            // Добавляем обработчик для возврата к мультиплееру после ввода API ключа
-            const originalSaveApiKey = window.saveApiKey;
-            window.saveApiKey = function() {
-                const apiKey = document.getElementById('apiKey').value.trim();
-                if (apiKey) {
-                    window.gameState.apiKey = apiKey;
-                    
-                    // Сохраняем настройки озвучивания
-                    if (window.voiceGenerator) {
-                        const voiceEnabled = document.getElementById('voiceEnabled').checked;
-                        const voiceService = document.getElementById('voiceService').value;
-                        const elevenLabsApiKey = document.getElementById('elevenLabsApiKey').value.trim();
-                        
-                        window.gameState.shortResponses = document.getElementById('shortResponsesEnabled').checked;
-                        
-                        let voiceSettings = {
-                            isEnabled: voiceEnabled,
-                            service: voiceService
-                        };
-                        
-                        if (voiceService === 'gemini') {
-                            voiceSettings.voice = document.getElementById('geminiVoiceSelect').value;
-                        } else if (voiceService === 'elevenlabs') {
-                            voiceSettings.elevenLabsApiKey = elevenLabsApiKey;
-                            voiceSettings.elevenLabsVoice = document.getElementById('elevenLabsVoiceSelect').value;
-                        }
-                        
-                        window.voiceGenerator.setVoiceSettings(voiceSettings);
-                        window.gameState.voiceSettings = window.voiceGenerator.getVoiceSettings();
-                    }
-                    
-                    document.getElementById('apiSetup').style.display = 'none';
-                    initSoundControls();
-                    
-                    // Возвращаемся к созданию мультиплеер лобби
-                    setTimeout(() => {
-                        window.multiplayerManager.hostGame();
-                    }, 100);
-                    
-                    // Восстанавливаем оригинальную функцию
-                    window.saveApiKey = originalSaveApiKey;
-                } else {
-                    const getText = window.getText || ((key) => key);
-                    alert(getText('enterApiKey') || 'Введіть API ключ');
-                }
-            };
+            this.showApiKeyInput();
             return;
         }
         
+        this.createLobby();
+    }
+    
+    // Показать поле ввода API ключа в модальном окне
+    showApiKeyInput() {
+        const getText = window.getText || ((key) => key);
+        const multiplayerMenu = document.getElementById('multiplayerMenu');
+        
+        multiplayerMenu.innerHTML = `
+            <div class="api-key-section">
+                <h3 style="color: #4ecdc4; margin-bottom: 15px;">
+                    🔑 ${getText('enterApiKey') || 'Введіть Gemini API ключ'}
+                </h3>
+                <p style="margin-bottom: 15px; color: #ccc; font-size: 0.9em;">
+                    ${getText('hostApiKeyRequired') || 'Хост повинен надати API ключ для створення лобі'}
+                </p>
+                <input type="password" id="multiplayerApiKey" placeholder="${getText('apiKeyPlaceholder') || 'Gemini API ключ'}" 
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #4ecdc4; border-radius: 5px; background: rgba(0,0,0,0.3); color: white;">
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="window.multiplayerManager.saveApiKeyAndCreateLobby()" class="mp-btn primary" style="flex: 1;">
+                        ${getText('createLobby') || 'Створити лобі'}
+                    </button>
+                    <button onclick="window.multiplayerManager.backToMultiplayerMenu()" class="mp-btn secondary" style="flex: 1;">
+                        ${getText('back') || 'Назад'}
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Сохранить API ключ и создать лобби
+    saveApiKeyAndCreateLobby() {
+        const apiKey = document.getElementById('multiplayerApiKey').value.trim();
+        if (!apiKey) {
+            const getText = window.getText || ((key) => key);
+            alert(getText('enterApiKey') || 'Будь ласка, введіть API ключ');
+            return;
+        }
+        
+        // Сохраняем API ключ в gameState
+        if (!window.gameState) {
+            window.gameState = { apiKey: '' };
+        }
+        window.gameState.apiKey = apiKey;
+        
+        // Возвращаемся к меню и создаем лобби
+        this.backToMultiplayerMenu();
+        this.createLobby();
+    }
+    
+    // Вернуться к меню мультиплеера
+    backToMultiplayerMenu() {
+        const getText = window.getText || ((key) => key);
+        const multiplayerMenu = document.getElementById('multiplayerMenu');
+        
+        multiplayerMenu.innerHTML = `
+            <button id="hostGameBtn" class="mp-btn primary">${getText('createLobby') || 'Створити лобі'}</button>
+            <button id="joinGameBtn" class="mp-btn secondary">${getText('joinLobby') || 'Приєднатися до лобі'}</button>
+        `;
+        
+        // Переподключаем обработчики событий
+        document.getElementById('hostGameBtn').onclick = () => this.hostGame();
+        document.getElementById('joinGameBtn').onclick = () => this.showJoinLobby();
+    }
+    
+    // Создать лобби (выделенная функция)
+    createLobby() {
         this.isHost = true;
         this.lobbyCode = this.generateLobbyCode();
-        this.playerId = this.generatePlayerId();
         
         document.getElementById('multiplayerMenu').style.display = 'none';
         document.getElementById('hostLobby').style.display = 'block';
@@ -533,7 +971,6 @@ class MultiplayerManager {
     joinGame(code) {
         this.isHost = false;
         this.lobbyCode = code;
-        this.playerId = this.generatePlayerId();
         
         document.getElementById('joinLobby').style.display = 'none';
         
@@ -542,7 +979,8 @@ class MultiplayerManager {
 
     // Підключення до сервера
     connectToServer() {
-        const serverUrl = 'ws://localhost:3001';
+        // const serverUrl = 'ws://localhost:3001';
+        const serverUrl = 'wss://ai-rpg-c4df.onrender.com';
         console.log('Підключення до сервера:', serverUrl);
         
         try {
@@ -561,6 +999,7 @@ class MultiplayerManager {
                     this.socket.send(JSON.stringify({
                         type: 'create_lobby',
                         code: this.lobbyCode,
+                        playerId: this.playerId,
                         playerName: this.getPlayerName()
                     }));
                 } else {
@@ -568,6 +1007,7 @@ class MultiplayerManager {
                     this.socket.send(JSON.stringify({
                         type: 'join_lobby',
                         code: this.lobbyCode,
+                        playerId: this.playerId,
                         playerName: this.getPlayerName()
                     }));
                 }
@@ -817,6 +1257,50 @@ class MultiplayerManager {
                 
                 case 'pong':
                 this.handlePong();
+                break;
+                
+            case 'turn_state_reset':
+                this.handleTurnStateReset(message);
+                break;
+                
+            case 'ai_error_notification':
+                this.handleAIErrorNotification(message);
+                break;
+                
+            case 'character_selection_required':
+                this.showCharacterSelectionPopup(message);
+                break;
+                
+            case 'character_taken_over':
+                this.handleCharacterTakenOver(message);
+                break;
+                
+            case 'player_reconnected':
+                this.handlePlayerReconnected(message);
+                break;
+                
+            case 'host_disconnected':
+                this.handleHostDisconnected(message);
+                break;
+                
+            case 'all_players_offline':
+                this.handleAllPlayersOffline(message);
+                break;
+                
+            case 'recovery_lobby_created':
+                this.handleRecoveryLobbyCreated(message);
+                break;
+                
+            case 'host_reconnected':
+                this.handleHostReconnected(message);
+                break;
+                
+            case 'lobby_closed_host_timeout':
+                this.handleLobbyClosedHostTimeout(message);
+                break;
+                
+            case 'lobby_closed_host_left':
+                this.handleLobbyClosedHostLeft(message);
                 break;
                 
             case 'error':

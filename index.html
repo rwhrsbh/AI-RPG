@@ -129,6 +129,27 @@
             font-size: 1.1em;
         }
 
+        .common-story-text {
+            background: rgba(78, 205, 196, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4ecdc4;
+            line-height: 1.6;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .personal-story-text {
+            background: rgba(255, 107, 107, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ff6b6b;
+            line-height: 1.6;
+            font-size: 1.05em;
+            font-style: italic;
+        }
+
         .options-container {
             margin: 20px 0;
         }
@@ -659,7 +680,7 @@
                 </div>
                 
                 <div style="margin-top: 20px; display: flex; gap: 10px;">
-                    <button onclick="saveGame()" class="action-btn" style="width: 50%; font-size: 0.9em;">
+                    <button id="saveGameBtn" onclick="saveGame()" class="action-btn" style="width: 50%; font-size: 0.9em;">
                         💾 Зберегти
                     </button>
                     <button onclick="loadGame()" class="action-btn" style="width: 50%; font-size: 0.9em;">

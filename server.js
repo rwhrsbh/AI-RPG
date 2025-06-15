@@ -13,6 +13,9 @@ const wss = new WebSocket.Server({ server, maxPayload: 500 * 1024 * 1024 });
 const lobbies = new Map();
 const players = new Map();
 
+// Таймеры ожидания переподключения хостов
+const hostReconnectionTimers = new Map();
+
 class Lobby {
     constructor(code, hostId) {
         this.code = code;
@@ -203,15 +206,24 @@ setInterval(cleanupOldLobbies, 30 * 60 * 1000);
 
 // Обробка WebSocket з'єднань
 wss.on('connection', (ws) => {
-    const playerId = generateId();
-    players.set(playerId, { socket: ws, lobbyCode: null });
+    // Временный ID до получения постоянного ID от клиента
+    const tempId = generateId();
+    players.set(tempId, { socket: ws, lobbyCode: null, isTemporary: true });
     
-    console.log(`Новий гравець підключився: ${playerId}`);
+    // Отслеживаем актуальный ID для этого соединения
+    let currentPlayerId = tempId;
+    
+    console.log(`Новое временное подключение: ${tempId}`);
     
     ws.on('message', (data) => {
         try {
             const message = JSON.parse(data);
-            handleMessage(playerId, message);
+            const result = handleMessage(currentPlayerId, message, ws);
+            
+            // Если ID был обновлен, сохраняем новый ID
+            if (result && result.newPlayerId) {
+                currentPlayerId = result.newPlayerId;
+            }
         } catch (error) {
             console.error('Помилка парсингу повідомлення:', error);
             ws.send(JSON.stringify({
@@ -222,67 +234,106 @@ wss.on('connection', (ws) => {
     });
     
     ws.on('close', () => {
-        handlePlayerDisconnect(playerId);
+        handlePlayerDisconnect(currentPlayerId);
     });
     
     ws.on('error', (error) => {
-        console.error(`Помилка WebSocket для гравця ${playerId}:`, error);
+        console.error(`Помилка WebSocket для гравця ${currentPlayerId}:`, error);
     });
 });
 
 // Обробка повідомлень від клієнтів
-function handleMessage(playerId, message) {
-    const player = players.get(playerId);
+function handleMessage(currentPlayerId, message, ws) {
+    // Получаем игрока по текущему ID
+    let player = players.get(currentPlayerId);
+    let actualPlayerId = currentPlayerId;
+    let playerIdChanged = false;
+    
+    // Если это сообщение с постоянным ID, обновляем маппинг
+    if (message.playerId && player && player.isTemporary) {
+        actualPlayerId = message.playerId;
+        console.log(`Обновляем временный ID ${currentPlayerId} на постоянный ${actualPlayerId}`);
+        
+        // Перемещаем игрока на постоянный ID
+        players.delete(currentPlayerId);
+        players.set(actualPlayerId, { 
+            socket: ws, 
+            lobbyCode: player.lobbyCode,
+            isTemporary: false 
+        });
+        player = players.get(actualPlayerId);
+        playerIdChanged = true;
+    }
+    
     if (!player) return;
     
     switch (message.type) {
         case 'create_lobby':
-            handleCreateLobby(playerId, message);
+            handleCreateLobby(actualPlayerId, message);
             break;
             
         case 'join_lobby':
-            handleJoinLobby(playerId, message);
+            handleJoinLobby(actualPlayerId, message);
             break;
             
         case 'start_game':
-            handleStartGame(playerId, message);
+            handleStartGame(actualPlayerId, message);
             break;
             
         case 'player_action':
-            handlePlayerAction(playerId, message);
+            handlePlayerAction(actualPlayerId, message);
             break;
             
         case 'leave_lobby':
-            handleLeaveLobby(playerId);
+            handleLeaveLobby(actualPlayerId);
             break;
             
         case 'ai_response':
-            handleAIResponse(playerId, message);
+            handleAIResponse(actualPlayerId, message);
             break;
             
         case 'character_created':
-            handleCharacterCreated(playerId, message);
+            handleCharacterCreated(actualPlayerId, message);
             break;
             
         case 'initial_story':
-            handleInitialStory(playerId, message);
+            handleInitialStory(actualPlayerId, message);
             break;
             
         case 'image_share':
-            handleImageShare(playerId, message);
+            handleImageShare(actualPlayerId, message);
             break;
             
         case 'kick_player':
-            handleKickPlayer(playerId, message);
+            handleKickPlayer(actualPlayerId, message);
             break;
             
         case 'ping':
-            handlePing(playerId, message);
+            handlePing(actualPlayerId, message);
+            break;
+            
+        case 'reset_turn_state':
+            handleResetTurnState(actualPlayerId, message);
+            break;
+            
+        case 'ai_error':
+            handleAIError(actualPlayerId, message);
+            break;
+            
+        case 'take_over_character':
+            handleTakeOverCharacter(actualPlayerId, message);
+            break;
+            
+        case 'create_recovery_lobby':
+            handleCreateRecoveryLobby(actualPlayerId, message);
             break;
             
         default:
             console.log(`Невідомий тип повідомлення: ${message.type}`);
     }
+    
+    // Возвращаем информацию об изменении ID
+    return playerIdChanged ? { newPlayerId: actualPlayerId } : null;
 }
 
 // Створення лобі
@@ -336,9 +387,26 @@ function handleJoinLobby(playerId, message) {
     }
     
     if (lobby.isGameStarted) {
+        // Если игра началась, предлагаем выбор отключенных персонажей
+        const offlineCharacters = Array.from(lobby.players.values()).filter(p => p.status === 'offline' && p.character);
+        
+        if (offlineCharacters.length === 0) {
+            player.socket.send(JSON.stringify({
+                type: 'error',
+                message: 'Игра уже началась и нет доступных персонажей для подключения'
+            }));
+            return;
+        }
+        
+        // Отправляем список доступных персонажей
         player.socket.send(JSON.stringify({
-            type: 'error',
-            message: 'Гра вже розпочата'
+            type: 'character_selection_required',
+            lobbyCode: message.code,
+            availableCharacters: offlineCharacters.map(p => ({
+                id: p.id,
+                name: p.name,
+                character: p.character
+            }))
         }));
         return;
     }
@@ -393,12 +461,17 @@ function handleStartGame(playerId, message) {
     lobby.gameState = message.gameState || {};
     
     console.log(`Гра розпочата в лобі ${player.lobbyCode}`);
+    console.log(`Кількість гравців у лобі: ${lobby.players.size}`);
+    console.log(`Стан гри:`, lobby.gameState);
     
-    lobby.broadcastToAll({
+    const gameStartMessage = {
         type: 'game_started',
         gameState: lobby.gameState,
         players: lobby.getPlayersArray()
-    });
+    };
+    
+    console.log(`Відправляємо game_started всім гравцям:`, gameStartMessage);
+    lobby.broadcastToAll(gameStartMessage);
 }
 
 // Обробка дії гравця
@@ -515,18 +588,39 @@ function handleLeaveLobby(playerId) {
         lobbies.delete(lobby.code);
         console.log(`Лобі ${lobby.code} видалено`);
     } else {
-        // Якщо хост покинув лобі, призначаємо нового хоста
-        if (lobby.hostId === playerId) {
-            const newHost = lobby.players.values().next().value;
-            lobby.hostId = newHost.id;
-            console.log(`Новий хост лобі ${lobby.code}: ${newHost.id}`);
-        }
-        
-        // Повідомляємо інших гравців
+        // Повідомляємо інших гравців про вихід
         lobby.broadcastToAll({
             type: 'player_left',
+            leavingPlayerId: playerId,
             players: lobby.getPlayersArray()
         });
+        
+        // Якщо хост покинув лобі, закриваємо лобі (оскільки не можна передавати хост)
+        if (lobby.hostId === playerId) {
+            console.log(`🚨 Хост ${playerId} покинув лобі ${lobby.code}, закриваємо лобі`);
+            
+            // Уведомляємо всех о закрытии лобби
+            lobby.broadcastToAll({
+                type: 'lobby_closed_host_left',
+                message: 'Хост покинув лобі. Лобі закрито.',
+                leavingHostId: playerId
+            });
+            
+            // Закрываем все соединения в лобби
+            lobby.players.forEach((player, pId) => {
+                if (pId !== playerId && player.socket && player.socket.readyState === WebSocket.OPEN) {
+                    player.socket.close();
+                }
+                // Удаляем игрока из глобального списка
+                if (pId !== playerId) {
+                    players.delete(pId);
+                }
+            });
+            
+            // Удаляем лобби
+            lobbies.delete(lobby.code);
+            console.log(`🗑️ Лобі ${lobby.code} видалено через вихід хоста`);
+        }
     }
 }
 
@@ -645,6 +739,7 @@ function handleKickPlayer(playerId, message) {
 function handlePing(playerId, message) {
     const player = players.get(playerId);
     if (!player || !player.socket || player.socket.readyState !== WebSocket.OPEN) {
+        console.warn(`⚠️ Не удалось отправить понг игроку ${playerId}: игрок не найден или соединение закрыто`);
         return;
     }
     
@@ -657,6 +752,202 @@ function handlePing(playerId, message) {
     console.log(`📡 Отправлен понг игроку ${playerId}`);
 }
 
+// Обработка сброса состояния хода
+function handleResetTurnState(playerId, message) {
+    const player = players.get(playerId);
+    const lobby = lobbies.get(player.lobbyCode);
+    
+    if (!lobby || lobby.hostId !== playerId) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Только хост может сбрасывать состояние хода'
+        }));
+        return;
+    }
+    
+    console.log(`🔄 Хост ${playerId} сбрасывает состояние хода в лобби ${lobby.code}`);
+    
+    // Очищаем все ожидающие действия
+    lobby.currentActions.clear();
+    
+    // Уведомляем всех игроков о сбросе состояния
+    lobby.broadcastToAll({
+        type: 'turn_state_reset',
+        message: 'Состояние хода сброшено, можете выполнить новые действия'
+    });
+}
+
+// Обработка ошибки AI
+function handleAIError(playerId, message) {
+    const player = players.get(playerId);
+    const lobby = lobbies.get(player.lobbyCode);
+    
+    if (!lobby || lobby.hostId !== playerId) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Только хост может отправлять уведомления об ошибках AI'
+        }));
+        return;
+    }
+    
+    console.log(`❌ Ошибка AI в лобби ${lobby.code}: ${message.message}`);
+    
+    // Очищаем состояние действий
+    lobby.currentActions.clear();
+    
+    // Уведомляем всех игроков об ошибке
+    lobby.broadcastToAll({
+        type: 'ai_error_notification',
+        message: message.message
+    });
+}
+
+// Обработка взятия управления отключенным персонажем
+function handleTakeOverCharacter(newPlayerId, message) {
+    const newPlayer = players.get(newPlayerId);
+    const lobby = lobbies.get(message.lobbyCode);
+    
+    if (!lobby) {
+        newPlayer.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Лобі не знайдено'
+        }));
+        return;
+    }
+    
+    const targetPlayerId = message.targetPlayerId;
+    const targetPlayer = lobby.players.get(targetPlayerId);
+    
+    if (!targetPlayer) {
+        newPlayer.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Персонаж не знайдено'
+        }));
+        return;
+    }
+    
+    if (targetPlayer.status !== 'offline') {
+        newPlayer.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Цей персонаж все ще активний'
+        }));
+        return;
+    }
+    
+    console.log(`Игрок ${newPlayerId} берет управление персонажем ${targetPlayerId} в лобби ${lobby.code}`);
+    
+    // Проверяем, не является ли целевой персонаж хостом
+    const isReconnectingHost = (lobby.hostId === targetPlayerId);
+    
+    // Обновляем данные персонажа
+    targetPlayer.socket = newPlayer.socket;
+    targetPlayer.status = 'online';
+    
+    // Если переподключается хост, отменяем таймер ожидания
+    if (isReconnectingHost) {
+        const cancelled = cancelHostReconnectionTimer(lobby.code, targetPlayerId);
+        if (cancelled) {
+            console.log(`🎯 Хост ${targetPlayerId} переподключился, таймер отменен`);
+            
+            // Уведомляем всех о возвращении хоста
+            lobby.broadcastToAll({
+                type: 'host_reconnected',
+                hostId: targetPlayerId,
+                players: lobby.getPlayersArray()
+            });
+        }
+    }
+    
+    // Обновляем глобальное подключение
+    newPlayer.lobbyCode = lobby.code;
+    
+    // Удаляем старое подключение и добавляем новое с ID целевого персонажа
+    players.delete(newPlayerId);
+    players.set(targetPlayerId, {
+        socket: newPlayer.socket,
+        lobbyCode: lobby.code,
+        isTemporary: false
+    });
+    
+    // Отправляем подтверждение новому игроку
+    newPlayer.socket.send(JSON.stringify({
+        type: 'character_taken_over',
+        playerId: targetPlayerId,
+        character: targetPlayer.character,
+        lobbyCode: lobby.code,
+        players: lobby.getPlayersArray()
+    }));
+    
+    // Уведомляем всех остальных игроков
+    lobby.players.forEach((player, playerId) => {
+        if (playerId !== targetPlayerId && player.socket.readyState === WebSocket.OPEN) {
+            player.socket.send(JSON.stringify({
+                type: 'player_reconnected',
+                playerId: targetPlayerId,
+                players: lobby.getPlayersArray()
+            }));
+        }
+    });
+    
+    console.log(`Персонаж ${targetPlayerId} теперь управляется игроком ${newPlayerId}`);
+}
+
+// Создание восстановительного лобби с сохранением игровых данных
+function handleCreateRecoveryLobby(playerId, message) {
+    const player = players.get(playerId);
+    
+    if (!player) {
+        return;
+    }
+    
+    console.log(`🔄 Создание восстановительного лобби игроком ${playerId}`);
+    
+    // Генерируем новый код лобби
+    let newLobbyCode = generateLobbyCode();
+    while (lobbies.has(newLobbyCode)) {
+        newLobbyCode = generateLobbyCode();
+    }
+    
+    // Создаем новое лобби
+    const recoveryLobby = new Lobby(newLobbyCode, playerId);
+    recoveryLobby.isGameStarted = true; // Помечаем как начатую игру
+    
+    // Добавляем всех игроков из переданных данных
+    if (message.gameData && message.gameData.players) {
+        message.gameData.players.forEach(playerData => {
+            // Добавляем игрока как offline (кроме создателя лобби)
+            const status = playerData.id === playerId ? 'online' : 'offline';
+            const socket = playerData.id === playerId ? player.socket : null;
+            
+            recoveryLobby.players.set(playerData.id, {
+                id: playerData.id,
+                name: playerData.name,
+                status: status,
+                socket: socket,
+                character: playerData.character,
+                lastAction: null,
+                joinedAt: Date.now()
+            });
+        });
+    }
+    
+    // Сохраняем лобби
+    lobbies.set(newLobbyCode, recoveryLobby);
+    player.lobbyCode = newLobbyCode;
+    
+    console.log(`✅ Восстановительное лобби создано: ${newLobbyCode} с ${recoveryLobby.players.size} игроками`);
+    
+    // Отправляем подтверждение создателю
+    player.socket.send(JSON.stringify({
+        type: 'recovery_lobby_created',
+        code: newLobbyCode,
+        playerId: playerId,
+        players: recoveryLobby.getPlayersArray(),
+        gameStarted: true,
+        originalLobbyCode: message.originalLobbyCode
+    }));
+}
+
 // Обробка відключення гравця
 function handlePlayerDisconnect(playerId) {
     console.log(`Гравець відключився: ${playerId}`);
@@ -665,17 +956,52 @@ function handlePlayerDisconnect(playerId) {
     if (player && player.lobbyCode) {
         const lobby = lobbies.get(player.lobbyCode);
         if (lobby) {
+            // Проверяем, был ли это хост
+            const isHost = lobby.hostId === playerId;
+            
+            // Обновляем статус игрока на offline, но НЕ удаляем его из лобби
             lobby.setPlayerStatus(playerId, 'offline');
             
-            // Повідомляємо інших гравців про відключення
-            lobby.broadcastToAll({
-                type: 'player_disconnected',
-                playerId: playerId,
-                players: lobby.getPlayersArray()
-            });
+            if (isHost && lobby.isGameStarted) {
+                // Хост отключился во время активной игры
+                console.log(`🚨 Хост ${playerId} отключился во время игры в лобби ${lobby.code}`);
+                
+                // Запускаем 2-минутный таймер ожидания возвращения хоста
+                startHostReconnectionTimer(lobby, playerId);
+                
+                // Уведомляем всех игроков о отключении хоста и запуске таймера
+                lobby.broadcastToAll({
+                    type: 'host_disconnected',
+                    disconnectedHostId: playerId,
+                    players: lobby.getPlayersArray(),
+                    gameStarted: lobby.isGameStarted,
+                    countdownStarted: true,
+                    countdownDuration: 120, // 2 минуты в секундах
+                    gameState: {
+                        players: Array.from(lobby.players.values()).map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            character: p.character,
+                            status: p.status
+                        })),
+                        lobbyCode: lobby.code
+                    }
+                });
+            } else {
+                // Обычное отключение игрока (не хоста или хоста до начала игры)
+                lobby.broadcastToAll({
+                    type: 'player_disconnected',
+                    playerId: playerId,
+                    players: lobby.getPlayersArray(),
+                    gameStarted: lobby.isGameStarted
+                });
+            }
+            
+            console.log(`Игрок ${playerId} отключен, но персонаж сохранен в лобби для возможного переподключения`);
         }
     }
     
+    // Удаляем только из глобального списка активных подключений
     players.delete(playerId);
 }
 
@@ -708,5 +1034,66 @@ process.on('SIGINT', () => {
     });
 });
 
-// Експорт для тестування
+// Функция запуска таймера ожидания переподключения хоста
+function startHostReconnectionTimer(lobby, disconnectedHostId) {
+    const lobbyCode = lobby.code;
+    
+    console.log(`⏰ Запуск 2-минутного таймера ожидания хоста ${disconnectedHostId} в лобби ${lobbyCode}`);
+    
+    // Очищаем предыдущий таймер если он есть
+    if (hostReconnectionTimers.has(lobbyCode)) {
+        clearTimeout(hostReconnectionTimers.get(lobbyCode));
+    }
+    
+    const timer = setTimeout(() => {
+        console.log(`⏰ Время ожидания хоста истекло для лобби ${lobbyCode}`);
+        
+        // Удаляем таймер из карты
+        hostReconnectionTimers.delete(lobbyCode);
+        
+        // Проверяем, вернулся ли хост
+        const hostPlayer = lobby.players.get(disconnectedHostId);
+        if (!hostPlayer || hostPlayer.status !== 'online') {
+            console.log(`❌ Хост ${disconnectedHostId} не вернулся, кикаем всех из лобби ${lobbyCode}`);
+            
+            // Уведомляем всех игроков о закрытии лобби
+            lobby.broadcastToAll({
+                type: 'lobby_closed_host_timeout',
+                message: 'Хост не вернулся в течение 2 минут. Лобби закрывается.',
+                disconnectedHostId: disconnectedHostId
+            });
+            
+            // Закрываем все соединения в лобби
+            lobby.players.forEach((player, playerId) => {
+                if (player.socket && player.socket.readyState === WebSocket.OPEN) {
+                    player.socket.close();
+                }
+                // Удаляем игрока из глобального списка
+                players.delete(playerId);
+            });
+            
+            // Удаляем лобби
+            lobbies.delete(lobbyCode);
+            console.log(`🗑️ Лобби ${lobbyCode} удалено из-за неявки хоста`);
+        } else {
+            console.log(`✅ Хост ${disconnectedHostId} вернулся в лобби ${lobbyCode}`);
+        }
+    }, 120000); // 2 минуты = 120000 мс
+    
+    // Сохраняем таймер
+    hostReconnectionTimers.set(lobbyCode, timer);
+}
+
+// Функция отмены таймера при возвращении хоста
+function cancelHostReconnectionTimer(lobbyCode, hostId) {
+    if (hostReconnectionTimers.has(lobbyCode)) {
+        clearTimeout(hostReconnectionTimers.get(lobbyCode));
+        hostReconnectionTimers.delete(lobbyCode);
+        console.log(`✅ Таймер ожидания хоста отменен для лобби ${lobbyCode} - хост ${hostId} вернулся`);
+        return true;
+    }
+    return false;
+}
+
+// Экспорт для тестирования
 module.exports = { server, wss, lobbies, players };
