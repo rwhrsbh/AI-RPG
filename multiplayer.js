@@ -542,7 +542,7 @@ class MultiplayerManager {
 
     // Підключення до сервера
     connectToServer() {
-        const serverUrl = 'ws://localhost:3001';
+        const serverUrl = 'wss://ai-rpg-c4df.onrender.com';
         console.log('Підключення до сервера:', serverUrl);
         
         try {
