@@ -1446,6 +1446,1694 @@ function loadSpecificSave(saveData) {
 function getText(key) {
     return localization[gameState.language][key] || key;
 }
+// Добавим в начало game.js после существующих локализаций мультиплеера
+
+// Добавляем локализацию для мультиплеер промптов
+if (!localization.en.multiplayerInitialPrompt) {
+    // Английская локализация
+    localization.en.multiplayerInitialPrompt = `You are a D&D game master for a multiplayer session with {playerCount} players. Create an initial scene that involves ALL players together.
+
+PLAYERS IN SESSION:
+{playersInfo}
+
+IMPORTANT: 
+1. Respond ONLY with clean JSON without markdown blocks, without additional text, without prefixes or suffixes!
+2. Create CHALLENGING, meaningful situations that naturally involve ALL players
+3. Always add at least one unique NPC with personality, motivation, and opportunity for dialogue or interaction
+4. Include social scenes, dialogues, puzzles, moral dilemmas, humor, exploration, unexpected encounters
+5. Combat should be only one of the possible outcomes, not the main focus
+6. Add skill checks (e.g., "Roll d20 for Persuasion"), as in real D&D. Describe the result of the roll (success/failure) and its impact on the story
+7. Players need to face significant consequences for their actions
+8. The initial situation does not have to be difficult, but the game should not be easy
+9. Include moral dilemmas and tough choices
+
+Response format:
+{
+  "text": "detailed description of the common situation that affects all players",
+  "players": {
+    "{playerId1}": {
+      "personal_text": "specific description for this player based on their class and background",
+      "options": ["option 1", "option 2", "option 3", "option 4"],
+      "consequences": {
+        "health": 0,
+        "mana": 0,
+        "experience": 0,
+        "combat": false,
+        "enemy": null,
+        "new_perks": [],
+        "gameover": false
+      }
+    },
+    "{playerId2}": {
+      "personal_text": "specific description for this player based on their class and background", 
+      "options": ["option 1", "option 2", "option 3", "option 4"],
+      "consequences": {
+        "health": 0,
+        "mana": 0,
+        "experience": 0,
+        "combat": false,
+        "enemy": null,
+        "new_perks": [],
+        "gameover": false
+      }
+    }
+  }
+}
+
+If combat is true for any player, always return enemy information in this format:
+- For a single enemy: 
+  "enemy": {
+    "name": "Enemy Name", 
+    "health": numeric_value_or_description, 
+    "description": "brief description"
+  }
+
+- For multiple enemies or a group:
+  "enemy": {
+    "name": "Group Name", 
+    "count": number_of_enemies, 
+    "health": numeric_value_or_description_per_individual (string), 
+    "type": "combat_type",
+    "description": "description of the group",
+    "elements": [  // Optional: provide details for individual enemies
+      {
+        "name": "Enemy 1 Name",
+        "health": "Enemy 1 Health",
+        "description": "Enemy 1 description"
+      },
+      {
+        "name": "Enemy 2 Name",
+        "health": "Enemy 2 Health",
+        "description": "Enemy 2 description"
+      }
+    ]
+  }
+
+NEVER return enemy as a simple string. Always use the proper object structure.
+
+The 'gameover' field should be set to true only if the character has died or the adventure has reached a definitive end.`;
+
+    localization.en.multiplayerActionPrompt = `Continue the multiplayer D&D adventure. Previous situation: "{prevSituation}"
+
+PLAYERS AND THEIR ACTIONS:
+{playersActions}
+
+PLAYERS CURRENT STATUS:
+{playersStatus}
+
+IMPORTANT: 
+1. Respond ONLY with clean JSON without markdown blocks, without additional text, without prefixes or suffixes!
+2. Consider the context of previous events for logical story development
+3. Create VERY CHALLENGING situations - be harsh and unforgiving with players!
+4. Actions should have significant consequences, both positive and negative
+5. Include occasional unexpected negative events, even when player makes good decisions
+6. All perks MUST have both benefits AND drawbacks - create balanced trade-offs
+7. If character health reaches 0 or a definitive ending is reached, set gameover to true
+8. Don't be afraid to cause damage to the character during normal activities
+9. For peaceful choices, introduce unforeseen complications
+10. EXPERIENCE POINTS: Award experience based on merit - simple actions (based on level and your choice XP), moderate challenges (based on level and your choice XP), significant achievements (based on level and your choice XP), major accomplishments (based on level and your choice XP). Don't over-reward routine activities. "consequences": {"experience": number} what you write here means what quantity of exp will be added to players current exp.
+11. Perks should not be repeated. Sometimes, perks can be very unique. To avoid repetition, perks can depend on the player's level.
+12. Consider all player actions together and create meaningful interactions between them
+13. Include collaborative opportunities and conflicts between players
+14. Each player should get personalized results based on their action
+
+Response format:
+{
+  "text": "description of what happens as a result of all actions combined",
+  "players": {
+    "{playerId1}": {
+      "personal_text": "specific result for this player's action",
+      "options": ["option 1", "option 2", "option 3", "option 4"],
+      "consequences": {
+        "health": 0,
+        "mana": 0,
+        "experience": 10,
+        "combat": false,
+        "enemy": null,
+        "new_perks": [],
+        "gameover": false
+      }
+    }
+  }
+}
+
+If combat is true for any player, always return enemy information in this format:
+- For a single enemy: 
+  "enemy": {
+    "name": "Enemy Name", 
+    "health": numeric_value_or_description, 
+    "description": "brief description"
+  }
+
+- For multiple enemies or a group:
+  "enemy": {
+    "name": "Group Name", 
+    "count": number_of_enemies, 
+    "health": numeric_value_or_description_per_individual (string), 
+    "type": "combat_type",
+    "description": "description of the group",
+    "elements": [  // Optional: provide details for individual enemies
+      {
+        "name": "Enemy 1 Name",
+        "health": "Enemy 1 Health",
+        "description": "Enemy 1 description"
+      },
+      {
+        "name": "Enemy 2 Name",
+        "health": "Enemy 2 Health",
+        "description": "Enemy 2 description"
+      }
+    ]
+  }
+
+NEVER return enemy as a simple string. Always use the proper object structure.
+
+The 'gameover' field should be set to true if the character has died (health reaches 0) or the adventure has reached a definitive end.`;
+
+    // Украинская локализация
+    localization.uk.multiplayerInitialPrompt = `Ти - майстер гри у D&D для мультиплеєрної сесії з {playerCount} гравцями. Створи початкову сцену, яка залучає ВСІХ гравців разом.
+
+ГРАВЦІ В СЕСІЇ:
+{playersInfo}
+
+ВАЖЛИВИЙ ФОРМАТ ВІДПОВІДІ:
+1. Відповідай ТІЛЬКИ чистим JSON без markdown блоків, без додаткового тексту!
+2. Створюй СКЛАДНІ, змістовні ситуації, які природно залучають ВСІХ гравців
+3. Кожен гравець повинен мати можливості для особистої взаємодії
+4. Включи хоча б одного унікального NPC з характером та мотивацією
+5. Додавай соціальні сцени, діалоги, загадки, моральні дилеми, можливості дослідження
+6. Бійки мають бути лише одним із можливих варіантів, а не основним фокусом
+7. Включай перевірки навичок та їх наслідки
+8. Гравці повинні нести значні наслідки за свої дії
+
+Формат відповіді:
+{
+  "common_story": "детальний опис ситуації, що стосується всіх гравців",
+  "players": {
+    "{playerId1}": {
+      "personal_text": "специфічний опис для цього гравця",
+      "options": ["варіант 1", "варіант 2", "варіант 3", "варіант 4"],
+      "consequences": {
+        "health": 0,
+        "mana": 0,
+        "experience": 0,
+        "combat": false,
+        "enemy": null,
+        "new_perks": [],
+        "gameover": false
+      }
+    },
+    "{playerId2}": {
+      "personal_text": "специфічний опис для цього гравця",
+      "options": ["варіант 1", "варіант 2", "варіант 3", "варіант 4"],
+      "consequences": {
+        "health": 0,
+        "mana": 0,
+        "experience": 0,
+        "combat": false,
+        "enemy": null,
+        "new_perks": [],
+        "gameover": false
+      }
+    }
+  }
+}
+
+Якщо combat є true для будь-якого гравця, надавай правильну структуру ворога.`;
+
+    localization.uk.multiplayerActionPrompt = `Продовжи мультиплеєрну D&D пригоду. Попередня ситуація: "{prevSituation}"
+
+ГРАВЦІ ТА ЇХ ДІЇ:
+{playersActions}
+
+ПОТОЧНИЙ СТАТУС ГРАВЦІВ:
+{playersStatus}
+
+ВАЖЛИВО:
+1. Відповідай ТІЛЬКИ чистим JSON без markdown блоків!
+2. Розглядай всі дії гравців разом і створюй змістовні взаємодії між ними
+3. Створюй наслідки, які можуть вплинути на кількох гравців
+4. Включай можливості для співпраці та конфліктів між гравцями
+5. Кожен гравець повинен отримати персоналізовані результати на основі своєї дії
+6. Підтримуй безперервність історії та розвиток персонажів
+7. Нагороджуй досвід на основі співпраці та індивідуальних досягнень
+
+Формат відповіді:
+{
+  "common_story": "опис того, що відбувається в результаті всіх дій разом",
+  "players": {
+    "{playerId1}": {
+      "personal_text": "специфічний результат для дії цього гравця",
+      "options": ["варіант 1", "варіант 2", "варіант 3", "варіант 4"],
+      "consequences": {
+        "health": 0,
+        "mana": 0,
+        "experience": 10,
+        "combat": false,
+        "enemy": null,
+        "new_perks": [],
+        "gameover": false
+      }
+    }
+  }
+}`;
+
+    // Русская локализация
+    localization.ru.multiplayerInitialPrompt = `Ты - мастер игры в D&D для мультиплеерной сессии с {playerCount} игроками. Создай начальную сцену, которая вовлекает ВСЕХ игроков вместе.
+
+ИГРОКИ В СЕССИИ:
+{playersInfo}
+
+ВАЖНЫЙ ФОРМАТ ОТВЕТА:
+1. Отвечай ТОЛЬКО чистым JSON без markdown блоков, без дополнительного текста!
+2. Создавай СЛОЖНЫЕ, значимые ситуации, которые естественно вовлекают ВСЕХ игроков
+3. Каждый игрок должен иметь возможности для личного взаимодействия
+4. Включи хотя бы одного уникального NPC с характером и мотивацией
+5. Добавляй социальные сцены, диалоги, головоломки, моральные дилеммы, возможности исследования
+6. Сражения должны быть только одним из возможных вариантов, а не основным фокусом
+7. Включай проверки навыков и их последствия
+8. Игроки должны нести значительные последствия за свои действия
+
+Формат ответа:
+{
+  "common_story": "детальное описание ситуации, касающейся всех игроков",
+  "players": {
+    "{playerId1}": {
+      "personal_text": "специфическое описание для этого игрока",
+      "options": ["вариант 1", "вариант 2", "вариант 3", "вариант 4"],
+      "consequences": {
+        "health": 0,
+        "mana": 0,
+        "experience": 0,
+        "combat": false,
+        "enemy": null,
+        "new_perks": [],
+        "gameover": false
+      }
+    },
+    "{playerId2}": {
+      "personal_text": "специфическое описание для этого игрока",
+      "options": ["вариант 1", "вариант 2", "вариант 3", "вариант 4"],
+      "consequences": {
+        "health": 0,
+        "mana": 0,
+        "experience": 0,
+        "combat": false,
+        "enemy": null,
+        "new_perks": [],
+        "gameover": false
+      }
+    }
+  }
+}
+
+Если combat равен true для любого игрока, предоставляй правильную структуру врага как в одиночной игре.`;
+
+    localization.ru.multiplayerActionPrompt = `Продолжи мультиплеерное D&D приключение. Предыдущая ситуация: "{prevSituation}"
+
+ИГРОКИ И ИХ ДЕЙСТВИЯ:
+{playersActions}
+
+ТЕКУЩИЙ СТАТУС ИГРОКОВ:
+{playersStatus}
+
+ВАЖНО:
+1. Отвечай ТОЛЬКО чистым JSON без markdown блоков!
+2. Рассматривай все действия игроков вместе и создавай значимые взаимодействия между ними
+3. Создавай последствия, которые могут повлиять на нескольких игроков
+4. Включай возможности для сотрудничества и конфликтов между игроками
+5. Каждый игрок должен получить персонализированные результаты на основе своего действия
+6. Поддерживай непрерывность истории и развитие персонажей
+7. Награждай опыт на основе сотрудничества и индивидуальных достижений
+
+Формат ответа:
+{
+  "common_story": "описание того, что происходит в результате всех действий вместе",
+  "players": {
+    "{playerId1}": {
+      "personal_text: "специфический результат для действия этого игрока",
+      "options": ["вариант 1", "вариант 2", "вариант 3", "вариант 4"],
+      "consequences": {
+        "health": 0,
+        "mana": 0,
+        "experience": 10,
+        "combat": false,
+        "enemy": null,
+        "new_perks": [],
+        "gameover": false
+      }
+    }
+  }
+  
+}`;
+}
+
+// Добавляем локализацию для главного меню
+if (!localization.en.chooseGameMode) {
+    localization.en.chooseGameMode = "Choose game mode";
+    localization.uk.chooseGameMode = "Оберіть режим гри";
+    localization.ru.chooseGameMode = "Выберите режим игры";
+}
+
+if (!localization.en.singlePlayer) {
+    localization.en.singlePlayer = "🎯 Single Player";
+    localization.uk.singlePlayer = "🎯 Одиночна гра";
+    localization.ru.singlePlayer = "🎯 Одиночная игра";
+}
+
+if (!localization.en.multiplayerMenu) {
+    localization.en.multiplayerMenu = "🎮 Multiplayer";
+    localization.uk.multiplayerMenu = "🎮 Мультиплеєр";
+    localization.ru.multiplayerMenu = "🎮 Мультиплеер";
+}
+
+// Глобальные переменные для мультиплеера
+let multiplayerState = {
+    isActive: false,
+    isHost: false,
+    socket: null,
+    lobbyCode: null,
+    players: new Map(),
+    playerId: null,
+    hostApiKey: null,
+    pendingActions: new Map(),
+    allCharactersReady: false,
+    gameStarted: false
+};
+
+// Экспортируем в window для доступа из других модулей
+window.multiplayerState = multiplayerState;
+
+// Функция для инициализации мультиплеера
+function initializeMultiplayer() {
+    console.log('Инициализация мультиплеера...');
+    
+    // Обновляем функции UI для мультиплеера
+    if (window.multiplayerManager) {
+        window.multiplayerManager.gameIntegration = {
+            onLobbyCreated: handleLobbyCreated,
+            onLobbyJoined: handleLobbyJoined,
+            onPlayerJoined: handlePlayerJoined,
+            onPlayerLeft: handlePlayerLeft,
+            onGameStarted: handleGameStarted,
+            onActionReceived: handleActionReceived,
+            onAllActionsReceived: handleAllActionsReceived,
+            onTurnComplete: handleTurnComplete,
+            onCharacterCreated: handleCharacterCreated,
+            onAllCharactersReady: handleAllCharactersReady,
+            onInitialStoryReceived: handleInitialStoryReceived,
+            onImageShared: handleImageShared,
+            onPlayerDisconnected: handlePlayerDisconnected,
+            onError: handleMultiplayerError
+        };
+        
+        console.log('Мультиплеер интеграция настроена');
+    }
+}
+
+// Обработчики событий мультиплеера
+function handleLobbyCreated(data) {
+    console.log('Лобби создано:', data);
+    multiplayerState.isActive = true;
+    multiplayerState.isHost = true;
+    multiplayerState.lobbyCode = data.code;
+    multiplayerState.hostApiKey = gameState.apiKey;
+    
+    // Добавляем себя в список игроков
+    data.players.forEach(player => {
+        multiplayerState.players.set(player.id, player);
+    });
+    
+    // Больше не используем устаревший интерфейс ожидания
+}
+
+function handleLobbyJoined(data) {
+    console.log('Присоединился к лобби:', data);
+    console.log('Устанавливаем multiplayerState.isActive = true для клиента');
+    multiplayerState.isActive = true;
+    multiplayerState.isHost = false;
+    multiplayerState.lobbyCode = data.code;
+    
+    console.log('Состояние мультиплеера:', {
+        isActive: multiplayerState.isActive,
+        isHost: multiplayerState.isHost,
+        lobbyCode: multiplayerState.lobbyCode
+    });
+    
+    // Добавляем всех игроков в список
+    data.players.forEach(player => {
+        multiplayerState.players.set(player.id, player);
+    });
+    
+    // Больше не используем устаревший интерфейс ожидания
+}
+
+function handlePlayerJoined(data) {
+    console.log('Игрок присоединился:', data);
+    
+    // Обновляем список игроков
+    data.players.forEach(player => {
+        multiplayerState.players.set(player.id, player);
+    });
+    
+    updateMultiplayerPlayersList();
+}
+
+function handlePlayerLeft(data) {
+    console.log('Игрок покинул лобби:', data);
+    
+    // Обновляем список игроков
+    multiplayerState.players.clear();
+    data.players.forEach(player => {
+        multiplayerState.players.set(player.id, player);
+    });
+    
+    updateMultiplayerPlayersList();
+}
+
+function handleGameStarted(data) {
+    console.log('Обработка начала игры:', data);
+    multiplayerState.gameStarted = true;
+    
+    // Обновляем список игроков
+    if (data.players) {
+        multiplayerState.players.clear();
+        data.players.forEach(player => {
+            multiplayerState.players.set(player.id, player);
+        });
+    }
+    
+    // ИСПРАВЛЕНИЕ: Правильно скрываем экраны и показываем создание персонажа
+    hideMultiplayerWaitingScreen();
+    document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('apiSetup').style.display = 'none';
+    document.getElementById('gameArea').style.display = 'none';
+    
+    // Показываем экран создания персонажа
+    document.getElementById('setupScreen').style.display = 'block';
+    
+    // Обновляем заголовок для указания мультиплеерного режима
+    const header = document.querySelector('.header h1');
+    if (header && !header.querySelector('.multiplayer-indicator')) {
+        const indicator = document.createElement('span');
+        indicator.className = 'multiplayer-indicator';
+        indicator.innerHTML = ' 🎮 МУЛЬТИПЛЕЄР';
+        indicator.style.cssText = `
+            font-size: 0.6em;
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        `;
+        header.appendChild(indicator);
+        
+        // Добавляем анімацію пульсації
+        if (!document.querySelector('#multiplayerAnimation')) {
+            const style = document.createElement('style');
+            style.id = 'multiplayerAnimation';
+            style.textContent = `
+                @keyframes pulse {
+                    0% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.7; transform: scale(1.05); }
+                    100% { opacity: 1; transform: scale(1); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+}
+
+
+function handleCharacterCreated(data) {
+    console.log('Персонаж создан игроком:', data.playerId, '- имя:', data.character?.name);
+    
+    // Обновляем информацию об игроке
+    if (multiplayerState.players.has(data.playerId)) {
+        const player = multiplayerState.players.get(data.playerId);
+        player.character = data.character;
+        player.hasCharacter = true;
+        player.status = 'ready'; // ИСПРАВЛЕНИЕ: Обновляем статус
+        console.log('Обновлен статус игрока:', player.name, 'на ready');
+    }
+    
+    // Обновляем отображение списка игроков в экране загрузки
+    updateMultiplayerLoadingScreen();
+}
+
+function handleAllCharactersReady(data) {
+    console.log('🎯 ОТЛАДКА: handleAllCharactersReady вызвана, текущее состояние:', {
+        isHost: multiplayerState.isHost,
+        allCharactersReady: multiplayerState.allCharactersReady,
+        playersCount: data.players ? data.players.length : 0
+    });
+    
+    // ВИПРАВЛЕНО: Додаємо перевірку, щоб уникнути подвійного виклику
+    if (multiplayerState.allCharactersReady) {
+        console.log('🚫 ОТЛАДКА: Все персонажи уже готовы, пропускаем обработку');
+        return;
+    }
+    
+    console.log('✅ ОТЛАДКА: Обрабатываем событие "все персонажи готовы"');
+    multiplayerState.allCharactersReady = true;
+    
+    // Обновляем список игроков
+    data.players.forEach(player => {
+        multiplayerState.players.set(player.id, player);
+    });
+    
+    if (multiplayerState.isHost) {
+        // Хост генерирует начальную историю для всех игроков
+        console.log('🎮 ОТЛАДКА: Хост начинает генерацию начальной сцены');
+        generateMultiplayerInitialScene();
+    } else {
+        // Не-хост ждет начальную историю от хоста
+        console.log('⏳ ОТЛАДКА: Клиент ожидает начальную историю от хоста');
+        showMultiplayerLoadingScreen(getText('waitingForStory') || 'Ожидание начала истории...');
+    }
+}
+
+function handleInitialStoryReceived(data) {
+    console.log('Получена начальная история:', data);
+    
+    // ВИПРАВЛЕНО: Тепер всі гравці (включаючи хоста) обробляють початкову історію однаково
+    processMultiplayerInitialScene(data.storyData);
+}
+
+function handleActionReceived(data) {
+    console.log('Получено действие:', data);
+    // Эта функция вызывается при получении действий других игроков
+    updateMultiplayerActionStatus(data.actions, data.players);
+}
+
+function handleAllActionsReceived(data) {
+    console.log('Получены все действия для обработки ИИ:', data);
+    
+    if (multiplayerState.isHost) {
+        // Хост обрабатывает все действия через ИИ
+        processMultiplayerActions(data.playerActions, data.playerCharacteristics, data.gameState);
+    }
+}
+
+function handleTurnComplete(data) {
+    console.log('Ход завершен:', data);
+    
+    // Обрабатываем результаты хода для всех игроков
+    processMultiplayerTurnResults(data.results);
+}
+
+function handleImageShared(data) {
+    console.log('Получено изображение от хоста:', data);
+    
+    if (!multiplayerState.isHost && data.imageUrl) {
+        // Отображаем полученное изображение
+        if (window.imageGenerator) {
+            window.imageGenerator.displayGeneratedImage(data.imageUrl);
+        }
+    }
+}
+
+function handlePlayerDisconnected(data) {
+    console.log('Игрок отключился:', data);
+    
+    // Обновляем статус игрока
+    if (multiplayerState.players.has(data.playerId)) {
+        const player = multiplayerState.players.get(data.playerId);
+        player.status = 'offline';
+    }
+    
+    updateMultiplayerPlayersList();
+}
+
+function handleMultiplayerError(error) {
+    console.error('Ошибка мультиплеера:', error);
+    alert(getText('multiplayerError') + ': ' + error.message);
+}
+
+// Продолжение game.js - функции для мультиплеера
+
+
+// Функция сброса состояния мультиплеера
+function resetMultiplayerState() {
+    multiplayerState.isActive = false;
+    multiplayerState.isHost = false;
+    multiplayerState.socket = null;
+    multiplayerState.lobbyCode = null;
+    multiplayerState.players.clear();
+    multiplayerState.playerId = null;
+    multiplayerState.hostApiKey = null;
+    multiplayerState.pendingActions.clear();
+    multiplayerState.allCharactersReady = false;
+    multiplayerState.gameStarted = false;
+    
+    // Сбрасываем gameState
+    gameState.isMultiplayer = false;
+    gameState.multiplayerTurn = false;
+    gameState.pendingAction = null;
+}
+
+// Функция обновления списка игроков в интерфейсе мультиплеера
+function updateMultiplayerPlayersList() {
+    console.log('Обновление списка игроков:', multiplayerState.players);
+    
+    // Если элемент списка игроков существует в DOM, обновляем его
+    const playersListElement = document.getElementById('multiplayerPlayersList');
+    if (playersListElement) {
+        playersListElement.innerHTML = '';
+        
+        multiplayerState.players.forEach((player, playerId) => {
+            const playerElement = document.createElement('div');
+            playerElement.className = 'multiplayer-player';
+            playerElement.innerHTML = `
+                <span class="player-name">${player.name || player.id}</span>
+                <span class="player-status ${player.status || 'online'}">${player.status === 'offline' ? 'Offline' : 'Online'}</span>
+            `;
+            playersListElement.appendChild(playerElement);
+        });
+    }
+    
+    // Также можем обновить счетчик игроков если такой элемент есть
+    const playersCountElement = document.getElementById('playersCount');
+    if (playersCountElement) {
+        playersCountElement.textContent = multiplayerState.players.size;
+    }
+}
+
+// Модифицированная функция startGame для мультиплеера
+const originalStartGame = window.startGame;
+window.startGame = function() {
+    const name = document.getElementById('characterName').value.trim();
+    if (!name || !gameState.character.class) {
+        alert(getText('enterName'));
+        return;
+    }
+
+    // Создаем персонажа (общая логика)
+    gameState.character.name = name;
+    const stats = classStats[gameState.character.class];
+    gameState.character.health = stats.health;
+    gameState.character.maxHealth = stats.health;
+    gameState.character.mana = stats.mana;
+    gameState.character.maxMana = stats.mana;
+    gameState.character.perks = [...stats.perks];
+
+    console.log('Проверяем состояние мультиплеера:', {
+        isActive: multiplayerState.isActive,
+        isHost: multiplayerState.isHost
+    });
+    
+    if (multiplayerState.isActive) {
+        // МУЛЬТИПЛЕЕР: отправляем данные персонажа через WebSocket
+        console.log('Создание персонажа в мультиплеере:', gameState.character);
+        
+        if (window.multiplayerManager && window.multiplayerManager.socket) {
+            const characterData = {
+                type: 'character_created',
+                playerId: window.multiplayerManager.playerId, // Добавляем ID игрока
+                character: {
+                    name: gameState.character.name,
+                    class: gameState.character.class,
+                    level: gameState.character.level,
+                    health: gameState.character.health,
+                    maxHealth: gameState.character.maxHealth,
+                    mana: gameState.character.mana,
+                    maxMana: gameState.character.maxMana,
+                    experience: gameState.character.experience,
+                    perks: gameState.character.perks
+                }
+            };
+            
+            console.log('Отправляем данные персонажа на сервер:', characterData);
+            console.log('Используемый playerId:', window.multiplayerManager.playerId);
+            
+            // ИСПРАВЛЕНИЕ: Отправляем полные данные персонажа
+            window.multiplayerManager.socket.send(JSON.stringify(characterData));
+            
+            console.log('Данные персонажа отправлены на сервер');
+        } else {
+            console.error('Нет соединения с сервером для отправки данных персонажа');
+        }
+        
+        // Обновляем собственный статус в локальном состоянии
+        if (multiplayerState.players.has(window.multiplayerManager.playerId)) {
+            const myPlayer = multiplayerState.players.get(window.multiplayerManager.playerId);
+            myPlayer.character = gameState.character;
+            myPlayer.hasCharacter = true;
+            myPlayer.status = 'ready';
+        }
+        
+        // Показываем экран ожидания
+        document.getElementById('setupScreen').style.display = 'none';
+        showMultiplayerLoadingScreen(getText('waitingForOthers') || 'Ожидание других игроков...');
+        
+    } else {
+        // ОДИНОЧКА: запускаем обычную игру
+        document.getElementById('setupScreen').style.display = 'none';
+        document.getElementById('gameArea').style.display = 'block';
+        updateCharacterPanel();
+        initSoundControls();
+        generateInitialScene();
+    }
+};
+// Функция показа экрана загрузки мультиплеера
+function showMultiplayerLoadingScreen(message) {
+    let loadingScreen = document.getElementById('multiplayerLoadingScreen');
+    if (!loadingScreen) {
+        loadingScreen = document.createElement('div');
+        loadingScreen.id = 'multiplayerLoadingScreen';
+        loadingScreen.className = 'setup-screen';
+        loadingScreen.innerHTML = `
+            <h2>🎮 Мультиплеер</h2>
+            <div class="loading" id="multiplayerLoadingMessage">${message}</div>
+            <div id="multiplayerLoadingPlayersList" style="margin-top: 30px;"></div>
+        `;
+        document.querySelector('.container').appendChild(loadingScreen);
+    } else {
+        document.getElementById('multiplayerLoadingMessage').textContent = message;
+    }
+    
+    loadingScreen.style.display = 'block';
+    updateMultiplayerLoadingScreen();
+}
+
+function hideMultiplayerLoadingScreen() {
+    const loadingScreen = document.getElementById('multiplayerLoadingScreen');
+    if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+    }
+}
+
+function updateMultiplayerLoadingScreen() {
+    const playersList = document.getElementById('multiplayerLoadingPlayersList');
+    if (!playersList) return;
+    
+    const playersArray = Array.from(multiplayerState.players.values());
+    
+    playersList.innerHTML = `
+        <h4>Статус игроков:</h4>
+        ${playersArray.map(player => {
+            const statusIcon = player.character ? '✅' : '⏳';
+            const statusText = player.character ? 'Готов' : 'Создает персонажа...';
+            
+            return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                    <span>${statusIcon} ${player.name}</span>
+                    <span style="font-size: 0.8em; color: #888;">${statusText}</span>
+                </div>
+            `;
+        }).join('')}
+    `;
+}
+
+// Функция генерации начальной мультиплеерной сцены (только для хоста)
+async function generateMultiplayerInitialScene() {
+    console.log('🎬 ОТЛАДКА: generateMultiplayerInitialScene вызвана, проверяем условия...');
+    
+    if (!multiplayerState.isHost) {
+        console.error('❌ ОТЛАДКА: Только хост может генерировать начальную сцену');
+        return;
+    }
+    
+    console.log('🚀 ОТЛАДКА: Начинаем генерацию начальной мультиплеерной сцены...');
+    
+    // Показываем экран загрузки
+    showMultiplayerLoadingScreen(getText('generating') || 'Генерация начальной истории...');
+    
+    // Подготавливаем информацию об игроках
+    const playersArray = Array.from(multiplayerState.players.values());
+    const playersInfo = playersArray.map(player => {
+        return `Player ID: ${player.id}
+Name: ${player.character.name}
+Class: ${getCharacterClassName(player.character.class)}
+Level: ${player.character.level}
+Health: ${player.character.health}/${player.character.maxHealth}
+Mana: ${player.character.mana}/${player.character.maxMana}
+Perks: ${player.character.perks.map(perk => translatePerk(perk)).join(', ')}`;
+    }).join('\n\n');
+    
+    // Формируем промпт для мультиплеера
+    let prompt = getText('multiplayerInitialPrompt')
+        .replace('{playerCount}', playersArray.length)
+        .replace('{playersInfo}', playersInfo);
+    
+    // Добавляем инструкции для коротких ответов, если включены
+    if (gameState.shortResponses) {
+        prompt += "\n\nIMPORTANT: Please provide a concise and brief response. Aim for maximum brevity while still conveying all necessary information.";
+    }
+    
+    // Добавляем инструкции для генерации изображений
+    prompt += "\n\nAlso generate two image prompts describing the scene:\n1. 'image_prompt': Detailed visual description\n2. 'safe_image_prompt': Simplified safer version";
+    
+    // Добавляем инструкции для озвучивания
+    prompt += "\n\nAlso generate voice narration instructions in 'instructions' field as a simple string value.";
+    
+    try {
+        console.log('Отправка запроса к ИИ для мультиплеер сцены...');
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gameState.apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    responseMimeType: 'text/plain',
+                    maxOutputTokens: 1000000
+                },
+                safetySettings: [
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH", 
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "BLOCK_NONE"
+                    }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            let responseText = data.candidates[0].content.parts[0].text;
+            
+            // Очищаем от markdown блоков
+            responseText = responseText.replace(/```(?:json)?\s*\n?/g, '').trim();
+            
+            try {
+                const gameData = JSON.parse(responseText);
+                console.log('Получены данные мультиплеер сцены:', gameData);
+                
+                // Отправляем данные всем игрокам через WebSocket (включая хоста)
+                if (window.multiplayerManager && window.multiplayerManager.socket) {
+                    window.multiplayerManager.socket.send(JSON.stringify({
+                        type: 'initial_story',
+                        storyData: gameData
+                    }));
+                }
+                
+                // ВИПРАВЛЕНО: Хост тепер не обробляє початкову сцену локально,
+                // щоб уникнути подвійної генерації контенту
+                
+                console.log('Начальная история отправлена всем игрокам');
+                
+            } catch (parseError) {
+                console.error('Ошибка парсинга мультиплеер ответа:', parseError);
+                alert('Ошибка обработки ответа ИИ. Попробуйте еще раз.');
+            }
+        } else {
+            throw new Error('Некорректный ответ от API');
+        }
+    } catch (error) {
+        console.error('Ошибка генерации мультиплеер сцены:', error);
+        alert('Ошибка генерации начальной сцены: ' + error.message);
+    }
+}
+
+// Функция обработки начальной мультиплеерной сцены
+function processMultiplayerInitialScene(gameData) {
+    console.log('Обработка начальной мультиплеер сцены:', gameData);
+    
+    // Скрываем экран загрузки
+    hideMultiplayerLoadingScreen();
+    
+    // Показываем игровую область
+    document.getElementById('setupScreen').style.display = 'none';
+    document.getElementById('gameArea').style.display = 'block';
+    
+    // Инициализируем звуковые элементы управления
+    initSoundControls();
+    
+    // Обновляем панель персонажа
+    updateCharacterPanel();
+    
+    // Получаем данные для текущего игрока
+    const myPlayerId = getCurrentPlayerId();
+    const myPlayerData = gameData.players && gameData.players[myPlayerId];
+    
+    // Формируем общий текст истории
+    let storyText = gameData.text || '';
+    
+    if (myPlayerData && myPlayerData.personal_text) {
+        storyText += '\n\n' + myPlayerData.personal_text;
+    }
+    
+    // Отображаем историю
+    document.getElementById('storyText').innerHTML = `<p>${storyText}</p>`;
+    
+    // Создаем кнопки действий для текущего игрока
+    const optionsContainer = document.getElementById('optionsContainer');
+    optionsContainer.innerHTML = '';
+    
+    if (myPlayerData && myPlayerData.options) {
+        myPlayerData.options.forEach((option, index) => {
+            const button = document.createElement('button');
+            button.className = 'option-btn';
+            button.textContent = `${index + 1}. ${option}`;
+            button.onclick = () => performMultiplayerAction(option);
+            optionsContainer.appendChild(button);
+        });
+    }
+    
+    // Очищаем поле пользовательского действия
+    document.getElementById('customAction').value = '';
+    
+    // Применяем последствия для текущего игрока
+    if (myPlayerData && myPlayerData.consequences) {
+        applyMultiplayerConsequences(myPlayerData.consequences);
+    }
+    
+    // Применяем общие последствия
+    if (gameData.common_consequences) {
+        applyCommonConsequences(gameData.common_consequences);
+    }
+    
+    // Сохраняем данные сцены
+    gameState.currentScene = {
+        text: storyText,
+        options: myPlayerData ? myPlayerData.options : [],
+        multiplayerData: gameData
+    };
+    
+    // Добавляем в историю игры
+    gameState.gameHistory.push({
+        scene: gameState.currentScene,
+        character: { ...gameState.character },
+        timestamp: new Date().toLocaleString(),
+        multiplayer: true
+    });
+    
+    // Генерируем изображение, если есть промпт (только для хоста)
+    if (multiplayerState.isHost && window.imageGenerator && gameData.image_prompt) {
+        window.imageGenerator.generateImage(
+            gameData.image_prompt, 
+            gameState.apiKey, 
+            gameData.safe_image_prompt || gameData.image_prompt
+        ).then(imageUrl => {
+            if (imageUrl) {
+                // Отправляем изображение другим игрокам
+                shareImageWithPlayers(imageUrl);
+            }
+        });
+    }
+    
+    // Генерируем озвучивание (если доступно и не отключено)
+    if (window.voiceGenerator && storyText) {
+        const instructions = gameData.instructions || generateVoiceInstructions(gameData);
+        window.voiceGenerator.generateVoice(storyText, { instructions });
+    }
+}
+
+// Функция получения ID текущего игрока
+function getCurrentPlayerId() {
+    // Попытаемся найти ID текущего игрока из multiplayerManager
+    if (window.multiplayerManager && window.multiplayerManager.playerId) {
+        return window.multiplayerManager.playerId;
+    }
+    
+    // Или найдем по имени персонажа
+    for (const [playerId, player] of multiplayerState.players) {
+        if (player.character && player.character.name === gameState.character.name) {
+            return playerId;
+        }
+    }
+    
+    // Если не найден, возьмем первого доступного игрока (fallback)
+    return multiplayerState.players.keys().next().value;
+}
+
+// Функция отправки изображения другим игрокам
+function shareImageWithPlayers(imageUrl) {
+    if (multiplayerState.isHost && window.multiplayerManager && window.multiplayerManager.socket) {
+        console.log('Отправка изображения другим игрокам...');
+        window.multiplayerManager.socket.send(JSON.stringify({
+            type: 'image_share',
+            imageUrl: imageUrl
+        }));
+    }
+}
+
+// Функция выполнения действия в мультиплеере
+function performMultiplayerAction(action) {
+    console.log('Выполнение мультиплеер действия:', action);
+    
+    // Останавливаем текущее озвучивание
+    if (window.voiceGenerator) {
+        window.voiceGenerator.stopVoice();
+    }
+    
+    // Отправляем действие через WebSocket
+    if (window.multiplayerManager && window.multiplayerManager.socket) {
+        window.multiplayerManager.socket.send(JSON.stringify({
+            type: 'player_action',
+            action: action
+        }));
+        
+        // Блокируем интерфейс
+        document.getElementById('customActionBtn').disabled = true;
+        document.getElementById('customAction').disabled = true;
+        
+        // Отключаем кнопки действий
+        document.querySelectorAll('.option-btn').forEach(btn => {
+            btn.disabled = true;
+        });
+        
+        // Показываем статус ожидания
+        document.getElementById('storyText').innerHTML = `
+            <div class="loading">
+                ${getText('waitingForPlayers') || 'Ожидание действий других игроков...'}
+            </div>
+        `;
+        
+        // Очищаем поле ввода
+        document.getElementById('customAction').value = '';
+    }
+}
+
+// Модифицированная функция performCustomAction для мультиплеера
+const originalPerformCustomAction = window.performCustomAction;
+window.performCustomAction = function() {
+    const action = document.getElementById('customAction').value.trim();
+    
+    if (!action) {
+        alert(getText('enterAction'));
+        return;
+    }
+    
+    if (multiplayerState.isActive) {
+        // Мультиплеерный режим
+        performMultiplayerAction(action);
+    } else {
+        // Одиночный режим
+        originalPerformCustomAction();
+    }
+};
+
+// Функция обновления статуса действий в мультиплеере
+function updateMultiplayerActionStatus(actions, players) {
+    const actionsCount = Object.keys(actions).length;
+    const totalPlayers = players.length;
+    const progress = Math.round((actionsCount / totalPlayers) * 100);
+    
+    const statusText = getText('actionsReceived') || 'Действия получены';
+    
+    document.getElementById('storyText').innerHTML = `
+        <div class="loading">
+            ${statusText}: ${actionsCount}/${totalPlayers}
+            <div style="margin-top: 10px;">
+                <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 5px; overflow: hidden;">
+                    <div style="width: ${progress}%; height: 100%; background: linear-gradient(90deg, #4CAF50, #45a049); transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (actionsCount === totalPlayers) {
+        document.getElementById('storyText').innerHTML = `
+            <div class="loading">
+                ${getText('processingActions') || 'Обработка действий...'}
+            </div>
+        `;
+    }
+}
+
+// Продолжение в части 3...
+// Продолжение game.js - часть 3: обработка действий и завершающие функции
+
+// Функция обработки всех действий игроков через ИИ (только для хоста)
+async function processMultiplayerActions(playerActions, playerCharacteristics, gameState) {
+    console.log('🎭 ОТЛАДКА: processMultiplayerActions вызвана, проверяем условия...');
+    
+    if (!multiplayerState.isHost) {
+        console.error('❌ ОТЛАДКА: Только хост может обрабатывать действия через ИИ');
+        return;
+    }
+    
+    console.log('🎯 ОТЛАДКА: Начинаем обработку мультиплеер действий через ИИ:', playerActions);
+    
+    // Показываем индикатор обработки
+    document.getElementById('storyText').innerHTML = `
+        <div class="loading">
+            ${getText('processingActions') || 'Обработка действий...'}
+        </div>
+    `;
+    
+    // Подготавливаем информацию о действиях игроков
+    const actionsInfo = Object.entries(playerActions).map(([playerId, actionData]) => {
+        const character = playerCharacteristics[playerId];
+        return `Player ID: ${playerId}
+Player Name: ${actionData.playerName}
+Character: ${character ? character.name : 'Unknown'} (${character ? character.class : 'Unknown'})
+Level: ${character ? character.level : 1}
+Health: ${character ? character.health : 0}/${character ? character.maxHealth : 0}
+Mana: ${character ? character.mana : 0}/${character ? character.maxMana : 0}
+Perks: ${character ? character.perks.join(', ') : 'None'}
+Action: ${actionData.action}`;
+    }).join('\n\n');
+    
+    // Подготавливаем информацию о текущем статусе игроков
+    const statusInfo = Object.entries(playerCharacteristics).map(([playerId, character]) => {
+        return `${character.name} (${character.class}): Level ${character.level}, HP ${character.health}/${character.maxHealth}, Mana ${character.mana}/${character.maxMana}`;
+    }).join('\n');
+    
+    // Формируем промпт для обработки действий
+    let prompt = getText('multiplayerActionPrompt')
+        .replace('{prevSituation}', gameState.currentScene ? gameState.currentScene.text : 'Beginning of adventure')
+        .replace('{playersActions}', actionsInfo)
+        .replace('{playersStatus}', statusInfo);
+    
+    // Добавляем инструкции для коротких ответов, если включены
+    if (window.gameState && window.gameState.shortResponses) {
+        prompt += "\n\nIMPORTANT: Please provide a concise and brief response. Aim for maximum brevity while still conveying all necessary information.";
+    }
+    
+    // Добавляем инструкции для генерации изображений
+    prompt += "\n\nAlso generate two image prompts describing the scene:\n1. 'image_prompt': Detailed visual description\n2. 'safe_image_prompt': Simplified safer version";
+    
+    // Добавляем инструкции для озвучивания
+    prompt += "\n\nAlso generate voice narration instructions in 'instructions' field as a simple string value.";
+    
+    try {
+        console.log('Отправка запроса к ИИ для обработки мультиплеер действий...');
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${window.gameState.apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    responseMimeType: 'text/plain',
+                    maxOutputTokens: 1000000
+                },
+                safetySettings: [
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH", 
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "BLOCK_NONE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "BLOCK_NONE"
+                    }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            let responseText = data.candidates[0].content.parts[0].text;
+            
+            // Очищаем от markdown блоков
+            responseText = responseText.replace(/```(?:json)?\s*\n?/g, '').trim();
+            
+            try {
+                const gameData = JSON.parse(responseText);
+                console.log('Получены результаты обработки действий:', gameData);
+                
+                // Отправляем результаты всем игрокам через WebSocket
+                if (window.multiplayerManager && window.multiplayerManager.socket) {
+                    window.multiplayerManager.socket.send(JSON.stringify({
+                        type: 'ai_response',
+                        aiResponse: {
+                            gameState: window.gameState,
+                            storyText: gameData.text,
+                            playersData: gameData.players,
+                            imagePrompt: gameData.image_prompt,
+                            safeImagePrompt: gameData.safe_image_prompt,
+                            instructions: gameData.instructions
+                        }
+                    }));
+                }
+                
+                // ВИПРАВЛЕНО: Хост тепер не обробляє результати локально, 
+                // щоб уникнути подвійної генерації контенту
+                console.log('Результати відправлені всім гравцям, хост буде отримувати їх через WebSocket як і інші');
+                
+                console.log('Результаты действий отправлены всем игрокам');
+                
+            } catch (parseError) {
+                console.error('Ошибка парсинга ответа ИИ:', parseError);
+                alert('Ошибка обработки ответа ИИ. Попробуйте еще раз.');
+            }
+        } else {
+            throw new Error('Некорректный ответ от API');
+        }
+    } catch (error) {
+        console.error('Ошибка обработки мультиплеер действий:', error);
+        alert('Ошибка обработки действий: ' + error.message);
+    }
+}
+
+// Функция обработки результатов хода в мультиплеере
+function processMultiplayerTurnResults(results) {
+    console.log('Обработка результатов мультиплеер хода:', results);
+    
+    // Получаем данные для текущего игрока
+    const myPlayerId = getCurrentPlayerId();
+    const myPlayerData = results.playersData && results.playersData[myPlayerId];
+    
+    // Формируем общий текст истории
+    let storyText = results.storyText || '';
+    
+    if (myPlayerData && myPlayerData.personal_text) {
+        storyText += '\n\n' + myPlayerData.personal_text;
+    }
+    
+    // Отображаем историю
+    document.getElementById('storyText').innerHTML = `<p>${storyText}</p>`;
+    
+    // Создаем кнопки действий для текущего игрока
+    const optionsContainer = document.getElementById('optionsContainer');
+    optionsContainer.innerHTML = '';
+    
+    if (myPlayerData && myPlayerData.options) {
+        myPlayerData.options.forEach((option, index) => {
+            const button = document.createElement('button');
+            button.className = 'option-btn';
+            button.textContent = `${index + 1}. ${option}`;
+            button.onclick = () => performMultiplayerAction(option);
+            optionsContainer.appendChild(button);
+        });
+    }
+    
+    // Разблокируем интерфейс
+    document.getElementById('customActionBtn').disabled = false;
+    document.getElementById('customAction').disabled = false;
+    
+    // Включаем кнопки действий
+    document.querySelectorAll('.option-btn').forEach(btn => {
+        btn.disabled = false;
+    });
+    
+    // Применяем последствия для текущего игрока
+    if (myPlayerData && myPlayerData.consequences) {
+        applyMultiplayerConsequences(myPlayerData.consequences);
+    }
+    
+    // Применяем общие последствия
+    if (results.commonConsequences) {
+        applyCommonConsequences(results.commonConsequences);
+    }
+    
+    // Сохраняем данные сцены
+    window.gameState.currentScene = {
+        text: storyText,
+        options: myPlayerData ? myPlayerData.options : [],
+        multiplayerData: results
+    };
+    
+    // Добавляем в историю игры
+    window.gameState.gameHistory.push({
+        scene: window.gameState.currentScene,
+        character: { ...window.gameState.character },
+        timestamp: new Date().toLocaleString(),
+        multiplayer: true
+    });
+    
+    // Обновляем панель персонажа
+    updateCharacterPanel();
+    
+    // Генерируем изображение (только для хоста)
+    if (multiplayerState.isHost && window.imageGenerator && results.imagePrompt) {
+        window.imageGenerator.generateImage(
+            results.imagePrompt, 
+            window.gameState.apiKey, 
+            results.safeImagePrompt || results.imagePrompt
+        ).then(imageUrl => {
+            if (imageUrl) {
+                // Отправляем изображение другим игрокам
+                shareImageWithPlayers(imageUrl);
+            }
+        });
+    }
+    
+    // Генерируем озвучивание
+    if (window.voiceGenerator && storyText) {
+        const instructions = results.instructions || generateVoiceInstructions(results);
+        window.voiceGenerator.generateVoice(storyText, { instructions });
+    }
+    
+    // Очищаем поле ввода действия
+    document.getElementById('customAction').value = '';
+}
+
+// Функция применения последствий в мультиплеере
+function applyMultiplayerConsequences(consequences) {
+    if (!consequences) return;
+    
+    // Применяем изменения характеристик
+    if (consequences.health !== undefined) {
+        window.gameState.character.health = Math.max(0, Math.min(
+            window.gameState.character.maxHealth, 
+            window.gameState.character.health + consequences.health
+        ));
+    }
+    
+    if (consequences.mana !== undefined) {
+        window.gameState.character.mana = Math.max(0, Math.min(
+            window.gameState.character.maxMana, 
+            window.gameState.character.mana + consequences.mana
+        ));
+    }
+    
+    if (consequences.experience !== undefined) {
+        window.gameState.character.experience += consequences.experience;
+    }
+    
+    // Обрабатываем новые перки (автоматические)
+    if (consequences.new_perks && Array.isArray(consequences.new_perks)) {
+        consequences.new_perks.forEach(perk => {
+            if (typeof perk === 'string' && perk.trim() !== '') {
+                if (!window.gameState.character.perks.includes(perk)) {
+                    window.gameState.character.perks.push(perk);
+                    applyPerkBonuses(perk);
+                    // Показываем уведомление о получении перка в мультиплеере
+                    showPerkNotification(perk);
+                }
+            }
+        });
+    }
+    
+    // Обрабатываем доступные перки для выбора
+    if (consequences.available_perks && Array.isArray(consequences.available_perks) && consequences.available_perks.length > 0) {
+        window.gameState.availablePerks = [];
+        const maxPerks = 5;
+        const perksToAdd = consequences.available_perks.slice(0, maxPerks);
+        
+        perksToAdd.forEach(perk => {
+            if (typeof perk === 'string' && perk.trim() !== '') {
+                window.gameState.availablePerks.push(perk);
+            }
+        });
+        
+        if (window.gameState.availablePerks.length > 0) {
+            // В мультиплеере показываем выбор перков с индикацией, что это мультиплеер режим
+            showPerkSelectionPopup(true); // true = multiplayer mode
+        }
+    }
+    
+    // Проверяем game over
+    if (consequences.gameover) {
+        // В мультиплеере показываем game over только для конкретного игрока
+        showGameOverPopup(window.gameState.character.health <= 0);
+        return;
+    }
+    
+    // Обрабатываем боевой режим
+    handleMultiplayerCombat(consequences);
+}
+
+// Функция применения общих последствий
+function applyCommonConsequences(commonConsequences) {
+    if (!commonConsequences) return;
+    
+    // Обрабатываем общего врага
+    if (commonConsequences.shared_enemy) {
+        // Показываем информацию об общем враге
+        const mainContent = document.querySelector('.main-content');
+        const enemyInfo = document.getElementById('enemyInfo');
+        
+        mainContent.classList.add('combat-mode');
+        enemyInfo.style.display = 'block';
+        
+        // Создаем HTML для общего врага
+        const enemyHtml = createEnemyCard(commonConsequences.shared_enemy);
+        document.getElementById('enemyDetails').innerHTML = enemyHtml;
+    }
+    
+    // Обрабатываем изменения окружения
+    if (commonConsequences.environment_changes && commonConsequences.environment_changes.length > 0) {
+        console.log('Изменения окружения:', commonConsequences.environment_changes);
+    }
+    
+    // Обрабатываем флаги истории
+    if (commonConsequences.story_flags && commonConsequences.story_flags.length > 0) {
+        console.log('Флаги истории:', commonConsequences.story_flags);
+    }
+}
+
+// Функция обработки боевого режима в мультиплеере
+function handleMultiplayerCombat(consequences) {
+    const mainContent = document.querySelector('.main-content');
+    const enemyInfo = document.getElementById('enemyInfo');
+    
+    if (consequences.combat && consequences.enemy) {
+        mainContent.classList.add('combat-mode');
+        enemyInfo.style.display = 'block';
+        
+        // Обновляем заголовок врага
+        const enemyTitle = document.querySelector('#enemyInfo h4');
+        if (enemyTitle) {
+            enemyTitle.textContent = `👹 ${getText('enemyName')}`;
+        }
+        
+        // Создаем HTML для врага
+        const enemyHtml = createEnemyCard(consequences.enemy);
+        document.getElementById('enemyDetails').innerHTML = enemyHtml;
+    } else {
+        mainContent.classList.remove('combat-mode');
+        enemyInfo.style.display = 'none';
+    }
+}
+
+// Обновляем функцию changeLanguage для поддержки главного меню
+const originalChangeLanguage = window.changeLanguage;
+window.changeLanguage = function(lang) {
+    // Вызываем оригинальную функцию
+    originalChangeLanguage(lang);
+    
+    // Обновляем тексты главного меню
+    updateMainMenuTexts();
+};
+
+// Функция обновления текстов главного меню
+function updateMainMenuTexts() {
+    const mainMenuTitle = document.querySelector('#mainMenu h2');
+    if (mainMenuTitle) {
+        mainMenuTitle.textContent = getText('chooseGameMode');
+    }
+    
+    const singlePlayerBtn = document.querySelector('.menu-btn.single-player');
+    if (singlePlayerBtn) {
+        singlePlayerBtn.innerHTML = getText('singlePlayer');
+    }
+    
+    const multiplayerBtn = document.querySelector('.menu-btn.multiplayer');
+    if (multiplayerBtn) {
+        multiplayerBtn.innerHTML = getText('multiplayerMenu') + ' <span class="beta-badge">БЕТА</span>';
+    }
+}
+
+// Добавляем локализацию для дополнительных текстов
+if (!localization.en.hostApiKeyRequired) {
+    localization.en.hostApiKeyRequired = "Host must provide Gemini API key before creating lobby";
+    localization.uk.hostApiKeyRequired = "Хост повинен надати Gemini API ключ перед створенням лобі";
+    localization.ru.hostApiKeyRequired = "Хост должен предоставить Gemini API ключ перед созданием лобби";
+}
+
+if (!localization.en.youWereKicked) {
+    localization.en.youWereKicked = "You were kicked from the lobby";
+    localization.uk.youWereKicked = "Вас виключили з лобі";
+    localization.ru.youWereKicked = "Вас исключили из лобби";
+}
+
+if (!localization.en.playersInLobby) {
+    localization.en.playersInLobby = "Players";
+    localization.uk.playersInLobby = "Гравці";
+    localization.ru.playersInLobby = "Игроки";
+}
+
+if (!localization.en.needMinPlayersBtn) {
+    localization.en.needMinPlayersBtn = "Need at least 2 players";
+    localization.uk.needMinPlayersBtn = "Потрібно мінімум 2 гравці";
+    localization.ru.needMinPlayersBtn = "Нужно минимум 2 игрока";
+}
+
+if (!localization.en.startGameBtn) {
+    localization.en.startGameBtn = "Start Game";
+    localization.uk.startGameBtn = "Почати гру";
+    localization.ru.startGameBtn = "Начать игру";
+}
+
+if (!localization.en.generating) {
+    localization.en.generating = "Generating...";
+    localization.uk.generating = "Генерація...";
+    localization.ru.generating = "Генерация...";
+}
+
+if (!localization.en.waitingForStory) {
+    localization.en.waitingForStory = "Waiting for the story to begin...";
+    localization.uk.waitingForStory = "Очікування початку історії...";
+    localization.ru.waitingForStory = "Ожидание начала истории...";
+}
+
+if (!localization.en.processingActions) {
+    localization.en.processingActions = "Processing actions...";
+    localization.uk.processingActions = "Обробка дій...";
+    localization.ru.processingActions = "Обработка действий...";
+}
+
+// Инициализация мультиплеера при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализируем мультиплеер с задержкой, чтобы все модули успели загрузиться
+    setTimeout(() => {
+        initializeMultiplayer();
+        console.log('Мультиплеер инициализирован');
+    }, 500);
+});
+
+// Функция для обработки отключения игрока в мультиплеере
+function handleMultiplayerDisconnect() {
+    console.log('Обработка отключения от мультиплеера...');
+    
+    // Показываем модальное окно с вариантами действий
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        border: 2px solid #ff6b6b;
+        border-radius: 15px;
+        padding: 30px;
+        z-index: 1000;
+        min-width: 300px;
+        box-shadow: 0 0 25px rgba(255, 107, 107, 0.5);
+        backdrop-filter: blur(10px);
+        text-align: center;
+    `;
+    
+    modal.innerHTML = `
+        <h2 style="color: #ff6b6b; margin-bottom: 20px;">${getText('connectionLost')}</h2>
+        <p style="margin-bottom: 25px;">${getText('connectionLostDesc')}</p>
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <button id="reconnectBtn" class="action-btn" style="background: linear-gradient(45deg, #4ecdc4, #45b7d1);">
+                ${getText('reconnect')}
+            </button>
+            <button id="continueAloneBtn" class="action-btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);">
+                ${getText('continueAlone')}
+            </button>
+            <button id="exitGameBtn" class="action-btn" style="background: linear-gradient(45deg, #ff6b6b, #ee5a52);">
+                ${getText('exitGame')}
+            </button>
+        </div>
+    `;
+    
+    // Добавляем фон-затемнение
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 999;
+    `;
+    
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
+    
+    // Обработчики кнопок
+    document.getElementById('reconnectBtn').addEventListener('click', () => {
+        modal.remove();
+        overlay.remove();
+        // Попытка переподключения
+        if (window.multiplayerManager) {
+            window.multiplayerManager.reconnect();
+        }
+    });
+    
+    document.getElementById('continueAloneBtn').addEventListener('click', () => {
+        modal.remove();
+        overlay.remove();
+        // Продолжаем в одиночном режиме
+        resetMultiplayerState();
+        alert(getText('continueAloneMessage'));
+    });
+    
+    document.getElementById('exitGameBtn').addEventListener('click', () => {
+        modal.remove();
+        overlay.remove();
+        // Выходим из игры
+        resetMultiplayerState();
+        location.reload();
+    });
+}
+
+// Обновляем функцию showMultiplayerModal для правильной интеграции
+const originalShowMultiplayerModal = window.showMultiplayerModal;
+window.showMultiplayerModal = function() {
+    if (window.multiplayerManager) {
+        // Скрываем главное меню
+        document.getElementById('mainMenu').style.display = 'none';
+        
+        // Показываем модальное окно мультиплеера
+        window.multiplayerManager.showModal();
+    } else {
+        alert(getText('multiplayerNotLoaded'));
+    }
+};
+
+// Добавляем функцию для автосохранения в мультиплеере (только для хоста)
+function autoSaveMultiplayerGame() {
+    if (multiplayerState.isHost && multiplayerState.isActive) {
+        // Хост сохраняет состояние игры
+        organizedSaveGame(true);
+    }
+}
+
+// Добавляем периодическое автосохранение в мультиплеере
+setInterval(() => {
+    if (multiplayerState.isActive && multiplayerState.isHost) {
+        autoSaveMultiplayerGame();
+    }
+}, 60000); // Каждую минуту
+
+console.log('Мультиплеер функционал полностью загружен и готов к использованию');
+
+function hideMultiplayerWaitingScreen() {
+    const waitingScreen = document.getElementById('multiplayerWaitingScreen');
+    if (waitingScreen) {
+        waitingScreen.style.display = 'none';
+    }
+}
+
+
+
 // Додаємо локалізацію для мультиплеєра
 if (!localization.en.multiplayer) {
     // Англійська
@@ -2453,7 +4141,7 @@ let isRetrying = false;
 
 // Модифікуємо функцію callGeminiAPI для обробки аніме-персонажів
 async function callGeminiAPI(prompt, isInitial = false) {
-    if (gameState.isLoading) return;
+    // if (gameState.isLoading) return; //TODO Can couse multiple api calls? should hide buttons while it loading or find a way to fix isloading true error
 
     gameState.isLoading = true;
     document.getElementById('customActionBtn').disabled = true;
@@ -3786,7 +5474,7 @@ function showLevelUpPopup(newLevel, levelGains) {
 }
 
 // Функція для відображення попапу вибору перків
-function showPerkSelectionPopup() {
+function showPerkSelectionPopup(isMultiplayer = false) {
     // Якщо немає доступних перків, виходимо
     if (gameState.availablePerks.length === 0) return;
     

@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const server = http.createServer();
 
 // Створюємо WebSocket сервер
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ server, maxPayload: 500 * 1024 * 1024 });
 
 // Зберігання лобі та гравців
 const lobbies = new Map();
@@ -272,6 +272,10 @@ function handleMessage(playerId, message) {
             handleImageShare(playerId, message);
             break;
             
+        case 'kick_player':
+            handleKickPlayer(playerId, message);
+            break;
+            
         default:
             console.log(`Невідомий тип повідомлення: ${message.type}`);
     }
@@ -301,6 +305,7 @@ function handleCreateLobby(playerId, message) {
     player.socket.send(JSON.stringify({
         type: 'lobby_created',
         code: lobbyCode,
+        playerId: playerId, // ИСПРАВЛЕНИЕ: Добавляем playerId в ответ
         players: lobby.getPlayersArray()
     }));
 }
@@ -343,9 +348,18 @@ function handleJoinLobby(playerId, message) {
     
     console.log(`Гравець ${playerId} (${message.playerName}) приєднався до лобі ${message.code}`);
     
-    // Повідомляємо всіх гравців про нового учасника
+    // Спочатку відправляємо новому гравцю підтвердження приєднання
+    player.socket.send(JSON.stringify({
+        type: 'lobby_joined',
+        code: message.code,
+        playerId: playerId, // ИСПРАВЛЕНИЕ: Добавляем playerId в ответ
+        players: lobby.getPlayersArray()
+    }));
+    
+    // Потім повідомляємо всіх гравців про нового учасника
     lobby.broadcastToAll({
         type: 'player_joined',
+        joiningPlayerId: playerId, // ИСПРАВЛЕНИЕ: Добавляем ID присоединяющегося игрока
         players: lobby.getPlayersArray()
     });
 }
@@ -429,6 +443,10 @@ function handleAIResponse(playerId, message) {
 
 // Обробка створення персонажа
 function handleCharacterCreated(playerId, message) {
+    console.log(`ОТЛАДКА: Получено сообщение character_created от playerId: ${playerId}`);
+    console.log(`ОТЛАДКА: Сообщение содержит playerId: ${message.playerId}`);
+    console.log(`ОТЛАДКА: Персонаж: ${message.character?.name}`);
+    
     const player = players.get(playerId);
     const lobby = lobbies.get(player.lobbyCode);
     
@@ -565,6 +583,58 @@ function handleImageShare(playerId, message) {
     });
     
     console.log(`Зображення відправлено всім гравцям в лобі ${lobby.code} (крім хоста)`);
+}
+
+// Обробка кика гравця хостом
+function handleKickPlayer(playerId, message) {
+    const player = players.get(playerId);
+    const lobby = lobbies.get(player.lobbyCode);
+    
+    if (!lobby || lobby.hostId !== playerId) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Тільки хост може кикати гравців'
+        }));
+        return;
+    }
+    
+    const kickedPlayerId = message.playerId;
+    const kickedPlayer = lobby.players.get(kickedPlayerId);
+    
+    if (!kickedPlayer) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Гравець не знайдений'
+        }));
+        return;
+    }
+    
+    console.log(`Хост ${playerId} кикає гравця ${kickedPlayerId}`);
+    
+    // Повідомляємо кикнутого гравця
+    if (kickedPlayer.socket.readyState === WebSocket.OPEN) {
+        kickedPlayer.socket.send(JSON.stringify({
+            type: 'player_kicked',
+            kickedPlayerId: kickedPlayerId,
+            message: 'Вас виключили з лобі'
+        }));
+        kickedPlayer.socket.close();
+    }
+    
+    // Видаляємо гравця з лобі
+    lobby.removePlayer(kickedPlayerId);
+    
+    // Видаляємо з глобального списку
+    players.delete(kickedPlayerId);
+    
+    // Повідомляємо всіх інших гравців про кик
+    lobby.broadcastToAll({
+        type: 'player_kicked',
+        kickedPlayerId: kickedPlayerId,
+        players: lobby.getPlayersArray()
+    });
+    
+    console.log(`Гравець ${kickedPlayerId} кикнутий з лобі ${lobby.code}`);
 }
 
 // Обробка відключення гравця

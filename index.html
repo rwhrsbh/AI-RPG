@@ -306,6 +306,60 @@
             border-color: rgba(78, 205, 196, 0.8) !important;
         }
 
+        /* Стили для главного меню после выбора языка */
+        .main-menu {
+            text-align: center;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 400px;
+            margin: 30px auto;
+        }
+
+        .menu-btn {
+            padding: 20px 30px;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .menu-btn.single-player {
+            background: linear-gradient(135deg, #4ecdc4, #45b7d1);
+        }
+
+        .menu-btn.multiplayer {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        }
+
+        .menu-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .beta-badge {
+            background: #ff6b35;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+            font-weight: normal;
+        }
+
         @media (max-width: 768px) {
             .game-area {
                 grid-template-columns: 1fr;
@@ -313,6 +367,15 @@
             
             .class-selection {
                 grid-template-columns: 1fr;
+            }
+
+            .menu-buttons {
+                margin: 20px auto;
+            }
+
+            .menu-btn {
+                padding: 15px 20px;
+                font-size: 16px;
             }
         }
     </style>
@@ -322,6 +385,19 @@
         <div class="header">
             <h1>⚔️ D&D Adventure ⚔️</h1>
             <p>Пригода чекає на тебе у цьому світі магії та небезпек</p>
+        </div>
+
+        <!-- Главное меню после выбора языка -->
+        <div id="mainMenu" class="main-menu" style="display: none;">
+            <h2>Оберіть режим гри</h2>
+            <div class="menu-buttons">
+                <button class="menu-btn single-player" onclick="startSinglePlayer()">
+                    🎯 Одиночна гра
+                </button>
+                <button class="menu-btn multiplayer" onclick="showMultiplayerModal()">
+                    🎮 Мультиплеєр <span class="beta-badge">БЕТА</span>
+                </button>
+            </div>
         </div>
 
         <!-- Додаємо звукові налаштування, які будуть видимі завжди -->
@@ -597,11 +673,7 @@
                     </button>
                 </div>
                 
-                <div style="margin-top: 10px;">
-                    <button onclick="showMultiplayerModal()" class="action-btn" style="width: 100%; font-size: 0.9em; background: linear-gradient(45deg, #9b59b6, #8e44ad);">
-                        🎮 Мультиплеєр (БЕТА)
-                    </button>
-                </div>
+                <!-- Убираем кнопку мультиплеера отсюда, теперь она в главном меню -->
                 
                 <div id="gameHistoryPanel" style="display: none; margin-top: 15px; max-height: 300px; overflow-y: auto; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
                     <h5 id="historyTitle">Історія пригоди:</h5>
@@ -616,9 +688,15 @@
     <script src="voice_generator.js"></script>
     <script src="multiplayer.js"></script>
     
-    <!-- Вибір мови при кожному завантаженні сторінки -->
+    <!-- Функции для главного меню -->
     <script>
-        // Показуємо вікно вибору мови при кожному завантаженні
+        // Функция для начала одиночной игры
+        function startSinglePlayer() {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('apiSetup').style.display = 'block';
+        }
+
+        // Вибір мови при кожному завантаженні сторінки
         document.addEventListener('DOMContentLoaded', function() {
             // Завжди показуємо вікно вибору мови
             showLanguageSelectionModal();
@@ -685,6 +763,8 @@
                 changeLanguage('uk');
                 modal.remove();
                 overlay.remove();
+                // Показываем главное меню после выбора языка
+                document.getElementById('mainMenu').style.display = 'block';
             });
             buttonsContainer.appendChild(ukButton);
             
@@ -704,6 +784,8 @@
                 changeLanguage('en');
                 modal.remove();
                 overlay.remove();
+                // Показываем главное меню после выбора языка
+                document.getElementById('mainMenu').style.display = 'block';
             });
             buttonsContainer.appendChild(enButton);
             
@@ -723,6 +805,8 @@
                 changeLanguage('ru');
                 modal.remove();
                 overlay.remove();
+                // Показываем главное меню после выбора языка
+                document.getElementById('mainMenu').style.display = 'block';
             });
             buttonsContainer.appendChild(ruButton);
             
