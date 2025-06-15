@@ -140,6 +140,7 @@ const localization = {
         gameLoaded: "Game loaded successfully!",
         loadError: "Error loading game. Check console for details.",
         apiError: "API connection error. Check your key and try again.",
+        apiKeyNeeded: "API key is required to continue the game.",
         
         // API промпти
         initialScenePrompt: `You are a D&D game master. Create an initial scene for character {name} of class {class}.
@@ -425,6 +426,7 @@ const localization = {
         gameLoaded: "Гру завантажено успішно!",
         loadError: "Помилка при завантаженні гри. Перевірте консоль для деталей.",
         apiError: "Помилка зʼєднання з API. Перевірте ключ та спробуйте ще раз.",
+        apiKeyNeeded: "Потрібен API ключ для продовження гри.",
         adventureSummary: "Підсумок пригоди",
         processingActionWithSummary: "Обробка вашої дії та створення підсумку...",
         
@@ -708,6 +710,7 @@ const localization = {
         gameLoaded: "Игра загружена успешно!",
         loadError: "Ошибка при загрузке игры. Проверьте консоль для деталей.",
         apiError: "Ошибка соединения с API. Проверьте ключ и попробуйте снова.",
+        apiKeyNeeded: "Необходим API ключ для продолжения игры.",
         
         // API промпты
         initialScenePrompt: `Ты - мастер игры в D&D. Создай начальную сцену для персонажа {name} класса {class}.
@@ -1450,6 +1453,9 @@ function getText(key) {
 if (!localization.en.multiplayer) {
     // Англійська
     localization.en.multiplayer = "Multiplayer (BETA)";
+    localization.en.multiplayerSectionTitle = "Multiplayer (BETA)";
+    localization.en.multiplayerNote = "Play with friends in real time";
+    localization.en.multiplayerMainBtn = "🎮 Multiplayer";
     localization.en.multiplayerBetaWarning = "WARNING: BETA VERSION";
     localization.en.multiplayerBetaDesc = "Multiplayer is in beta testing. Balance and stability issues are possible.";
     localization.en.createLobby = "Create Lobby";
@@ -1492,9 +1498,19 @@ if (!localization.en.multiplayer) {
     localization.en.allPlayersReady = "All players ready!";
     localization.en.hostApiKeyRequired = "Host must provide Gemini API key";
     localization.en.multiplayerNotLoaded = "Multiplayer module not loaded";
+    localization.en.apiKeyRequired = "Gemini API key is required for host";
+    localization.en.enterNameAndCode = "Enter name and lobby code";
+    localization.en.characterCreationTitle = "Character Creation";
+    localization.en.characterCreationDesc = "All players must create their characters";
+    localization.en.createCharacter = "Create Character";
+    localization.en.waitingForCharacters = "Waiting for other players to create characters...";
+    localization.en.playersStatus = "Players Status:";
     
     // Українська
     localization.uk.multiplayer = "Мультиплеєр (БЕТА)";
+    localization.uk.multiplayerSectionTitle = "Мультиплеєр (БЕТА)";
+    localization.uk.multiplayerNote = "Грайте з друзями в режимі реального часу";
+    localization.uk.multiplayerMainBtn = "🎮 Мультиплеєр";
     localization.uk.multiplayerBetaWarning = "УВАГА: БЕТА ВЕРСІЯ";
     localization.uk.multiplayerBetaDesc = "Мультиплеєр знаходиться в стадії бета-тестування. Можливі проблеми з балансом та стабільністю.";
     localization.uk.createLobby = "Створити лобі";
@@ -1537,9 +1553,19 @@ if (!localization.en.multiplayer) {
     localization.uk.allPlayersReady = "Всі гравці готові!";
     localization.uk.hostApiKeyRequired = "Хост повинен надати Gemini API ключ";
     localization.uk.multiplayerNotLoaded = "Мультиплеєр модуль не завантажено";
+    localization.uk.apiKeyRequired = "API ключ Gemini обов'язковий для хоста";
+    localization.uk.enterNameAndCode = "Введіть ім'я та код лобі";
+    localization.uk.characterCreationTitle = "Створення персонажів";
+    localization.uk.characterCreationDesc = "Всі гравці повинні створити своїх персонажів";
+    localization.uk.createCharacter = "Створити персонажа";
+    localization.uk.waitingForCharacters = "Очікування створення персонажів іншими гравцями...";
+    localization.uk.playersStatus = "Статус гравців:";
     
     // Російська
     localization.ru.multiplayer = "Мультиплеер (БЕТА)";
+    localization.ru.multiplayerSectionTitle = "Мультиплеер (БЕТА)";
+    localization.ru.multiplayerNote = "Играйте с друзьями в режиме реального времени";
+    localization.ru.multiplayerMainBtn = "🎮 Мультиплеер";
     localization.ru.multiplayerBetaWarning = "ВНИМАНИЕ: БЕТА ВЕРСИЯ";
     localization.ru.multiplayerBetaDesc = "Мультиплеер находится в стадии бета-тестирования. Возможны проблемы с балансом и стабильностью.";
     localization.ru.createLobby = "Создать лобби";
@@ -1582,6 +1608,13 @@ if (!localization.en.multiplayer) {
     localization.ru.allPlayersReady = "Все игроки готовы!";
     localization.ru.hostApiKeyRequired = "Хост должен предоставить Gemini API ключ";
     localization.ru.multiplayerNotLoaded = "Мультиплеер модуль не загружен";
+    localization.ru.apiKeyRequired = "API ключ Gemini обязателен для хоста";
+    localization.ru.enterNameAndCode = "Введите имя и код лобби";
+    localization.ru.characterCreationTitle = "Создание персонажей";
+    localization.ru.characterCreationDesc = "Все игроки должны создать своих персонажей";
+    localization.ru.createCharacter = "Создать персонажа";
+    localization.ru.waitingForCharacters = "Ожидание создания персонажей другими игроками...";
+    localization.ru.playersStatus = "Статус игроков:";
 }
 
 
@@ -1751,6 +1784,16 @@ function updateLanguage(lang) {
     if (defaultVoiceOption) {
         defaultVoiceOption.textContent = `Zephyr (${getText('defaultVoice')})`;
     }
+    
+    // Мультиплеєр секція
+    const multiplayerSectionTitle = document.getElementById('multiplayerSectionTitle');
+    if (multiplayerSectionTitle) multiplayerSectionTitle.textContent = getText('multiplayerSectionTitle');
+    
+    const multiplayerNote = document.getElementById('multiplayerNote');
+    if (multiplayerNote) multiplayerNote.textContent = getText('multiplayerNote');
+    
+    const multiplayerMainBtn = document.getElementById('multiplayerMainBtn');
+    if (multiplayerMainBtn) multiplayerMainBtn.textContent = getText('multiplayerMainBtn');
 }
 
 // Допоміжна функція для оновлення інформації про клас персонажа
@@ -1977,7 +2020,39 @@ function startGame() {
     gameState.character.maxMana = stats.mana;
     gameState.character.perks = [...stats.perks];
 
+    // Check if this is multiplayer mode
+    if (gameState.isMultiplayer && window.multiplayerManager && window.multiplayerManager.isMultiplayerActive()) {
+        // Send character data to multiplayer server
+        const characterData = {
+            name: gameState.character.name,
+            class: gameState.character.class,
+            level: gameState.character.level,
+            health: gameState.character.health,
+            maxHealth: gameState.character.maxHealth,
+            mana: gameState.character.mana,
+            maxMana: gameState.character.maxMana,
+            perks: [...gameState.character.perks],
+            experience: gameState.character.experience
+        };
+        
+        window.multiplayerManager.sendCharacterToServer(characterData);
+        
+        // Hide setup screen but don't show game area yet - wait for all players
+        document.getElementById('setupScreen').style.display = 'none';
+        document.getElementById('apiSetup').style.display = 'none'; // Ховаємо налаштування API
+        
+        // Show multiplayer modal with character creation status
+        window.multiplayerManager.showModal();
+        
+        // Update character panel for local display
+        updateCharacterPanel();
+        
+        return; // Don't start the game yet - wait for all players
+    }
+
+    // Single player mode - proceed normally
     document.getElementById('setupScreen').style.display = 'none';
+    document.getElementById('apiSetup').style.display = 'none'; // Ховаємо налаштування API
     document.getElementById('gameArea').style.display = 'block';
     
     updateCharacterPanel();
@@ -2453,7 +2528,21 @@ let isRetrying = false;
 
 // Модифікуємо функцію callGeminiAPI для обробки аніме-персонажів
 async function callGeminiAPI(prompt, isInitial = false) {
-    if (gameState.isLoading) return;
+    // if (gameState.isLoading) return;
+
+    // Перевіряємо наявність API ключа
+    let apiKey = gameState.apiKey;
+    
+    // Якщо це мультиплеєр і є multiplayer manager, беремо ключ звідти
+    if (gameState.isMultiplayer && window.multiplayerManager && window.multiplayerManager.hostApiKey) {
+        apiKey = window.multiplayerManager.hostApiKey;
+    }
+    
+    if (!apiKey) {
+        console.error('API ключ не налаштовано');
+        alert(getText('apiKeyNeeded') || 'Потрібен API ключ для продовження гри.');
+        return;
+    }
 
     gameState.isLoading = true;
     document.getElementById('customActionBtn').disabled = true;
@@ -2517,7 +2606,7 @@ async function callGeminiAPI(prompt, isInitial = false) {
             parts: [{ text: prompt }]
         });
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gameState.apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2917,10 +3006,16 @@ function updateGameState(gameData) {
                 safe: window.safeImagePrompt
             });
             
+            // Отримуємо правильний API ключ
+            let imageApiKey = gameState.apiKey;
+            if (gameState.isMultiplayer && window.multiplayerManager && window.multiplayerManager.hostApiKey) {
+                imageApiKey = window.multiplayerManager.hostApiKey;
+            }
+            
             // Генеруємо зображення з першим промптом, другий буде використано як запасний
             window.imageGenerator.generateImage(
                 gameData.image_prompt, 
-                gameState.apiKey, 
+                imageApiKey, 
                 gameData.safe_image_prompt || gameData.image_prompt
             );
         }
@@ -3558,6 +3653,14 @@ ${jsonExample}`;
         }
     }
     
+    // Check if multiplayer is active and handle accordingly
+    if (gameState.isMultiplayer && window.multiplayerManager && window.multiplayerManager.isMultiplayerActive()) {
+        // In multiplayer mode, send action to server instead of processing directly
+        handleMultiplayerAction(action);
+        return;
+    }
+
+    // Single player mode - proceed with normal API call
     // Формуємо шаблон промпту та замінюємо всі змінні
     const prompt = getText('actionPrompt')
         .replace('{prevSituation}', gameState.currentScene.text)
@@ -5547,7 +5650,12 @@ function handleMultiplayerTurnResults(results) {
         
         // Генеруємо зображення
         if (window.imageGenerator) {
-            window.imageGenerator.generateImage(results.storyText);
+            // Отримуємо правильний API ключ
+            let imageApiKey = gameState.apiKey;
+            if (gameState.isMultiplayer && window.multiplayerManager && window.multiplayerManager.hostApiKey) {
+                imageApiKey = window.multiplayerManager.hostApiKey;
+            }
+            window.imageGenerator.generateImage(results.storyText, imageApiKey);
         }
     }
     
@@ -5607,6 +5715,12 @@ function deactivateMultiplayerMode() {
     document.getElementById('customActionBtn').disabled = false;
     document.getElementById('customAction').disabled = false;
 }
+
+// Експорт функції сумаризації для мультиплеєра
+window.generateHistorySummary = generateHistorySummary;
+
+// Експорт функції обробки мультиплеєрних дій
+window.handleMultiplayerAction = handleMultiplayerAction;
 
 // Ініціалізація мультиплеєра при завантаженні сторінки
 document.addEventListener('DOMContentLoaded', function() {

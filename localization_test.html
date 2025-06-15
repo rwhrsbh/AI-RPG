@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Multiplayer Localization Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .language-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .element { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 3px; }
+        h2 { color: #333; }
+        .id { font-weight: bold; color: #007acc; }
+        .text { font-style: italic; color: #333; }
+    </style>
+</head>
+<body>
+    <h1>🎮 Multiplayer Section Localization Test</h1>
+    <p>This test shows how the multiplayer section elements will appear in each supported language.</p>
+
+    <div class="language-section">
+        <h2>🇬🇧 English</h2>
+        <div class="element">
+            <span class="id">multiplayerSectionTitle:</span> 
+            <span class="text">"Multiplayer (BETA)"</span>
+        </div>
+        <div class="element">
+            <span class="id">multiplayerNote:</span> 
+            <span class="text">"Play with friends in real time"</span>
+        </div>
+        <div class="element">
+            <span class="id">multiplayerMainBtn:</span> 
+            <span class="text">"🎮 Multiplayer"</span>
+        </div>
+    </div>
+
+    <div class="language-section">
+        <h2>🇺🇦 Ukrainian (Українська)</h2>
+        <div class="element">
+            <span class="id">multiplayerSectionTitle:</span> 
+            <span class="text">"Мультиплеєр (БЕТА)"</span>
+        </div>
+        <div class="element">
+            <span class="id">multiplayerNote:</span> 
+            <span class="text">"Грайте з друзями в режимі реального часу"</span>
+        </div>
+        <div class="element">
+            <span class="id">multiplayerMainBtn:</span> 
+            <span class="text">"🎮 Мультиплеєр"</span>
+        </div>
+    </div>
+
+    <div class="language-section">
+        <h2>🇷🇺 Russian (Русский)</h2>
+        <div class="element">
+            <span class="id">multiplayerSectionTitle:</span> 
+            <span class="text">"Мультиплеер (БЕТА)"</span>
+        </div>
+        <div class="element">
+            <span class="id">multiplayerNote:</span> 
+            <span class="text">"Играйте с друзьями в режиме реального времени"</span>
+        </div>
+        <div class="element">
+            <span class="id">multiplayerMainBtn:</span> 
+            <span class="text">"🎮 Мультиплеер"</span>
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; padding: 15px; background: #e8f5e8; border-radius: 5px;">
+        <h3>✅ Implementation Complete</h3>
+        <p><strong>What was added:</strong></p>
+        <ul>
+            <li>Translation keys for all three languages (English, Ukrainian, Russian)</li>
+            <li>Updated <code>updateLanguage()</code> function to handle the multiplayer section elements</li>
+            <li>Support for dynamic language switching via the existing <code>changeLanguage()</code> function</li>
+        </ul>
+        <p><strong>HTML elements targeted:</strong></p>
+        <ul>
+            <li><code>id="multiplayerSectionTitle"</code> - The section title</li>
+            <li><code>id="multiplayerNote"</code> - The description text</li>
+            <li><code>id="multiplayerMainBtn"</code> - The main button text</li>
+        </ul>
+    </div>
+</body>
+</html>

@@ -424,6 +424,14 @@
             </div>
             
             <button onclick="saveApiKey()" class="action-btn" style="margin-top: 15px;">Зберегти</button>
+            
+            <div style="margin-top: 20px; padding: 15px; background: rgba(155, 89, 182, 0.1); border-radius: 10px; border: 1px solid rgba(155, 89, 182, 0.3);">
+                <h4 style="margin-top: 0;">🎮 <span id="multiplayerSectionTitle">Мультиплеєр (БЕТА)</span></h4>
+                <p style="font-size: 0.9em; color: #ffc107;" id="multiplayerNote">Грайте з друзями в режимі реального часу</p>
+                <button onclick="showMultiplayerModal()" class="action-btn" style="width: 100%; background: linear-gradient(45deg, #9b59b6, #8e44ad);" id="multiplayerMainBtn">
+                    🎮 Мультиплеєр
+                </button>
+            </div>
         </div>
 
         <div id="setupScreen" class="setup-screen" style="display: none;">
@@ -597,11 +605,6 @@
                     </button>
                 </div>
                 
-                <div style="margin-top: 10px;">
-                    <button onclick="showMultiplayerModal()" class="action-btn" style="width: 100%; font-size: 0.9em; background: linear-gradient(45deg, #9b59b6, #8e44ad);">
-                        🎮 Мультиплеєр (БЕТА)
-                    </button>
-                </div>
                 
                 <div id="gameHistoryPanel" style="display: none; margin-top: 15px; max-height: 300px; overflow-y: auto; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
                     <h5 id="historyTitle">Історія пригоди:</h5>
@@ -611,10 +614,27 @@
         </div>
     </div>
 
+    <!-- Індикатор мультиплеєра в правому нижньому куті -->
+    <div id="multiplayerIndicator" style="display: none; position: fixed; bottom: 20px; right: 20px; background: rgba(155, 89, 182, 0.9); color: white; padding: 10px 15px; border-radius: 8px; font-size: 0.9em; z-index: 1000; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+        <div id="playerCountDisplay">👥 Гравців: 0</div>
+        <button onclick="showMultiplayerModal()" style="background: none; border: 1px solid white; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px; font-size: 0.8em;">
+            Відкрити
+        </button>
+    </div>
+
     <script src="game.js"></script>
     <script src="image_generator.js"></script>
     <script src="voice_generator.js"></script>
     <script src="multiplayer.js"></script>
+    
+    <script>
+        // Функція для показу модального вікна мультиплеєра
+        function showMultiplayerModal() {
+            if (window.multiplayerManager) {
+                window.multiplayerManager.showModal();
+            }
+        }
+    </script>
     
     <!-- Вибір мови при кожному завантаженні сторінки -->
     <script>
