@@ -61,20 +61,49 @@ class Lobby {
     async processAllActions() {
         try {
             // Збираємо всі дії
-            const actions = Array.from(this.currentActions.values());
+            const actions = Array.from(this.currentActions.entries());
             
-            // Формуємо запит до ШІ з усіма діями
-            const combinedPrompt = this.buildCombinedPrompt(actions);
+            // Формуємо об'єкт з діями гравців
+            const playerActions = {};
+            const playerCharacteristics = {};
             
-            // Тут буде виклик до API ШІ (наприклад, OpenAI)
-            // Поки що симулюємо відповідь
-            const aiResponse = await this.simulateAIResponse(combinedPrompt);
+            actions.forEach(([playerId, action]) => {
+                const player = this.players.get(playerId);
+                if (player) {
+                    playerActions[playerId] = {
+                        action: action,
+                        playerName: player.name,
+                        character: player.character
+                    };
+                    
+                    // Збираємо характеристики гравця
+                    if (player.character) {
+                        playerCharacteristics[playerId] = {
+                            name: player.character.name || player.name,
+                            class: player.character.class,
+                            level: player.character.level || 1,
+                            health: player.character.health,
+                            maxHealth: player.character.maxHealth,
+                            mana: player.character.mana,
+                            maxMana: player.character.maxMana,
+                            experience: player.character.experience || 0,
+                            perks: player.character.perks || []
+                        };
+                    }
+                }
+            });
             
-            // Обробляємо результат та оновлюємо стан гри
-            this.updateGameState(aiResponse);
-            
-            // Відправляємо результат всім гравцям
-            this.broadcastTurnResults(aiResponse);
+            // Відправляємо всі дії хосту для обробки через ШІ
+            const hostPlayer = this.players.get(this.hostId);
+            if (hostPlayer && hostPlayer.socket.readyState === WebSocket.OPEN) {
+                hostPlayer.socket.send(JSON.stringify({
+                    type: 'all_actions_received',
+                    playerActions: playerActions,
+                    playerCharacteristics: playerCharacteristics,
+                    gameState: this.gameState
+                }));
+                console.log('Відправлено всі дії хосту для обробки через ШІ');
+            }
             
             // Очищуємо дії для наступного ходу
             this.currentActions.clear();
@@ -85,33 +114,22 @@ class Lobby {
         }
     }
 
-    buildCombinedPrompt(actions) {
-        let prompt = 'Наступні гравці виконують дії одночасно:\n\n';
-        
-        actions.forEach((action, index) => {
-            const player = Array.from(this.players.values())[index];
-            prompt += `${player.name}: ${action}\n`;
-        });
-        
-        prompt += '\nОпишіть результат цих дій та їх взаємодію між собою.';
-        
-        return prompt;
-    }
-
-    async simulateAIResponse(prompt) {
-        // Симуляція відповіді ШІ
-        // В реальній реалізації тут буде виклик до OpenAI API
-        return {
-            storyText: 'Гравці виконали свої дії. Результат буде залежати від реальної інтеграції з ШІ.',
-            consequences: [],
-            gameState: this.gameState
-        };
-    }
-
-    updateGameState(aiResponse) {
-        // Оновлюємо стан гри на основі відповіді ШІ
-        if (aiResponse.gameState) {
-            this.gameState = { ...this.gameState, ...aiResponse.gameState };
+    // Обробка відповіді від ШІ, отриманої від хоста
+    processAIResponse(aiResponse) {
+        try {
+            // Оновлюємо стан гри
+            if (aiResponse.gameState) {
+                this.gameState = { ...this.gameState, ...aiResponse.gameState };
+            }
+            
+            // Відправляємо результат всім гравцям
+            this.broadcastTurnResults(aiResponse);
+            
+            console.log('Обробка відповіді ШІ завершена, результат відправлено всім гравцям');
+            
+        } catch (error) {
+            console.error('Помилка обробки відповіді ШІ:', error);
+            this.broadcastError('Помилка обробки відповіді ШІ');
         }
     }
 
@@ -238,6 +256,22 @@ function handleMessage(playerId, message) {
             handleLeaveLobby(playerId);
             break;
             
+        case 'ai_response':
+            handleAIResponse(playerId, message);
+            break;
+            
+        case 'character_created':
+            handleCharacterCreated(playerId, message);
+            break;
+            
+        case 'initial_story':
+            handleInitialStory(playerId, message);
+            break;
+            
+        case 'image_share':
+            handleImageShare(playerId, message);
+            break;
+            
         default:
             console.log(`Невідомий тип повідомлення: ${message.type}`);
     }
@@ -307,7 +341,7 @@ function handleJoinLobby(playerId, message) {
     
     player.lobbyCode = message.code;
     
-    console.log(`Гравець ${playerId} приєднався до лобі ${message.code}`);
+    console.log(`Гравець ${playerId} (${message.playerName}) приєднався до лобі ${message.code}`);
     
     // Повідомляємо всіх гравців про нового учасника
     lobby.broadcastToAll({
@@ -374,6 +408,73 @@ function handlePlayerAction(playerId, message) {
     });
 }
 
+// Обробка відповіді ШІ від хоста
+function handleAIResponse(playerId, message) {
+    const player = players.get(playerId);
+    const lobby = lobbies.get(player.lobbyCode);
+    
+    if (!lobby || lobby.hostId !== playerId) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Тільки хост може відправляти відповіді ШІ'
+        }));
+        return;
+    }
+    
+    console.log(`Отримано відповідь ШІ від хоста ${playerId}`);
+    
+    // Обробляємо відповідь ШІ
+    lobby.processAIResponse(message.aiResponse);
+}
+
+// Обробка створення персонажа
+function handleCharacterCreated(playerId, message) {
+    const player = players.get(playerId);
+    const lobby = lobbies.get(player.lobbyCode);
+    
+    if (!lobby) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Лобі не знайдено'
+        }));
+        return;
+    }
+    
+    // Зберігаємо персонажа гравця
+    const playerInLobby = lobby.players.get(playerId);
+    if (playerInLobby) {
+        playerInLobby.character = message.character;
+        console.log(`Гравець ${playerId} створив персонажа: ${message.character.name}`);
+        
+        // Повідомляємо всіх про створення персонажа
+        lobby.broadcastToAll({
+            type: 'character_created',
+            playerId: playerId,
+            character: message.character,
+            players: lobby.getPlayersArray()
+        });
+        
+        // Перевіряємо, чи всі гравці створили персонажів
+        const playersWithCharacters = Array.from(lobby.players.values()).map(p => ({
+            id: p.id,
+            name: p.name,
+            hasCharacter: !!p.character
+        }));
+        console.log('Стан персонажів:', playersWithCharacters);
+        
+        const allPlayersReady = Array.from(lobby.players.values()).every(p => p.character);
+        console.log('Всі гравці готові:', allPlayersReady, 'Всього гравців:', lobby.players.size);
+        
+        if (allPlayersReady) {
+            console.log('Відправляємо повідомлення про готовність усіх персонажів');
+            lobby.broadcastToAll({
+                type: 'all_characters_ready',
+                players: lobby.getPlayersArray()
+            });
+        }
+    }
+}
+
 // Покинути лобі
 function handleLeaveLobby(playerId) {
     const player = players.get(playerId);
@@ -405,6 +506,65 @@ function handleLeaveLobby(playerId) {
             players: lobby.getPlayersArray()
         });
     }
+}
+
+// Обробка початкової історії від хоста
+function handleInitialStory(playerId, message) {
+    const player = players.get(playerId);
+    const lobby = lobbies.get(player.lobbyCode);
+    
+    if (!lobby || lobby.hostId !== playerId) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Тільки хост може відправляти початкову історію'
+        }));
+        return;
+    }
+    
+    console.log(`Отримано початкову історію від хоста ${playerId}`);
+    
+    // Зберігаємо початкову історію в стані гри
+    if (!lobby.gameState) {
+        lobby.gameState = {};
+    }
+    lobby.gameState.initialStory = message.storyData;
+    
+    // Відправляємо початкову історію всім гравцям в лобі
+    lobby.broadcastToAll({
+        type: 'initial_story_received',
+        storyData: message.storyData,
+        gameState: lobby.gameState
+    });
+    
+    console.log(`Початкова історія відправлена всім гравцям в лобі ${lobby.code}`);
+}
+
+// Обробка поділення зображенням від хоста
+function handleImageShare(playerId, message) {
+    const player = players.get(playerId);
+    const lobby = lobbies.get(player.lobbyCode);
+    
+    if (!lobby || lobby.hostId !== playerId) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Тільки хост може ділитися зображеннями'
+        }));
+        return;
+    }
+    
+    console.log(`Отримано зображення від хоста ${playerId} для поділення`);
+    
+    // Відправляємо зображення всім гравцям в лобі (крім хоста)
+    lobby.players.forEach((lobbyPlayer, lobbyPlayerId) => {
+        if (lobbyPlayerId !== playerId && lobbyPlayer.socket.readyState === WebSocket.OPEN) {
+            lobbyPlayer.socket.send(JSON.stringify({
+                type: 'image_shared',
+                imageUrl: message.imageUrl
+            }));
+        }
+    });
+    
+    console.log(`Зображення відправлено всім гравцям в лобі ${lobby.code} (крім хоста)`);
 }
 
 // Обробка відключення гравця
