@@ -3665,9 +3665,9 @@ MANDATORY JSON OUTPUT REQUIREMENT:
                 if (needSummary) {
                     console.log('🔄 Потрібен саммарайз історії мультиплеєра');
                     // Запускаємо саммарайз асинхронно, щоб не блокувати гру
-                    setTimeout(() => {
-                        generateMultiplayerHistorySummary();
-                    }, 1000);
+                    // setTimeout(() => {
+                    //     generateMultiplayerHistorySummary();
+                    // }, 1000);
                 }
                 
                 // Отправляем результаты всем игрокам через WebSocket
