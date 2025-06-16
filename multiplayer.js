@@ -54,10 +54,11 @@ class MultiplayerManager {
         const lobbyCode = localStorage.getItem('dndLastHostLobby');
         const timestamp = localStorage.getItem('dndLastHostTime');
         
-        // Проверяем, что лобби было создано не более 2 минут назад (как на сервере)
+        // Проверяем, что лобби было создано не более 24*60 минут назад
+        
         if (lobbyCode && timestamp) {
             const minutesAgo = (Date.now() - parseInt(timestamp)) / (1000 * 60);
-            if (minutesAgo < 2) {
+            if (minutesAgo < 24*60) {
                 console.log('🔄 Найдено последнее хост лобби:', lobbyCode, `(${Math.round(minutesAgo)} минут назад)`);
                 return lobbyCode;
             } else {
