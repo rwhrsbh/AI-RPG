@@ -9509,7 +9509,7 @@ function handleRecoveryLobbyCreated(data) {
 
 // Обработка успешного переподключения хоста
 function handleHostReconnectSuccess(data) {
-    console.log('✅ Хост успешно переподключился, загружаем состояние игры:', data);
+    console.log('✅ Хост успешно переподключился, ищем последнее сохранение для лобби:', data.lobbyCode);
     
     // Активируем мультиплеєр режим
     gameState.isMultiplayer = true;
@@ -9524,28 +9524,60 @@ function handleHostReconnectSuccess(data) {
     });
     updateMultiplayerPlayersList();
     
-    // Загружаем состояние игры если есть
-    if (data.gameState) {
-        // Восстанавливаем игровое состояние
-        Object.assign(gameState, data.gameState);
-        updateCharacterPanel();
+    // Ищем последнее мультиплеерное сохранение для этого лобби
+    const lastSave = findLastMultiplayerSaveForLobby(data.lobbyCode);
+    
+    if (lastSave) {
+        console.log('🎮 Найдено последнее сохранение, загружаем:', lastSave);
         
-        // Если есть последняя сцена, отображаем её
-        if (data.lastScene) {
-            if (data.lastScene.text) {
-                document.getElementById('storyText').innerHTML = data.lastScene.text;
-            }
-        }
+        // Загружаем сохранение
+        loadSpecificMultiplayerSave(lastSave.data);
         
         // Скрываем экран лобби и показываем игру
         document.getElementById('hostLobby').style.display = 'none';
         document.querySelector('.container').style.display = 'block';
         
-        showNotification('Переподключение успешно! Игра восстановлена.', 'success');
+        showNotification('Переподключение успешно! Игра загружена с последнего сохранения.', 'success');
+        
+        // Обновляем кнопку сохранения для мультиплеера
+        updateSaveButton();
     } else {
-        // Нет сохраненного состояния - нужно загрузить сохранение вручную
-        showNotification('Переподключение успешно! Загрузите последнее сохранение для продолжения игры.', 'info');
+        // Нет сохранения для этого лобби
+        console.log('❌ Сохранений для лобби не найдено');
+        
+        // Скрываем экран лобби и показываем главное меню
+        document.getElementById('hostLobby').style.display = 'none';
+        
+        showNotification('Переподключение успешно, но сохранений для этого лобби не найдено. Начните новую игру.', 'warning');
+        
+        // Показываем экран создания персонажа
+        document.querySelector('.setup-screen').style.display = 'block';
+        document.querySelector('.game-area').style.display = 'none';
     }
+}
+
+// Функция поиска последнего мультиплеерного сохранения для конкретного лобби
+function findLastMultiplayerSaveForLobby(lobbyCode) {
+    console.log('🔍 Ищем сохранения для лобби:', lobbyCode);
+    
+    const saves = getMultiplayerSaveGames();
+    let lastSave = null;
+    let lastTimestamp = 0;
+    
+    Object.entries(saves).forEach(([key, saveInfo]) => {
+        console.log('📝 Проверяем сохранение:', key, saveInfo);
+        
+        if (saveInfo.data && saveInfo.data.lobbyCode === lobbyCode) {
+            const saveTimestamp = new Date(saveInfo.timestamp).getTime();
+            if (saveTimestamp > lastTimestamp) {
+                lastTimestamp = saveTimestamp;
+                lastSave = saveInfo;
+                console.log('✅ Найдено подходящее сохранение:', key, new Date(saveInfo.timestamp));
+            }
+        }
+    });
+    
+    return lastSave;
 }
 
 // Обработка переподключения хоста (для других игроков)
