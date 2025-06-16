@@ -25,6 +25,9 @@ class Lobby {
         this.currentActions = new Map();
         this.isGameStarted = false;
         this.createdAt = Date.now();
+        // Добавляем хранение последней сцены для переподключений
+        this.lastScene = null;
+        this.lastResults = null;
     }
 
     addPlayer(playerId, playerData) {
@@ -120,12 +123,7 @@ class Lobby {
     // Обробка відповіді від ШІ, отриманої від хоста
     processAIResponse(aiResponse) {
         try {
-            // Оновлюємо стан гри
-            if (aiResponse.gameState) {
-                this.gameState = { ...this.gameState, ...aiResponse.gameState };
-            }
-            
-            // Відправляємо результат всім гравцям
+            // Відправляємо результат всім гравцям (без gameState - он больше не нужен)
             this.broadcastTurnResults(aiResponse);
             
             console.log('Обробка відповіді ШІ завершена, результат відправлено всім гравцям');
@@ -137,25 +135,15 @@ class Lobby {
     }
 
     broadcastTurnResults(results) {
+        // Сохраняем последние результаты для переподключений
+        this.lastResults = results;
+        
         this.players.forEach((player, playerId) => {
             if (player.socket.readyState === WebSocket.OPEN) {
-                // Фильтруем данные в зависимости от типа игрока
-                const isHost = playerId === this.hostId;
-                
-                let filteredResults = { ...results };
-                
-                if (!isHost && filteredResults.gameState) {
-                    // Для обычных игроков убираем API ключ и другие чувствительные данные хоста
-                    filteredResults.gameState = {
-                        ...filteredResults.gameState,
-                        apiKey: undefined,
-                        hostApiKey: undefined
-                    };
-                }
-                
+                // Отправляем результаты без фильтрации - gameState больше не передается
                 const message = {
                     type: 'turn_complete',
-                    results: filteredResults
+                    results: results
                 };
                 
                 player.socket.send(JSON.stringify(message));
@@ -472,15 +460,16 @@ function handleStartGame(playerId, message) {
     }
     
     lobby.isGameStarted = true;
-    lobby.gameState = message.gameState || {};
     
     console.log(`Гра розпочата в лобі ${player.lobbyCode}`);
     console.log(`Кількість гравців у лобі: ${lobby.players.size}`);
-    console.log(`Стан гри:`, lobby.gameState);
     
     const gameStartMessage = {
         type: 'game_started',
-        gameState: lobby.gameState,
+        language: message.language || 'uk',
+        isMultiplayer: true,
+        hostApiKey: message.hostApiKey,
+        shortResponses: message.shortResponses || false,
         players: lobby.getPlayersArray()
     };
     
@@ -889,7 +878,9 @@ function handleTakeOverCharacter(newPlayerId, message) {
         playerId: targetPlayerId,
         character: targetPlayer.character,
         lobbyCode: lobby.code,
-        players: lobby.getPlayersArray()
+        players: lobby.getPlayersArray(),
+        // Добавляем последнюю сцену для восстановления состояния игры
+        lastResults: lobby.lastResults
     }));
     
     // Уведомляем всех остальных игроков

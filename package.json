@@ -18,6 +18,7 @@
   "author": "DnD Game Developer",
   "license": "MIT",
   "dependencies": {
+    "ngrok": "^5.0.0-beta.2",
     "ws": "^8.14.2"
   },
   "devDependencies": {

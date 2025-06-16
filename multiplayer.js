@@ -19,7 +19,7 @@ class MultiplayerManager {
         this.pingInterval = null;
         this.pongTimeout = null;
         this.pingIntervalTime = 30000; // 30 секунд между пингами
-        this.pongTimeoutTime = 10000; // 10 секунд ожидание понга
+        this.pongTimeoutTime = 100000000; // 10 секунд ожидание понга
         
         this.initializeUI();
     }
@@ -255,6 +255,8 @@ class MultiplayerManager {
     // Обработка успешного взятия персонажа
     handleCharacterTakenOver(message) {
         console.log('Персонаж успешно взят:', message);
+        console.log('🔗 Состояние сокета после взятия персонажа:', this.socket?.readyState);
+        console.log('🔗 Подключен ли сокет:', this.isConnected);
         
         // Закрываем попап выбора
         const popup = document.getElementById('characterSelectionPopup');
@@ -265,6 +267,13 @@ class MultiplayerManager {
         // Обновляем ID игрока
         this.playerId = message.playerId;
         this.lobbyCode = message.lobbyCode;
+        
+        // Убеждаемся что сокет все еще активен
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            console.log('✅ Сокет активен после взятия персонажа');
+        } else {
+            console.error('❌ Сокет не активен после взятия персонажа!', this.socket?.readyState);
+        }
         
         // Уведомляем игровую интеграцию
         if (this.gameIntegration && this.gameIntegration.onCharacterTakenOver) {
@@ -981,6 +990,7 @@ class MultiplayerManager {
     connectToServer() {
         // const serverUrl = 'ws://localhost:3001';
         const serverUrl = 'wss://ai-rpg-c4df.onrender.com';
+// const serverUrl = 'wss://f486-185-136-134-229.ngrok-free.app';
         console.log('Підключення до сервера:', serverUrl);
         
         try {
@@ -1130,7 +1140,9 @@ class MultiplayerManager {
 
     // ИСПРАВЛЕНИЕ 4: Обновляем обработку сообщений от сервера
     handleServerMessage(message) {
-        console.log('Получено сообщение от сервера:', message.type, message);
+        console.log('📨 Получено сообщение от сервера:', message.type, message);
+        console.log('🔗 Состояние сокета при получении сообщения:', this.socket?.readyState);
+        console.log('🔗 Флаг подключения:', this.isConnected);
         
         switch (message.type) {
             case 'lobby_created':
@@ -1370,13 +1382,10 @@ class MultiplayerManager {
             console.log('Хост запускає мультиплеєрну гру...');
             this.socket.send(JSON.stringify({
                 type: 'start_game',
-                gameState: {
-                    language: window.gameState.language || 'uk',
-                    isMultiplayer: true,
-                    hostApiKey: window.gameState.apiKey,
-                    // Передаем только базовые настройки, не весь gameState
-                    shortResponses: window.gameState.shortResponses || false
-                }
+                language: window.gameState.language || 'uk',
+                isMultiplayer: true,
+                hostApiKey: window.gameState.apiKey,
+                shortResponses: window.gameState.shortResponses || false
             }));
         }
     }
