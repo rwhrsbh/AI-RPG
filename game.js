@@ -3224,6 +3224,7 @@ window.startGame = function() {
     
     if (multiplayerState.isActive) {
         // МУЛЬТИПЛЕЕР: отправляем данные персонажа через WebSocket
+        gameState.isMultiplayer = true; // Устанавливаем флаг мультиплеера
         console.log('Создание персонажа в мультиплеере:', gameState.character);
         
         if (window.multiplayerManager && window.multiplayerManager.socket) {
@@ -3475,6 +3476,9 @@ function processMultiplayerInitialScene(gameData) {
     
     // Обновляем панель персонажа
     updateCharacterPanel();
+    
+    // Дополнительно обновляем кнопку сохранения для мультиплеера
+    updateSaveButton();
     
     // Получаем данные для текущего игрока
     const myPlayerId = getCurrentPlayerId();
@@ -4482,6 +4486,14 @@ function applyMultiplayerConsequences(consequences) {
     
     // Обрабатываем боевой режим
     handleMultiplayerCombat(consequences);
+    
+    // Автосохранение только для хоста и только если не в процессе загрузки
+    if (window.multiplayerManager && window.multiplayerManager.isHost && !window.gameState.isLoading) {
+        console.log('🔄 Автосохранение мультиплеерной игры (хост)');
+        setTimeout(() => {
+            saveMultiplayerGame();
+        }, 1000); // Небольшая задержка для завершения обновления интерфейса
+    }
 }
 
 // Функция применения общих последствий
@@ -5198,33 +5210,35 @@ function showGameStartOptions(singlePlayerSaves = {}, multiplayerSaves = {}) {
     });
     buttonsContainer.appendChild(newGameBtn);
     
-    // Кнопка завантаження одиночной игры
-    const loadGameBtn = document.createElement('button');
-    loadGameBtn.textContent = getText('loadGame');
-    loadGameBtn.style.cssText = `
-        padding: 15px 25px;
-        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-        border: none;
-        border-radius: 10px;
-        color: white;
-        font-size: 16px;
-        cursor: pointer;
-        transition: all 0.3s;
-    `;
-    loadGameBtn.addEventListener('mouseover', () => {
-        loadGameBtn.style.background = 'linear-gradient(135deg, #ee5a52, #ff6b6b)';
-        loadGameBtn.style.transform = 'translateY(-3px)';
-    });
-    loadGameBtn.addEventListener('mouseout', () => {
-        loadGameBtn.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5a52)';
-        loadGameBtn.style.transform = 'translateY(0)';
-    });
-    loadGameBtn.addEventListener('click', () => {
-        loadGame();
-        modal.remove();
-        overlay.remove();
-    });
-    buttonsContainer.appendChild(loadGameBtn);
+    // Кнопка завантаження одиночной игры (только для одиночной игры)
+    if (!gameState.isMultiplayer) {
+        const loadGameBtn = document.createElement('button');
+        loadGameBtn.textContent = getText('loadGame');
+        loadGameBtn.style.cssText = `
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        `;
+        loadGameBtn.addEventListener('mouseover', () => {
+            loadGameBtn.style.background = 'linear-gradient(135deg, #ee5a52, #ff6b6b)';
+            loadGameBtn.style.transform = 'translateY(-3px)';
+        });
+        loadGameBtn.addEventListener('mouseout', () => {
+            loadGameBtn.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5a52)';
+            loadGameBtn.style.transform = 'translateY(0)';
+        });
+        loadGameBtn.addEventListener('click', () => {
+            loadGame();
+            modal.remove();
+            overlay.remove();
+        });
+        buttonsContainer.appendChild(loadGameBtn);
+    }
     
     // Кнопка завантаження мультиплеєрної гри
     const loadMultiplayerGameBtn = document.createElement('button');
@@ -5379,13 +5393,23 @@ function updateSaveButton() {
     if (!saveBtn) return;
     
     if (gameState.isMultiplayer) {
-        // Мультиплеер режим - показываем кнопку сохранения мультиплеерной игры
-        saveBtn.textContent = `💾 ${getText('saveMultiplayerGame')}`;
-        saveBtn.onclick = function() {
-            saveMultiplayerGame();
-        };
+        // Мультиплеер режим - только хост может сохранять
+        if (window.multiplayerManager && window.multiplayerManager.isHost) {
+            // Хост - показываем кнопку сохранения мультиплеерной игры
+            saveBtn.style.display = 'block';
+            saveBtn.textContent = `💾 ${getText('saveMultiplayerGame')}`;
+            saveBtn.onclick = function() {
+                saveMultiplayerGame();
+            };
+            console.log('🎮 Хост: кнопка мультиплеерного сохранения активна');
+        } else {
+            // Обычный игрок - скрываем кнопку сохранения
+            saveBtn.style.display = 'none';
+            console.log('🎮 Игрок: кнопка сохранения скрыта');
+        }
     } else {
         // Одиночный режим - показываем обычную кнопку сохранения
+        saveBtn.style.display = 'block';
         saveBtn.textContent = `💾 ${getText('save')}`;
         saveBtn.onclick = function() {
             saveGame();
