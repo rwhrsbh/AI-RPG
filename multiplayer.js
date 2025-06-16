@@ -42,6 +42,39 @@ class MultiplayerManager {
         return playerId;
     }
 
+    // Сохранение последнего хост лобби
+    saveLastHostLobby(lobbyCode) {
+        localStorage.setItem('dndLastHostLobby', lobbyCode);
+        localStorage.setItem('dndLastHostTime', Date.now().toString());
+        console.log('💾 Сохранен последний хост лобби:', lobbyCode);
+    }
+
+    // Получение последнего хост лобби
+    getLastHostLobby() {
+        const lobbyCode = localStorage.getItem('dndLastHostLobby');
+        const timestamp = localStorage.getItem('dndLastHostTime');
+        
+        // Проверяем, что лобби было создано не более 2 минут назад (как на сервере)
+        if (lobbyCode && timestamp) {
+            const minutesAgo = (Date.now() - parseInt(timestamp)) / (1000 * 60);
+            if (minutesAgo < 2) {
+                console.log('🔄 Найдено последнее хост лобби:', lobbyCode, `(${Math.round(minutesAgo)} минут назад)`);
+                return lobbyCode;
+            } else {
+                console.log('⏰ Последнее хост лобби слишком старое, удаляем');
+                this.clearLastHostLobby();
+            }
+        }
+        return null;
+    }
+
+    // Очистка данных последнего хост лобби
+    clearLastHostLobby() {
+        localStorage.removeItem('dndLastHostLobby');
+        localStorage.removeItem('dndLastHostTime');
+        console.log('🗑️ Данные последнего хост лобби очищены');
+    }
+
     // Запуск пинг системы
     startPing() {
         if (this.pingInterval) {
@@ -554,6 +587,8 @@ class MultiplayerManager {
                     <div id="multiplayerMenu">
                         <button id="hostGameBtn" class="mp-btn primary">Створити лобі</button>
                         <button id="joinGameBtn" class="mp-btn secondary">Приєднатися до лобі</button>
+                        <button id="reconnectHostBtn" class="mp-btn warning" style="display: none;">Переподключитися як хост</button>
+                        <button id="loadMultiplayerGameBtn" class="mp-btn info">Завантажити мультиплеєрну гру</button>
                     </div>
                     
                     <div id="hostLobby" style="display: none;">
@@ -693,6 +728,16 @@ class MultiplayerManager {
                 color: white;
             }
             
+            .mp-btn.warning {
+                background: linear-gradient(135deg, #f39c12, #e67e22);
+                color: white;
+            }
+            
+            .mp-btn.info {
+                background: linear-gradient(135deg, #3498db, #2980b9);
+                color: white;
+            }
+            
             .mp-btn:hover:not(:disabled) {
                 transform: translateY(-2px);
                 box-shadow: 0 4px 8px rgba(0,0,0,0.3);
@@ -827,6 +872,16 @@ class MultiplayerManager {
             this.leaveGame();
         });
 
+        // Переподключение как хост
+        document.getElementById('reconnectHostBtn').addEventListener('click', () => {
+            this.reconnectAsHost();
+        });
+
+        // Загрузка мультиплеерной игры
+        document.getElementById('loadMultiplayerGameBtn').addEventListener('click', () => {
+            this.loadMultiplayerGameWithApiKey();
+        });
+
         // Обробка введення коду лобі
         document.getElementById('lobbyCodeInput').addEventListener('input', (e) => {
             e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -880,6 +935,17 @@ class MultiplayerManager {
     showModal() {
         // Обновляем тексты перед показом
         this.updateUITexts();
+        
+        // Проверяем наличие последнего хост лобби
+        const lastLobby = this.getLastHostLobby();
+        const reconnectBtn = document.getElementById('reconnectHostBtn');
+        if (lastLobby && reconnectBtn) {
+            reconnectBtn.style.display = 'block';
+            reconnectBtn.textContent = `🔄 Переподключитися до лобі ${lastLobby}`;
+        } else if (reconnectBtn) {
+            reconnectBtn.style.display = 'none';
+        }
+        
         document.getElementById('multiplayerModal').style.display = 'block';
     }
 
@@ -956,20 +1022,33 @@ class MultiplayerManager {
         const getText = window.getText || ((key) => key);
         const multiplayerMenu = document.getElementById('multiplayerMenu');
         
+        // Проверяем наличие последнего хост лобби для показа кнопки переподключения
+        const lastLobby = this.getLastHostLobby();
+        const reconnectButton = lastLobby ? 
+            `<button id="reconnectHostBtn" class="mp-btn warning">🔄 Переподключитися до лобі ${lastLobby}</button>` : 
+            `<button id="reconnectHostBtn" class="mp-btn warning" style="display: none;">Переподключитися як хост</button>`;
+        
         multiplayerMenu.innerHTML = `
             <button id="hostGameBtn" class="mp-btn primary">${getText('createLobby') || 'Створити лобі'}</button>
             <button id="joinGameBtn" class="mp-btn secondary">${getText('joinLobby') || 'Приєднатися до лобі'}</button>
+            ${reconnectButton}
+            <button id="loadMultiplayerGameBtn" class="mp-btn info">Завантажити мультиплеєрну гру</button>
         `;
         
         // Переподключаем обработчики событий
         document.getElementById('hostGameBtn').onclick = () => this.hostGame();
         document.getElementById('joinGameBtn').onclick = () => this.showJoinLobby();
+        document.getElementById('reconnectHostBtn').onclick = () => this.reconnectAsHost();
+        document.getElementById('loadMultiplayerGameBtn').onclick = () => this.loadMultiplayerGameWithApiKey();
     }
     
     // Создать лобби (выделенная функция)
     createLobby() {
         this.isHost = true;
         this.lobbyCode = this.generateLobbyCode();
+        
+        // Сохраняем последнее хост лобби
+        this.saveLastHostLobby(this.lobbyCode);
         
         document.getElementById('multiplayerMenu').style.display = 'none';
         document.getElementById('hostLobby').style.display = 'block';
@@ -992,6 +1071,149 @@ class MultiplayerManager {
         document.getElementById('joinLobby').style.display = 'none';
         
         this.connectToServer();
+    }
+
+    // Переподключение как хост к последнему лобби
+    reconnectAsHost() {
+        const lastLobby = this.getLastHostLobby();
+        if (!lastLobby) {
+            alert('Не найдено последнего хост лобби');
+            return;
+        }
+
+        // Проверяем наличие API ключа
+        if (!window.gameState || !window.gameState.apiKey) {
+            this.showApiKeyInputForReconnect(lastLobby);
+            return;
+        }
+
+        this.performHostReconnect(lastLobby);
+    }
+
+    // Показать поле ввода API ключа для переподключения хоста
+    showApiKeyInputForReconnect(lobbyCode) {
+        const getText = window.getText || ((key) => key);
+        const multiplayerMenu = document.getElementById('multiplayerMenu');
+        
+        multiplayerMenu.innerHTML = `
+            <div class="api-key-section">
+                <h3 style="color: #f39c12; margin-bottom: 15px;">
+                    🔑 ${getText('enterApiKey') || 'Введіть Gemini API ключ'}
+                </h3>
+                <p style="margin-bottom: 15px; color: #ccc; font-size: 0.9em;">
+                    Для переподключення до лобі <strong>${lobbyCode}</strong> як хост потрібен API ключ
+                </p>
+                <input type="password" id="reconnectApiKey" placeholder="${getText('apiKeyPlaceholder') || 'Gemini API ключ'}" 
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #f39c12; border-radius: 5px; background: rgba(0,0,0,0.3); color: white;">
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="window.multiplayerManager.saveApiKeyAndReconnect('${lobbyCode}')" class="mp-btn warning" style="flex: 1;">
+                        🔄 Переподключитися
+                    </button>
+                    <button onclick="window.multiplayerManager.backToMultiplayerMenu()" class="mp-btn secondary" style="flex: 1;">
+                        ${getText('back') || 'Назад'}
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Загрузка мультиплеерной игры с запросом API ключа
+    loadMultiplayerGameWithApiKey() {
+        // Проверяем наличие API ключа
+        if (!window.gameState || !window.gameState.apiKey) {
+            this.showApiKeyInputForLoad();
+            return;
+        }
+
+        this.performMultiplayerLoad();
+    }
+
+    // Показать поле ввода API ключа для загрузки
+    showApiKeyInputForLoad() {
+        const getText = window.getText || ((key) => key);
+        const multiplayerMenu = document.getElementById('multiplayerMenu');
+        
+        multiplayerMenu.innerHTML = `
+            <div class="api-key-section">
+                <h3 style="color: #3498db; margin-bottom: 15px;">
+                    🔑 ${getText('enterApiKey') || 'Введіть Gemini API ключ'}
+                </h3>
+                <p style="margin-bottom: 15px; color: #ccc; font-size: 0.9em;">
+                    Для завантаження мультиплеєрної гри потрібен API ключ
+                </p>
+                <input type="password" id="loadApiKey" placeholder="${getText('apiKeyPlaceholder') || 'Gemini API ключ'}" 
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #3498db; border-radius: 5px; background: rgba(0,0,0,0.3); color: white;">
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="window.multiplayerManager.saveApiKeyAndLoad()" class="mp-btn info" style="flex: 1;">
+                        📂 Завантажити
+                    </button>
+                    <button onclick="window.multiplayerManager.backToMultiplayerMenu()" class="mp-btn secondary" style="flex: 1;">
+                        ${getText('back') || 'Назад'}
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Сохранение API ключа и переподключение
+    saveApiKeyAndReconnect(lobbyCode) {
+        const apiKey = document.getElementById('reconnectApiKey').value.trim();
+        if (!apiKey) {
+            alert('Введіть API ключ');
+            return;
+        }
+
+        // Сохраняем API ключ
+        if (!window.gameState) {
+            window.gameState = {};
+        }
+        window.gameState.apiKey = apiKey;
+        localStorage.setItem('dndApiKey', apiKey);
+
+        this.performHostReconnect(lobbyCode);
+    }
+
+    // Сохранение API ключа и загрузка
+    saveApiKeyAndLoad() {
+        const apiKey = document.getElementById('loadApiKey').value.trim();
+        if (!apiKey) {
+            alert('Введіть API ключ');
+            return;
+        }
+
+        // Сохраняем API ключ
+        if (!window.gameState) {
+            window.gameState = {};
+        }
+        window.gameState.apiKey = apiKey;
+        localStorage.setItem('dndApiKey', apiKey);
+
+        this.performMultiplayerLoad();
+    }
+
+    // Выполнение переподключения хоста
+    performHostReconnect(lobbyCode) {
+        this.isHost = true;
+        this.lobbyCode = lobbyCode;
+        
+        document.getElementById('multiplayerMenu').style.display = 'none';
+        document.getElementById('hostLobby').style.display = 'block';
+        document.getElementById('lobbyCodeDisplay').textContent = this.lobbyCode;
+        
+        this.connectToServer();
+    }
+
+    // Выполнение загрузки мультиплеерной игры
+    performMultiplayerLoad() {
+        // Скрываем модальное окно мультиплеера
+        this.hideModal();
+        
+        // Вызываем функцию загрузки мультиплеерной игры из game.js
+        if (window.loadMultiplayerGame) {
+            window.loadMultiplayerGame();
+        } else {
+            alert('Функция загрузки мультиплеерной игры недоступна');
+        }
     }
 
     // Підключення до сервера

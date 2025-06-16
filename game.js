@@ -1106,6 +1106,65 @@ function saveMultiplayerGame() {
     }
 }
 
+// Функция сохранения с popup уведомлением
+function saveMultiplayerGameWithNotification() {
+    const success = saveMultiplayerGame();
+    if (success) {
+        showSaveNotification('💾 Гра автоматично збережена');
+    }
+}
+
+// Функция показа popup уведомления о сохранении
+function showSaveNotification(message) {
+    // Удаляем предыдущее уведомление если есть
+    const existingNotification = document.getElementById('saveNotification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+
+    // Создаем новое уведомление
+    const notification = document.createElement('div');
+    notification.id = 'saveNotification';
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #4CAF50, #45a049);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0;
+        transform: translateX(100px);
+        transition: all 0.3s ease;
+        pointer-events: none;
+    `;
+
+    document.body.appendChild(notification);
+
+    // Анимация появления
+    setTimeout(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+
+    // Автоматическое скрытие через 3 секунды
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100px)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
 function loadGame() {
     try {
         console.log('Завантажуємо гру, отримуємо список персонажів зі збереженнями...');
@@ -1258,7 +1317,19 @@ function showMultiplayerSaveSelectionModal(saves) {
         const saveDate = new Date(saveInfo.timestamp).toLocaleString();
         
         saveItem.innerHTML = `
-            <h4 style="color: #9b59b6; margin-bottom: 8px;">🎮 ${saveInfo.name}</h4>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <h4 style="color: #9b59b6; margin: 0;">🎮 ${saveInfo.name}</h4>
+                <button class="delete-multiplayer-save-btn" style="
+                    background: #ff4444;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 5px 10px;
+                    cursor: pointer;
+                    font-size: 0.8em;
+                    transition: background 0.3s;
+                " onclick="event.stopPropagation(); deleteMultiplayerSave('${saveInfo.data.saveId}')">🗑️ Видалити</button>
+            </div>
             <p style="color: #ccc; margin: 4px 0;"><strong>Клас:</strong> ${saveInfo.class}</p>
             <p style="color: #ccc; margin: 4px 0;"><strong>Рівень:</strong> ${saveInfo.level}</p>
             <p style="color: #ccc; margin: 4px 0;"><strong>Гравців було:</strong> ${saveInfo.playerCount}</p>
@@ -1309,6 +1380,54 @@ function showMultiplayerSaveSelectionModal(saves) {
     
     document.body.appendChild(overlay);
     document.body.appendChild(modal);
+}
+
+// Функция удаления мультиплеерного сохранения
+function deleteMultiplayerSave(saveId) {
+    const confirmMessage = getText('confirmDeleteMultiplayerSave') || `Видалити мультиплеєрне збереження? Цю дію неможливо скасувати.`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    try {
+        // Находим и удаляем конкретное сохранение по saveId
+        const saves = getMultiplayerSaveGames();
+        let saveKeyToDelete = null;
+        
+        // Ищем ключ сохранения по saveId
+        Object.entries(saves).forEach(([key, saveInfo]) => {
+            if (saveInfo.data && saveInfo.data.saveId === saveId) {
+                saveKeyToDelete = key;
+            }
+        });
+        
+        if (saveKeyToDelete) {
+            localStorage.removeItem(saveKeyToDelete);
+            console.log(`Видалено мультиплеєрне збереження: ${saveKeyToDelete}`);
+            
+            // Показываем уведомление
+            showSaveNotification(`🗑️ Мультиплеєрне збереження видалено`);
+            
+            // Закрываем текущее модальное окно
+            const modal = document.getElementById('multiplayerSaveSelectionModal');
+            const overlay = document.querySelector('div[style*="z-index: 1000"]');
+            if (modal) modal.remove();
+            if (overlay) overlay.remove();
+            
+            // Перезапускаем загрузку мультиплеерной игры для обновления списка
+            setTimeout(() => {
+                loadMultiplayerGame();
+            }, 500);
+        } else {
+            console.error('Збереження не знайдено');
+            alert('Збереження не знайдено!');
+        }
+        
+    } catch (error) {
+        console.error('Помилка видалення мультиплеєрного збереження:', error);
+        alert('Помилка видалення збереження!');
+    }
 }
 
 // Функція для завантаження конкретного мультиплеєрного збереження
@@ -1580,9 +1699,21 @@ function showCharacterSelectionModal(characters) {
         const savesCount = Object.keys(character.saves).length;
         
         characterBlock.innerHTML = `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <strong style="font-size: 1.2em;">${character.name}</strong>
-                <span style="font-size: 0.9em;">${savesCount} ${getText('saves')}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div>
+                    <strong style="font-size: 1.2em;">${character.name}</strong>
+                    <div style="font-size: 0.9em; color: #ccc;">${savesCount} ${getText('saves')}</div>
+                </div>
+                <button class="delete-character-btn" style="
+                    background: #ff4444;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 5px 10px;
+                    cursor: pointer;
+                    font-size: 0.8em;
+                    transition: background 0.3s;
+                " onclick="event.stopPropagation(); deleteCharacterSaves('${characterKey}')">🗑️ Видалити</button>
             </div>
             <small>${getText('lastPlayed')}: ${lastPlayed}</small>
         `;
@@ -1654,6 +1785,39 @@ function showCharacterSelectionModal(characters) {
     
     document.body.appendChild(overlay);
     document.body.appendChild(modal);
+}
+
+// Функция удаления всех сохранений персонажа
+function deleteCharacterSaves(characterKey) {
+    const confirmMessage = getText('confirmDeleteCharacter') || `Видалити всі збереження для персонажа "${characterKey}"? Цю дію неможливо скасувати.`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    try {
+        // Удаляем ключ персонажа из localStorage
+        localStorage.removeItem(characterKey);
+        console.log(`Видалено збереження для персонажа: ${characterKey}`);
+        
+        // Показываем уведомление
+        showSaveNotification(`🗑️ Персонажа "${characterKey}" видалено`);
+        
+        // Закрываем текущее модальное окно
+        const modal = document.getElementById('characterSelectionModal');
+        const overlay = document.getElementById('saveSelectionOverlay');
+        if (modal) modal.remove();
+        if (overlay) overlay.remove();
+        
+        // Перезапускаем загрузку игры для обновления списка
+        setTimeout(() => {
+            loadGame();
+        }, 500);
+        
+    } catch (error) {
+        console.error('Помилка видалення персонажа:', error);
+        alert('Помилка видалення персонажа!');
+    }
 }
 
 // Функція для показу модального вікна з вибором сейвів для конкретного персонажа
@@ -4486,14 +4650,6 @@ function applyMultiplayerConsequences(consequences) {
     
     // Обрабатываем боевой режим
     handleMultiplayerCombat(consequences);
-    
-    // Автосохранение только для хоста и только если не в процессе загрузки
-    if (window.multiplayerManager && window.multiplayerManager.isHost && !window.gameState.isLoading) {
-        console.log('🔄 Автосохранение мультиплеерной игры (хост)');
-        setTimeout(() => {
-            saveMultiplayerGame();
-        }, 1000); // Небольшая задержка для завершения обновления интерфейса
-    }
 }
 
 // Функция применения общих последствий
@@ -9162,6 +9318,15 @@ function initializeMultiplayerIntegration() {
 
 // Обробка дії в мультиплеєрі
 function handleMultiplayerAction(action) {
+    // Автосохранение в начале нового хода (только для хоста и когда не загружается)
+    if (window.multiplayerManager && window.multiplayerManager.isHost && !window.gameState.isLoading) {
+        console.log('💾 Автосохранение перед новым ходом (хост)');
+        // Используем timeout чтобы не блокировать отправку действия
+        setTimeout(() => {
+            saveMultiplayerGameWithNotification();
+        }, 100);
+    }
+    
     // Зберігаємо дію гравця
     gameState.pendingAction = action;
     gameState.multiplayerTurn = true;
