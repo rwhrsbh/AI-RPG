@@ -137,13 +137,27 @@ class Lobby {
     }
 
     broadcastTurnResults(results) {
-        const message = {
-            type: 'turn_complete',
-            results: results
-        };
-        
-        this.players.forEach(player => {
+        this.players.forEach((player, playerId) => {
             if (player.socket.readyState === WebSocket.OPEN) {
+                // Фильтруем данные в зависимости от типа игрока
+                const isHost = playerId === this.hostId;
+                
+                let filteredResults = { ...results };
+                
+                if (!isHost && filteredResults.gameState) {
+                    // Для обычных игроков убираем API ключ и другие чувствительные данные хоста
+                    filteredResults.gameState = {
+                        ...filteredResults.gameState,
+                        apiKey: undefined,
+                        hostApiKey: undefined
+                    };
+                }
+                
+                const message = {
+                    type: 'turn_complete',
+                    results: filteredResults
+                };
+                
                 player.socket.send(JSON.stringify(message));
             }
         });

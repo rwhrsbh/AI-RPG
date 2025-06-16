@@ -1371,9 +1371,11 @@ class MultiplayerManager {
             this.socket.send(JSON.stringify({
                 type: 'start_game',
                 gameState: {
-                    ...window.gameState,
+                    language: window.gameState.language || 'uk',
                     isMultiplayer: true,
-                    hostApiKey: window.gameState.apiKey
+                    hostApiKey: window.gameState.apiKey,
+                    // Передаем только базовые настройки, не весь gameState
+                    shortResponses: window.gameState.shortResponses || false
                 }
             }));
         }

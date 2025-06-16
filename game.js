@@ -3423,6 +3423,53 @@ function updateMultiplayerActionStatus(actions, players) {
 // Продолжение в части 3...
 // Продолжение game.js - часть 3: обработка действий и завершающие функции
 
+// Функция создания минимального состояния игры для передачи по сети
+function getMinimalGameStateForTransmission() {
+    return {
+        language: window.gameState.language,
+        isMultiplayer: window.gameState.isMultiplayer,
+        multiplayerTurn: window.gameState.multiplayerTurn,
+        // Передаем только характеристики персонажей без полной истории
+        character: window.gameState.character ? {
+            name: window.gameState.character.name,
+            class: window.gameState.character.class,
+            level: window.gameState.character.level,
+            health: window.gameState.character.health,
+            maxHealth: window.gameState.character.maxHealth,
+            mana: window.gameState.character.mana,
+            maxMana: window.gameState.character.maxMana,
+            experience: window.gameState.character.experience,
+            perks: window.gameState.character.perks
+        } : null,
+        // Не передаем gameHistory, conversationHistory, summarizedHistory - они могут быть огромными
+        apiKey: window.gameState.apiKey // Только для хоста
+    };
+}
+
+// Функция очистки истории для предотвращения переполнения памяти
+function cleanupGameHistory() {
+    const MAX_HISTORY_ENTRIES = 10; // Максимум 10 последних записей
+    const MAX_CONVERSATION_PAIRS = 20; // Максимум 20 пар в conversation (10 user + 10 model)
+    
+    // Очищаем gameHistory, оставляя только последние записи
+    if (window.gameState.gameHistory.length > MAX_HISTORY_ENTRIES) {
+        console.log(`🧹 Очистка gameHistory: ${window.gameState.gameHistory.length} -> ${MAX_HISTORY_ENTRIES} записей`);
+        window.gameState.gameHistory = window.gameState.gameHistory.slice(-MAX_HISTORY_ENTRIES);
+    }
+    
+    // Очищаем conversationHistory, оставляя только последние пары
+    if (window.gameState.conversationHistory.length > MAX_CONVERSATION_PAIRS) {
+        console.log(`🧹 Очистка conversationHistory: ${window.gameState.conversationHistory.length} -> ${MAX_CONVERSATION_PAIRS} записей`);
+        window.gameState.conversationHistory = window.gameState.conversationHistory.slice(-MAX_CONVERSATION_PAIRS);
+    }
+    
+    // Очищаем summarizedHistory, оставляя только последние записи
+    if (window.gameState.summarizedHistory.length > 5) {
+        console.log(`🧹 Очистка summarizedHistory: ${window.gameState.summarizedHistory.length} -> 5 записей`);
+        window.gameState.summarizedHistory = window.gameState.summarizedHistory.slice(-5);
+    }
+}
+
 // Функция обработки всех действий игроков через ИИ (только для хоста)
 async function processMultiplayerActions(playerActions, playerCharacteristics, gameState) {
     console.log('🎭 ОТЛАДКА: processMultiplayerActions вызвана, проверяем условия...');
@@ -3469,8 +3516,10 @@ Action: ${actionData.action}`;
 1. The neural network fully controls the character's level progression.
 2. When you decide to level up a character, include the "level_up" field in "consequences".
 3. Suggest 5 unique perks for the player to choose from via the "available_perks" field.
-4. Levels and experience are fully controlled by you, not by the game code.
-5. Use the following level-up system based on experience points:
+4. CRITICAL: Each player should get DIFFERENT perks suited to their character class and playstyle.
+5. CRITICAL: Level ups are INDEPENDENT - not all players need to level up at the same time.
+6. Levels and experience are fully controlled by you, not by the game code.
+7. Use the following level-up system based on experience points:
    - Up to level 5: every 300 experience points
    - Up to level 10: every 600 experience points
    - Up to level 20: every 900 experience points
@@ -3488,8 +3537,10 @@ Action: ${actionData.action}`;
 1. Нейросеть полностью контролирует повышение уровня персонажа.
 2. Когда ты решаешь повысить уровень персонажа, включи поле "level_up" в "consequences".
 3. Предложи 5 уникальных перков на выбор игроку через поле "available_perks".
-4. Уровни и опыт полностью контролируются тобой, а не кодом игры.
-5. Используй следующую систему повышения уровней на основе опыта:
+4. КРИТИЧНО: Каждый игрок должен получать РАЗНЫЕ перки, подходящие его классу и стилю игры.
+5. КРИТИЧНО: Повышения уровня НЕЗАВИСИМЫ - не все игроки должны повышать уровень одновременно.
+6. Уровни и опыт полностью контролируются тобой, а не кодом игры.
+7. Используй следующую систему повышения уровней на основе опыта:
    - До 5-го уровня: каждые 300 очков опыта
    - До 10-го уровня: каждые 600 очков опыта
    - До 20-го уровня: каждые 900 очков опыта
@@ -3507,8 +3558,10 @@ Action: ${actionData.action}`;
 1. Нейромережа повністю контролює підвищення рівня персонажа.
 2. Коли ти вирішуєш підвищити рівень персонажа, включи поле "level_up" в "consequences".
 3. Запропонуй 5 унікальних перків на вибір гравцю через поле "available_perks".
-4. Рівні та досвід повністю контролюються тобою, а не кодом гри.
-5. Використовуй наступну систему підвищення рівнів на основі досвіду:
+4. КРИТИЧНО: Кожен гравець повинен отримувати РІЗНІ перки, що підходять його класу та стилю гри.
+5. КРИТИЧНО: Підвищення рівня НЕЗАЛЕЖНІ - не всі гравці повинні підвищувати рівень одночасно.
+6. Рівні та досвід повністю контролюються тобою, а не кодом гри.
+7. Використовуй наступну систему підвищення рівнів на основі досвіду:
    - До 5-го рівня: кожні 300 очків досвіду
    - До 10-го рівня: кожні 600 очків досвіду
    - До 20-го рівня: кожні 900 очків досвіду
@@ -3672,18 +3725,27 @@ MANDATORY JSON OUTPUT REQUIREMENT:
                 
                 // Отправляем результаты всем игрокам через WebSocket
                 if (window.multiplayerManager && window.multiplayerManager.socket) {
-                    window.multiplayerManager.socket.send(JSON.stringify({
+                    const aiResponseMessage = JSON.stringify({
                         type: 'ai_response',
                         aiResponse: {
-                            gameState: window.gameState,
+                            gameState: getMinimalGameStateForTransmission(),
                             storyText: gameData.text,
                             playersData: gameData.players,
                             imagePrompt: gameData.image_prompt,
                             safeImagePrompt: gameData.safe_image_prompt,
                             instructions: gameData.instructions
                         }
-                    }));
+                    });
+                    
+                    // Логируем размер сообщения для мониторинга оптимизации
+                    const messageSize = new Blob([aiResponseMessage]).size;
+                    console.log(`📡 Отправка AI response: ${(messageSize / 1024).toFixed(2)} KB`);
+                    
+                    window.multiplayerManager.socket.send(aiResponseMessage);
                 }
+                
+                // Очищаем историю для предотвращения переполнения памяти
+                cleanupGameHistory();
                 
                 // ВИПРАВЛЕНО: Хост тепер не обробляє результати локально, 
                 // щоб уникнути подвійної генерації контенту
@@ -3737,18 +3799,27 @@ MANDATORY JSON OUTPUT REQUIREMENT:
                 if (extractedJSON) {
                     // Отправляем результаты всем игрокам
                     if (window.multiplayerManager && window.multiplayerManager.socket) {
-                        window.multiplayerManager.socket.send(JSON.stringify({
+                        const aiResponseMessage = JSON.stringify({
                             type: 'ai_response',
                             aiResponse: {
-                                gameState: window.gameState,
+                                gameState: getMinimalGameStateForTransmission(),
                                 storyText: extractedJSON.text,
                                 playersData: extractedJSON.players,
                                 imagePrompt: extractedJSON.image_prompt,
                                 safeImagePrompt: extractedJSON.safe_image_prompt,
                                 instructions: extractedJSON.instructions
                             }
-                        }));
+                        });
+                        
+                        // Логируем размер сообщения для мониторинга оптимизации
+                        const messageSize = new Blob([aiResponseMessage]).size;
+                        console.log(`📡 Отправка AI response (extracted): ${(messageSize / 1024).toFixed(2)} KB`);
+                        
+                        window.multiplayerManager.socket.send(aiResponseMessage);
                     }
+                    
+                    // Очищаем историю для предотвращения переполнения памяти
+                    cleanupGameHistory();
                     return;
                 }
                 
@@ -6457,8 +6528,10 @@ function performAction(action) {
 1. Нейромережа повністю контролює підвищення рівня персонажа.
 2. Коли ти вирішуєш підвищити рівень персонажа, включи поле "level_up" в "consequences".
 3. Запропонуй 5 унікальних перків на вибір гравцю через поле "available_perks".
-4. Рівні та досвід повністю контролюються тобою, а не кодом гри.
-5. Використовуй наступну систему підвищення рівнів на основі досвіду:
+4. КРИТИЧНО: Кожен гравець повинен отримувати РІЗНІ перки, що підходять його класу та стилю гри.
+5. КРИТИЧНО: Підвищення рівня НЕЗАЛЕЖНІ - не всі гравці повинні підвищувати рівень одночасно.
+6. Рівні та досвід повністю контролюються тобою, а не кодом гри.
+7. Використовуй наступну систему підвищення рівнів на основі досвіду:
    - До 5-го рівня: кожні 300 очків досвіду
    - До 10-го рівня: кожні 600 очків досвіду
    - До 20-го рівня: кожні 900 очків досвіду
