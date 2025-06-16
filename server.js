@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const server = http.createServer();
 
 // Створюємо WebSocket сервер
-const wss = new WebSocket.Server({ server, maxPayload: 500 * 1024 * 1024 });
+const wss = new WebSocket.Server({ server, maxPayload: 456 * 1024 * 1024 });
 
 // Зберігання лобі та гравців
 const lobbies = new Map();
@@ -190,10 +190,10 @@ function generateLobbyCode() {
     return result;
 }
 
-// Очищення старих лобі (старіше 2 годин)
+// Очищення старих лобі (старіше 5 годин)
 function cleanupOldLobbies() {
     const now = Date.now();
-    const maxAge = 5 * 60 * 60 * 1000; // 2 години
+    const maxAge = 5 * 60 * 60 * 1000; // 5 годин
     
     lobbies.forEach((lobby, code) => {
         if (now - lobby.createdAt > maxAge) {

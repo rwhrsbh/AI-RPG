@@ -254,7 +254,10 @@ class MultiplayerManager {
 
     // Обработка успешного взятия персонажа
     handleCharacterTakenOver(message) {
+        console.log('=== НАЧАЛО handleCharacterTakenOver в multiplayer.js ===');
         console.log('Персонаж успешно взят:', message);
+        console.log('gameIntegration доступен:', !!this.gameIntegration);
+        console.log('onCharacterTakenOver доступен:', !!(this.gameIntegration && this.gameIntegration.onCharacterTakenOver));
         console.log('🔗 Состояние сокета после взятия персонажа:', this.socket?.readyState);
         console.log('🔗 Подключен ли сокет:', this.isConnected);
         
@@ -277,13 +280,18 @@ class MultiplayerManager {
         
         // Уведомляем игровую интеграцию
         if (this.gameIntegration && this.gameIntegration.onCharacterTakenOver) {
+            console.log('🎯 Вызываем gameIntegration.onCharacterTakenOver...');
             this.gameIntegration.onCharacterTakenOver(message);
+            console.log('✅ gameIntegration.onCharacterTakenOver выполнен');
+        } else {
+            console.error('❌ gameIntegration или onCharacterTakenOver не найден!');
         }
         
         // Обновляем список игроков
         this.updatePlayersList(message.players);
         
         console.log('Игрок успешно подключился как:', message.character.name);
+        console.log('=== КОНЕЦ handleCharacterTakenOver в multiplayer.js ===');
     }
 
     // Обработка переподключения игрока
@@ -988,8 +996,8 @@ class MultiplayerManager {
 
     // Підключення до сервера
     connectToServer() {
-        // const serverUrl = 'ws://localhost:3001';
-        const serverUrl = 'wss://ai-rpg-c4df.onrender.com';
+        const serverUrl = 'ws://localhost:3001';
+        // const serverUrl = 'wss://ai-rpg-c4df.onrender.com';
 // const serverUrl = 'wss://f486-185-136-134-229.ngrok-free.app';
         console.log('Підключення до сервера:', serverUrl);
         
@@ -1284,6 +1292,7 @@ class MultiplayerManager {
                 break;
                 
             case 'character_taken_over':
+                console.log('📨 Получено сообщение character_taken_over в multiplayer.js:', message);
                 this.handleCharacterTakenOver(message);
                 break;
                 

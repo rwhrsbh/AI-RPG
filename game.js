@@ -2830,114 +2830,211 @@ function closePlayerDisconnectionPopup() {
     }
 }
 
+
 // Обработка взятия персонажа
 function handleCharacterTakenOver(data) {
+    console.log('=== НАЧАЛО handleCharacterTakenOver ===');
     console.log('Персонаж взят под управление:', data);
+    console.log('Данные персонажа:', data.character);
+    console.log('🎯 ПЕРКИ ПЕРСОНАЖА:', data.character.perks);
+    console.log('Player ID:', data.playerId);
+    console.log('Lobby Code:', data.lobbyCode);
+    console.log('Players:', data.players);
+    console.log('LastResults:', data.lastResults);
+    
+    // Проверяем доступность ключевых функций
+    console.log('🔍 Проверка доступности функций:');
+    console.log('- performCustomAction:', typeof performCustomAction);
+    console.log('- updateCharacterPanel:', typeof updateCharacterPanel);
+    console.log('- generateImage:', typeof generateImage);
+    console.log('- processMultiplayerTurnResults:', typeof processMultiplayerTurnResults);
+    console.log('- gameState:', typeof window.gameState);
+    console.log('- multiplayerState:', typeof window.multiplayerState);
+    console.log('- multiplayerManager:', typeof window.multiplayerManager);
+    console.log('- multiplayerManager.socket:', window.multiplayerManager?.socket?.readyState);
+    
+    // Инициализируем gameState если его нет
+    if (!window.gameState) {
+        window.gameState = {
+            character: {},
+            isMultiplayer: false,
+            multiplayerTurn: false,
+            currentScene: { text: '', options: [], isWaitingForAction: false },
+            gameHistory: []
+        };
+        console.log('🔧 Инициализирован gameState');
+    }
+    
+    // Инициализируем multiplayerState если его нет  
+    if (typeof multiplayerState === 'undefined') {
+        window.multiplayerState = {
+            isActive: false,
+            playerId: null,
+            lobbyCode: null,
+            players: new Map()
+        };
+        console.log('🔧 Инициализирован multiplayerState');
+    }
     
     // Обновляем игровое состояние с данными персонажа
     window.gameState.character = { ...data.character };
     window.gameState.isMultiplayer = true;
-    multiplayerState.isActive = true;
-    multiplayerState.playerId = data.playerId;
-    multiplayerState.lobbyCode = data.lobbyCode;
+    window.multiplayerState.isActive = true;
+    window.multiplayerState.playerId = data.playerId;
+    window.multiplayerState.lobbyCode = data.lobbyCode;
     
     // Обновляем кнопку сохранения для мультиплеера
-    updateSaveButton();
+    if (typeof updateSaveButton === 'function') {
+        updateSaveButton();
+    }
     
     // Обновляем список игроков
     data.players.forEach(player => {
-        multiplayerState.players.set(player.id, player);
+        window.multiplayerState.players.set(player.id, player);
     });
     
     // Скрываем все экраны и модалки, показываем игровой интерфейс
+    console.log('🎮 Начинаем настройку интерфейса...');
     const apiSetup = document.getElementById('apiSetup');
     const characterCreation = document.getElementById('characterCreation');
     const mainMenu = document.getElementById('mainMenu');
-    const gameInterface = document.getElementById('gameInterface');
+    const gameArea = document.getElementById('gameArea');
     const multiplayerModal = document.getElementById('multiplayerModal');
     
-    if (apiSetup) apiSetup.style.display = 'none';
-    if (characterCreation) characterCreation.style.display = 'none';
-    if (mainMenu) mainMenu.style.display = 'none';
-    if (multiplayerModal) multiplayerModal.style.display = 'none';
-    if (gameInterface) gameInterface.style.display = 'block';
+    console.log('Найденные элементы:', {
+        apiSetup: !!apiSetup,
+        characterCreation: !!characterCreation,
+        mainMenu: !!mainMenu,
+        gameArea: !!gameArea,
+        multiplayerModal: !!multiplayerModal
+    });
+    
+    if (apiSetup) {
+        apiSetup.style.display = 'none';
+        console.log('✅ apiSetup скрыт');
+    }
+    if (characterCreation) {
+        characterCreation.style.display = 'none';
+        console.log('✅ characterCreation скрыт');
+    }
+    if (mainMenu) {
+        mainMenu.style.display = 'none';
+        console.log('✅ mainMenu скрыт');
+    }
+    if (multiplayerModal) {
+        multiplayerModal.style.display = 'none';
+        console.log('✅ multiplayerModal скрыт');
+    }
+    if (gameArea) {
+        gameArea.style.display = 'block';
+        console.log('✅ gameArea показан');
+    } else {
+        console.error('❌ gameArea не найден! Это означает, что HTML страница не содержит полной структуры игры.');
+    }
     
     // Обновляем панель персонажа
-    updateCharacterPanel();
+    if (typeof updateCharacterPanel === 'function') {
+        console.log('🔄 Обновляем панель персонажа с перками:', window.gameState.character.perks);
+        updateCharacterPanel();
+        console.log('✅ Панель персонажа обновлена');
+    } else {
+        console.warn('⚠️ updateCharacterPanel не найдена');
+    }
     
     // Восстанавливаем последнюю сцену если она есть
-    if (data.lastResults && data.lastResults.storyText) {
+    if (data.lastResults) {
         console.log('📖 Восстанавливаем последнюю сцену для переподключившегося игрока');
         
-        // Обновляем текст истории с последней сценой
-        document.getElementById('storyText').innerHTML = data.lastResults.storyText;
-        
-        // Генерируем изображение если есть промпт и API ключ
-        if (data.lastResults.safeImagePrompt && gameState.apiKey) {
-            generateImage(data.lastResults.safeImagePrompt, gameState.apiKey);
-        }
-        
-        // Обновляем игроков и восстанавливаем их опции если есть данные
-        if (data.lastResults.playersData) {
-            Object.entries(data.lastResults.playersData).forEach(([playerId, playerData]) => {
-                if (playerId === data.playerId && playerData) {
-                    // Обновляем характеристики переподключившегося игрока
-                    window.gameState.character = { ...window.gameState.character, ...playerData };
-                    updateCharacterPanel();
-                    
-                    // Восстанавливаем персональный текст и опции действий
-                    if (playerData.personal_text) {
-                        const personalText = document.getElementById('personalText');
-                        if (personalText) {
-                            personalText.innerHTML = `
-                                <div style="background: rgba(0, 123, 255, 0.1); border: 1px solid #007bff; border-radius: 8px; padding: 15px; margin: 10px 0;">
-                                    <h4>👤 Персональная информация</h4>
-                                    <p>${playerData.personal_text}</p>
-                                </div>
-                            `;
-                        }
-                    }
-                    
-                    // Восстанавливаем опции действий
-                    if (playerData.options && Array.isArray(playerData.options)) {
-                        console.log('🔄 Восстанавливаем опции действий для переподключившегося игрока:', playerData.options);
-                        
-                        // Создаем кнопки действий
-                        window.gameState.currentScene.options = playerData.options;
-                        const actionsDiv = document.getElementById('actions');
-                        if (actionsDiv) {
-                            let optionsHtml = '<div class="options-grid">';
-                            playerData.options.forEach((option, index) => {
-                                optionsHtml += `
-                                    <button class="action-btn" onclick="performAction('${option.replace(/'/g, "\\'")}')">
-                                        ${option}
-                                    </button>
-                                `;
-                            });
-                            optionsHtml += '</div>';
-                            actionsDiv.innerHTML = optionsHtml;
-                        }
-                        
-                        // Включаем мультиплеерный режим
-                        window.gameState.isMultiplayer = true;
-                        window.gameState.multiplayerTurn = true;
-                    }
+        // Используем существующую функцию для обработки результатов
+        if (typeof processMultiplayerTurnResults === 'function') {
+            console.log('🔄 Используем processMultiplayerTurnResults для восстановления состояния');
+            processMultiplayerTurnResults(data.lastResults);
+        } else {
+            console.warn('⚠️ processMultiplayerTurnResults не найдена, используем базовое восстановление');
+            
+            // Базовое восстановление, если функция не доступна
+            if (data.lastResults.storyText) {
+                const storyText = document.getElementById('storyText');
+                if (storyText) {
+                    storyText.innerHTML = data.lastResults.storyText;
                 }
-            });
+            }
         }
     } else {
         // Показываем сообщение о подключении если нет сохраненной сцены
-        document.getElementById('storyText').innerHTML = `
-            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 8px; padding: 15px; margin: 10px 0; color: #4CAF50;">
-                <h4>✅ ${getText('characterTakenOver') || 'Вы подключились к игре'}</h4>
-                <p>${getText('characterTakenOverInfo') || 'Вы теперь управляете персонажем:'} <strong>${data.character.name}</strong></p>
-                <p>${getText('waitingForTurn') || 'Ожидайте следующий ход...'}</p>
-            </div>
-        `;
+        const storyText = document.getElementById('storyText');
+        if (storyText) {
+            storyText.innerHTML = `
+                <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 8px; padding: 15px; margin: 10px 0; color: #4CAF50;">
+                    <h4>✅ Вы подключились к игре</h4>
+                    <p>Вы теперь управляете персонажем: <strong>${data.character.name}</strong></p>
+                    <p>Ожидайте следующий ход...</p>
+                </div>
+            `;
+        }
     }
+    
+    // Всегда показываем кастомное действие и другие элементы интерфейса для переподключившегося игрока
+    const customAction = document.querySelector('.custom-action');
+    if (customAction) {
+        customAction.style.display = 'block';
+    }
+    
+    // Показываем контейнер с действиями (в index.html это optionsContainer)
+    const optionsContainer = document.getElementById('optionsContainer');
+    if (optionsContainer) {
+        optionsContainer.style.display = 'block';
+    }
+    
+    // Убеждаемся что storyText видим
+    const storyText = document.getElementById('storyText');
+    if (storyText) {
+        storyText.style.display = 'block';
+    }
+    
+    // Включаем мультиплеерный режим
+    window.gameState.isMultiplayer = true;
+    window.gameState.multiplayerTurn = true;
+    
+    // Инициализируем currentScene если её нет
+    if (!window.gameState.currentScene) {
+        window.gameState.currentScene = {
+            text: '',
+            options: [],
+            isWaitingForAction: false
+        };
+    }
+    
+    console.log('🎮 Игровой интерфейс полностью активирован для переподключившегося игрока');
     
     console.log('✅ Успешно подключился как:', data.character.name);
     console.log('🔗 Проверяем состояние мультиплеер-менеджера после подключения...');
+    
+    // Финальная проверка видимости интерфейса
+    setTimeout(() => {
+        const gameArea = document.getElementById('gameArea');
+        console.log('🎮 Финальная проверка gameArea:', {
+            exists: !!gameArea,
+            display: gameArea?.style.display,
+            visible: gameArea?.offsetWidth > 0
+        });
+        
+        // Принудительно показываем gameArea если он скрыт
+        if (gameArea && gameArea.style.display !== 'block') {
+            console.log('🔧 Принудительно показываем gameArea');
+            gameArea.style.display = 'block';
+        }
+    }, 100);
+    
+    // Убеждаемся что multiplayerManager доступен для переподключенного игрока
+    if (!window.multiplayerManager) {
+        console.error('❌ multiplayerManager не найден! Это критическая ошибка для переподключения.');
+        console.log('🔍 Проверяем доступные объекты в window:', Object.keys(window).filter(k => k.toLowerCase().includes('multiplayer')));
+    } else {
+        console.log('✅ multiplayerManager найден и доступен');
+    }
+    
+    console.log('=== КОНЕЦ handleCharacterTakenOver в game.js ===');
     
     // Проверяем состояние соединения
     if (window.multiplayerManager && window.multiplayerManager.socket) {
@@ -2977,6 +3074,22 @@ function handlePlayerReconnected(data) {
     });
     
     updateMultiplayerPlayersList();
+    
+    // Проверяем, открыта ли модалка отключения, и обновляем её
+    const disconnectionPopup = document.getElementById('playerDisconnectionPopup');
+    if (disconnectionPopup) {
+        console.log('🔄 Обновляем модалку отключения после переподключения игрока');
+        showPlayerDisconnectionPopup(data.players);
+        
+        // Если все игроки онлайн, закрываем модалку через 2 секунды
+        const offlinePlayers = data.players.filter(p => p.status === 'offline');
+        if (offlinePlayers.length === 0) {
+            setTimeout(() => {
+                closePlayerDisconnectionPopup();
+                console.log('✅ Все игроки переподключились, модалка закрыта');
+            }, 2000);
+        }
+    }
     
     // Показываем уведомление
     const notificationText = getText('playerReconnected') || 'Игрок переподключился к игре';
@@ -5225,14 +5338,36 @@ function updateCharacterPanel() {
     // Отримуємо локалізовану назву класу
     const translatedClass = getCharacterClassName(characterClass);
     
-    document.getElementById('characterHeader').textContent = `${gameState.character.name} (${translatedClass})`;
-    document.getElementById('healthValue').textContent = `${gameState.character.health}/${gameState.character.maxHealth}`;
-    document.getElementById('manaValue').textContent = `${gameState.character.mana}/${gameState.character.maxMana}`;
-    document.getElementById('levelValue').textContent = gameState.character.level;
-    document.getElementById('expValue').textContent = gameState.character.experience;
+    // Check if character panel elements exist before updating them
+    const characterHeader = document.getElementById('characterHeader');
+    if (characterHeader) {
+        characterHeader.textContent = `${gameState.character.name} (${translatedClass})`;
+    }
+    
+    const healthValue = document.getElementById('healthValue');
+    if (healthValue) {
+        healthValue.textContent = `${gameState.character.health}/${gameState.character.maxHealth}`;
+    }
+    
+    const manaValue = document.getElementById('manaValue');
+    if (manaValue) {
+        manaValue.textContent = `${gameState.character.mana}/${gameState.character.maxMana}`;
+    }
+    
+    const levelValue = document.getElementById('levelValue');
+    if (levelValue) {
+        levelValue.textContent = gameState.character.level;
+    }
+    
+    const expValue = document.getElementById('expValue');
+    if (expValue) {
+        expValue.textContent = gameState.character.experience;
+    }
     
     const perksList = document.getElementById('perksList');
-    perksList.innerHTML = gameState.character.perks.map(perk => `<div class="perk">${translatePerk(perk)}</div>`).join('');
+    if (perksList) {
+        perksList.innerHTML = gameState.character.perks.map(perk => `<div class="perk">${translatePerk(perk)}</div>`).join('');
+    }
     
     // Обновляем кнопку сохранения в зависимости от режима игры
     updateSaveButton();
@@ -9008,7 +9143,15 @@ function handleMultiplayerAction(action) {
     gameState.multiplayerTurn = true;
     
     // Відправляємо дію на сервер
-    window.multiplayerManager.sendPlayerAction(action);
+    if (window.multiplayerManager && window.multiplayerManager.socket) {
+        window.multiplayerManager.socket.send(JSON.stringify({
+            type: 'player_action',
+            action: action
+        }));
+        console.log('✅ Дія відправлена на сервер:', action);
+    } else {
+        console.error('❌ multiplayerManager або socket не доступний');
+    }
     
     // Блокуємо інтерфейс до отримання результатів
     document.getElementById('customActionBtn').disabled = true;
