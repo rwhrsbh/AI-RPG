@@ -290,6 +290,10 @@ function handleMessage(currentPlayerId, message, ws) {
             handleLeaveLobby(actualPlayerId);
             break;
             
+        case 'reconnect_host':
+            handleHostReconnect(actualPlayerId, message);
+            break;
+            
         case 'ai_response':
             handleAIResponse(actualPlayerId, message);
             break;
@@ -1098,6 +1102,66 @@ function cancelHostReconnectionTimer(lobbyCode, hostId) {
         return true;
     }
     return false;
+}
+
+// Обработка переподключения хоста
+function handleHostReconnect(playerId, message) {
+    const player = players.get(playerId);
+    const lobbyCode = message.lobbyCode;
+    
+    if (!player || !lobbyCode) {
+        player?.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Неверные данные для переподключения хоста'
+        }));
+        return;
+    }
+    
+    // Проверяем существование лобби
+    const lobby = lobbies.get(lobbyCode);
+    if (!lobby) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Лобби не найдено или срок его действия истек'
+        }));
+        return;
+    }
+    
+    // Проверяем, является ли игрок хостом этого лобби
+    if (lobby.hostId !== playerId) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Вы не являетесь хостом этого лобби'
+        }));
+        return;
+    }
+    
+    // Переподключение успешно
+    player.lobbyCode = lobbyCode;
+    
+    // Отменяем таймер ожидания хоста если он есть
+    cancelHostReconnectionTimer(lobbyCode, playerId);
+    
+    // Отправляем подтверждение хосту
+    player.socket.send(JSON.stringify({
+        type: 'host_reconnect_success',
+        lobbyCode: lobbyCode,
+        players: lobby.getPlayersArray(),
+        gameState: lobby.gameState,
+        lastScene: lobby.lastScene
+    }));
+    
+    // Уведомляем других игроков о возвращении хоста
+    lobby.players.forEach((lobbyPlayer, lobbyPlayerId) => {
+        if (lobbyPlayerId !== playerId && lobbyPlayer.socket.readyState === 1) {
+            lobbyPlayer.socket.send(JSON.stringify({
+                type: 'host_reconnected',
+                hostId: playerId
+            }));
+        }
+    });
+    
+    console.log(`✅ Хост ${playerId} успешно переподключился к лобби ${lobbyCode}`);
 }
 
 // Экспорт для тестирования

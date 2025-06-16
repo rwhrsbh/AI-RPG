@@ -1094,9 +1094,7 @@ function saveMultiplayerGame() {
         
         console.log('Мультиплеєрна гра збережена:', saveKey);
         
-        // Показуємо повідомлення користувачу
-        const getText = window.getText || ((key) => key);
-        alert(getText('gameMultiplayerSaved') || 'Мультиплеєрну гру збережено!');
+        // Больше не показываем алерт - используем popup уведомления
         
         return true;
     } catch (error) {
@@ -2679,6 +2677,8 @@ function initializeMultiplayer() {
             onHostDisconnected: handleHostDisconnected,
             onAllPlayersOffline: handleAllPlayersOffline,
             onRecoveryLobbyCreated: handleRecoveryLobbyCreated,
+            onHostReconnectSuccess: handleHostReconnectSuccess,
+            onHostReconnected: handleHostReconnected,
             onError: handleMultiplayerError
         };
         
@@ -3709,12 +3709,15 @@ function processMultiplayerInitialScene(gameData) {
     
     // Генерируем изображение, если есть промпт (только для хоста)
     if (multiplayerState.isHost && window.imageGenerator && gameData.image_prompt) {
+        // Генерируем изображение и сразу отображаем для хоста
         window.imageGenerator.generateImage(
             gameData.image_prompt, 
             gameState.apiKey, 
             gameData.safe_image_prompt || gameData.image_prompt
         ).then(imageUrl => {
             if (imageUrl) {
+                // Для хоста сразу отображаем изображение
+                window.imageGenerator.displayGeneratedImage(imageUrl);
                 // Отправляем изображение другим игрокам
                 shareImageWithPlayers(imageUrl);
             }
@@ -4481,12 +4484,15 @@ function processMultiplayerTurnResults(results) {
     
     // Генерируем изображение (только для хоста)
     if (multiplayerState.isHost && window.imageGenerator && results.imagePrompt) {
+        // Генерируем изображение и сразу отображаем для хоста
         window.imageGenerator.generateImage(
             results.imagePrompt, 
             window.gameState.apiKey, 
             results.safeImagePrompt || results.imagePrompt
         ).then(imageUrl => {
             if (imageUrl) {
+                // Для хоста сразу отображаем изображение
+                window.imageGenerator.displayGeneratedImage(imageUrl);
                 // Отправляем изображение другим игрокам
                 shareImageWithPlayers(imageUrl);
             }
@@ -4903,7 +4909,7 @@ window.showMultiplayerModal = function() {
 function autoSaveMultiplayerGame() {
     if (gameState.isMultiplayer && window.multiplayerManager && window.multiplayerManager.isHost && !gameState.isLoading) {
         // Хост сохраняет состояние мультиплеерной игры (только если не загружается)
-        saveMultiplayerGame();
+        saveMultiplayerGameWithNotification();
     }
 }
 
@@ -9211,7 +9217,7 @@ function applySummaryToHistory(summary) {
     
     // Автоматично зберігаємо гру після сумаризації (якщо не загружається)
     if (gameState.isMultiplayer && !gameState.isLoading) {
-        saveMultiplayerGame();
+        saveMultiplayerGameWithNotification();
     } else if (!gameState.isLoading) {
         organizedSaveGame(true);
     }
@@ -9499,6 +9505,57 @@ function handleRecoveryLobbyCreated(data) {
     updateMultiplayerPlayersList();
     
     showNotification('Восстановительное лобби создано', 'success');
+}
+
+// Обработка успешного переподключения хоста
+function handleHostReconnectSuccess(data) {
+    console.log('✅ Хост успешно переподключился, загружаем состояние игры:', data);
+    
+    // Активируем мультиплеєр режим
+    gameState.isMultiplayer = true;
+    multiplayerState.isActive = true;
+    multiplayerState.isHost = true;
+    multiplayerState.lobbyCode = data.lobbyCode;
+    
+    // Обновляем список игроков
+    multiplayerState.players.clear();
+    data.players.forEach(player => {
+        multiplayerState.players.set(player.id, player);
+    });
+    updateMultiplayerPlayersList();
+    
+    // Загружаем состояние игры если есть
+    if (data.gameState) {
+        // Восстанавливаем игровое состояние
+        Object.assign(gameState, data.gameState);
+        updateCharacterPanel();
+        
+        // Если есть последняя сцена, отображаем её
+        if (data.lastScene) {
+            if (data.lastScene.text) {
+                document.getElementById('storyText').innerHTML = data.lastScene.text;
+            }
+        }
+        
+        // Скрываем экран лобби и показываем игру
+        document.getElementById('hostLobby').style.display = 'none';
+        document.querySelector('.container').style.display = 'block';
+        
+        showNotification('Переподключение успешно! Игра восстановлена.', 'success');
+    } else {
+        // Нет сохраненного состояния - нужно загрузить сохранение вручную
+        showNotification('Переподключение успешно! Загрузите последнее сохранение для продолжения игры.', 'info');
+    }
+}
+
+// Обработка переподключения хоста (для других игроков)
+function handleHostReconnected(data) {
+    console.log('✅ Хост вернулся в игру');
+    
+    // Скрываем уведомление об ожидании хоста
+    hideMultiplayerWaitingScreen();
+    
+    showNotification('Хост вернулся в игру!', 'success');
 }
 
 // Ініціалізація мультиплеєра при завантаженні сторінки

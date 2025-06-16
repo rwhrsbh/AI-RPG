@@ -1201,7 +1201,51 @@ class MultiplayerManager {
         document.getElementById('hostLobby').style.display = 'block';
         document.getElementById('lobbyCodeDisplay').textContent = this.lobbyCode;
         
-        this.connectToServer();
+        // Подключаемся к серверу и отправляем запрос на переподключение хоста
+        this.connectToServerForReconnect(lobbyCode);
+    }
+    
+    // Подключение к серверу для переподключения хоста
+    connectToServerForReconnect(lobbyCode) {
+        console.log('🔄 Переподключение хоста к лобби:', lobbyCode);
+        
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.close();
+        }
+        
+        this.socket = new WebSocket(this.serverUrl);
+        
+        this.socket.onopen = () => {
+            console.log('✅ WebSocket соединение установлено для переподключения хоста');
+            this.isConnected = true;
+            
+            // Отправляем запрос на переподключение хоста
+            this.socket.send(JSON.stringify({
+                type: 'reconnect_host',
+                playerId: this.playerId,
+                lobbyCode: lobbyCode
+            }));
+        };
+        
+        this.socket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                this.handleServerMessage(message);
+            } catch (error) {
+                console.error('Ошибка парсинга сообщения при переподключении хоста:', error);
+            }
+        };
+        
+        this.socket.onclose = () => {
+            console.log('❌ WebSocket соединение закрыто');
+            this.isConnected = false;
+            this.handleDisconnection();
+        };
+        
+        this.socket.onerror = (error) => {
+            console.error('❌ Ошибка WebSocket:', error);
+            this.isConnected = false;
+        };
     }
 
     // Выполнение загрузки мультиплеерной игры
@@ -1427,6 +1471,24 @@ class MultiplayerManager {
                 } else {
                     // Кто-то другой был кикнут
                     this.updatePlayersList(message.players);
+                }
+                break;
+                
+            case 'host_reconnect_success':
+                console.log('✅ Хост успешно переподключился к лобби');
+                // Обновляем список игроков
+                this.updatePlayersList(message.players);
+                // Загружаем состояние игры если есть
+                if (message.gameState && this.gameIntegration && this.gameIntegration.onHostReconnectSuccess) {
+                    this.gameIntegration.onHostReconnectSuccess(message);
+                }
+                break;
+                
+            case 'host_reconnected':
+                console.log('✅ Хост вернулся в игру');
+                // Скрываем сообщение об ожидании хоста
+                if (this.gameIntegration && this.gameIntegration.onHostReconnected) {
+                    this.gameIntegration.onHostReconnected(message);
                 }
                 break;
                 
