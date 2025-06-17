@@ -2722,6 +2722,7 @@ function initializeMultiplayer() {
             onAllActionsReceived: handleAllActionsReceived,
             onTurnComplete: handleTurnComplete,
             onCharacterCreated: handleCharacterCreated,
+            onCharacterAssigned: handleCharacterAssigned,
             onAllCharactersReady: handleAllCharactersReady,
             onInitialStoryReceived: handleInitialStoryReceived,
             onImageShared: handleImageShared,
@@ -2891,6 +2892,22 @@ function handleCharacterCreated(data) {
     
     // Обновляем отображение списка игроков в экране загрузки
     updateMultiplayerLoadingScreen();
+}
+
+function handleCharacterAssigned(data) {
+    console.log('👑 Хост получил персонажа:', data.character.name);
+    
+    // Обновляем персонажа текущего игрока (хоста)
+    gameState.character = data.character;
+    gameState.isMultiplayer = true;
+    
+    // Обновляем панель персонажа
+    updateCharacterPanel();
+    
+    // Показываем уведомление
+    showNotification(data.message || `Вы играете за ${data.character.name}`, 'success');
+    
+    console.log('✅ Персонаж хоста обновлен:', gameState.character.name);
 }
 
 function handleAllCharactersReady(data) {

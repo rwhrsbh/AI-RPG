@@ -407,10 +407,40 @@ function handleJoinLobby(playerId, message) {
     if (lobby.loadedGameData) {
         console.log('📋 Игрок присоединяется к лобби с загруженной игрой, показываем выбор персонажей');
         console.log('👥 Доступные персонажи:', Object.keys(lobby.loadedGameData.playersData || {}));
-        // Отправляем доступные персонажи из загруженной игры
+        
+        // ВАЖНО: Добавляем игрока в лобби, чтобы он мог брать персонажей под контроль
+        lobby.addPlayer(playerId, {
+            socket: player.socket,
+            name: message.playerName || `Гравець ${lobby.players.size + 1}`,
+            status: 'selecting_character' // Особый статус для выбора персонажа
+        });
+        
+        player.lobbyCode = message.code;
+        
+        console.log(`Гравець ${playerId} (${message.playerName}) приєднався до лобі з загруженою грою ${message.code}`);
+        
+        // Уведомляем всех игроков (включая хоста) о новом игроке
+        lobby.players.forEach((lobbyPlayer, lobbyPlayerId) => {
+            if (lobbyPlayer.socket.readyState === 1) {
+                lobbyPlayer.socket.send(JSON.stringify({
+                    type: 'player_joined',
+                    joiningPlayerId: playerId,
+                    players: lobby.getPlayersArray()
+                }));
+            }
+        });
+        
+        // Отправляем доступные персонажи из загруженной игры (исключая хоста)
+        const availableCharacters = {};
+        Object.entries(lobby.loadedGameData.playersData || {}).forEach(([originalPlayerId, playerData]) => {
+            if (originalPlayerId !== lobby.hostId) { // Исключаем персонажа хоста
+                availableCharacters[originalPlayerId] = playerData;
+            }
+        });
+        
         player.socket.send(JSON.stringify({
             type: 'loaded_game_characters_available',
-            characters: lobby.loadedGameData.playersData || {},
+            characters: availableCharacters,
             hostCharacter: lobby.loadedGameData.hostCharacter,
             lastStory: lobby.loadedGameData.lastStory,
             lastImage: lobby.loadedGameData.lastImage
@@ -840,7 +870,16 @@ function handleAIError(playerId, message) {
 // Обработка взятия управления отключенным персонажем
 function handleTakeOverCharacter(newPlayerId, message) {
     const newPlayer = players.get(newPlayerId);
-    const lobby = lobbies.get(message.lobbyCode);
+    
+    if (!newPlayer || !newPlayer.lobbyCode) {
+        newPlayer?.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Игрок не в лобби'
+        }));
+        return;
+    }
+    
+    const lobby = lobbies.get(newPlayer.lobbyCode);
     
     if (!lobby) {
         newPlayer.socket.send(JSON.stringify({
@@ -850,10 +889,14 @@ function handleTakeOverCharacter(newPlayerId, message) {
         return;
     }
     
-    const targetPlayerId = message.targetPlayerId;
+    const targetPlayerId = message.originalPlayerId;
+    console.log(`🎯 Попытка взять персонажа с ID: ${targetPlayerId}`);
+    console.log(`👥 Все игроки в лобби:`, Array.from(lobby.players.entries()).map(([id, player]) => `${id}: ${player.name} (${player.status})`));
+    
     const targetPlayer = lobby.players.get(targetPlayerId);
     
     if (!targetPlayer) {
+        console.log(`❌ Персонаж с ID ${targetPlayerId} не найден в лобби`);
         newPlayer.socket.send(JSON.stringify({
             type: 'error',
             message: 'Персонаж не знайдено'
@@ -861,7 +904,11 @@ function handleTakeOverCharacter(newPlayerId, message) {
         return;
     }
     
+    console.log(`🔍 Проверка статуса персонажа ${targetPlayerId}:`, targetPlayer.status);
+    console.log(`📋 Персонаж из сохранения:`, targetPlayer.isFromSave);
+    
     if (targetPlayer.status !== 'offline') {
+        console.log(`❌ Персонаж ${targetPlayerId} имеет статус ${targetPlayer.status}, но требуется offline`);
         newPlayer.socket.send(JSON.stringify({
             type: 'error',
             message: 'Цей персонаж все ще активний'
@@ -1262,12 +1309,56 @@ function handleSetLoadedGameData(playerId, message) {
         message.gameData.lastStory ? message.gameData.lastStory.substring(0, 50) + '...' : 'нет');
     console.log('🔍 loadedGameData установлено:', !!lobby.loadedGameData);
     
-    // Уведомляем всех игроков о доступных персонажах (кроме хоста)
+    // Создаем "фиктивных" игроков для каждого персонажа из сохранения (кроме хоста)
+    console.log(`🎭 Создание фиктивных игроков. Хост ID: ${playerId}`);
+    Object.entries(message.gameData.playersData || {}).forEach(([originalPlayerId, playerData]) => {
+        console.log(`🔍 Обрабатываем персонажа ${originalPlayerId} (${playerData.character.name}), хост: ${originalPlayerId === playerId}`);
+        if (originalPlayerId !== playerId) { // Не создаем для хоста
+            // Создаем офлайн игрока для этого персонажа
+            lobby.players.set(originalPlayerId, {
+                id: originalPlayerId,
+                name: playerData.character.name,
+                status: 'offline', // ВАЖНО: статус offline, чтобы персонажа можно было взять
+                socket: null,
+                character: playerData.character,
+                lastAction: null,
+                joinedAt: Date.now(),
+                isFromSave: true // Маркер что это персонаж из сохранения
+            });
+            console.log(`👤 Создан offline персонаж: ${playerData.character.name} (ID: ${originalPlayerId}, статус: offline)`);
+        } else {
+            console.log(`👑 Пропускаем создание для хоста: ${playerData.character.name} (ID: ${originalPlayerId})`);
+        }
+    });
+    
+    // Автоматически назначаем хосту его персонажа
+    const hostPlayer = lobby.players.get(playerId);
+    if (hostPlayer && message.gameData.hostCharacter) {
+        hostPlayer.character = message.gameData.hostCharacter;
+        hostPlayer.status = 'online';
+        console.log(`👑 Хост получил персонажа: ${message.gameData.hostCharacter.name}`);
+        
+        // Уведомляем хоста о том, что он получил персонажа
+        player.socket.send(JSON.stringify({
+            type: 'character_assigned',
+            character: message.gameData.hostCharacter,
+            message: `Вы играете за ${message.gameData.hostCharacter.name}`
+        }));
+    }
+    
+    // Уведомляем всех уже подключенных игроков о доступных персонажах (кроме хоста)
+    const availableCharactersForNotification = {};
+    Object.entries(message.gameData.playersData || {}).forEach(([originalPlayerId, playerData]) => {
+        if (originalPlayerId !== lobby.hostId) { // Исключаем персонажа хоста
+            availableCharactersForNotification[originalPlayerId] = playerData;
+        }
+    });
+    
     lobby.players.forEach((lobbyPlayer, lobbyPlayerId) => {
-        if (lobbyPlayerId !== lobby.hostId && lobbyPlayer.socket.readyState === 1) {
+        if (lobbyPlayerId !== lobby.hostId && lobbyPlayer.socket && lobbyPlayer.socket.readyState === 1) {
             lobbyPlayer.socket.send(JSON.stringify({
                 type: 'loaded_game_characters_available',
-                characters: message.gameData.playersData || {},
+                characters: availableCharactersForNotification,
                 hostCharacter: message.gameData.hostCharacter,
                 lastStory: message.gameData.lastStory,
                 lastImage: message.gameData.lastImage

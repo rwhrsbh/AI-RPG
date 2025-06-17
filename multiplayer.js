@@ -1534,6 +1534,13 @@ class MultiplayerManager {
                 this.showLoadedGameCharacterSelection(message.characters, message.hostCharacter, message.lastStory, message.lastImage);
                 break;
                 
+            case 'character_assigned':
+                console.log('👑 Получен персонаж:', message.character.name);
+                if (this.gameIntegration && this.gameIntegration.onCharacterAssigned) {
+                    this.gameIntegration.onCharacterAssigned(message);
+                }
+                break;
+                
             case 'all_characters_ready':
                 if (this.gameIntegration && this.gameIntegration.onAllCharactersReady) {
                     this.gameIntegration.onAllCharactersReady(message);
