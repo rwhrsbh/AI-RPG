@@ -1481,6 +1481,11 @@ class MultiplayerManager {
                 
             case 'host_reconnect_success':
                 console.log('✅ Хост успешно переподключился к лобби');
+                
+                // Сбрасываем состояние действий
+                this.currentActions = {};
+                console.log('🔄 Локальное состояние действий очищено при переподключении хоста');
+                
                 // Обновляем список игроков
                 this.updatePlayersList(message.players);
                 // Загружаем состояние игры если есть
@@ -1521,6 +1526,12 @@ class MultiplayerManager {
                 if (this.gameIntegration && this.gameIntegration.onCharacterCreated) {
                     this.gameIntegration.onCharacterCreated(message);
                 }
+                break;
+                
+            case 'loaded_game_characters_available':
+                console.log('📋 Доступны персонажи из загруженной игры:', message.characters);
+                console.log('👥 Количество доступных персонажей:', Object.keys(message.characters).length);
+                this.showLoadedGameCharacterSelection(message.characters, message.hostCharacter, message.lastStory, message.lastImage);
                 break;
                 
             case 'all_characters_ready':
@@ -1740,6 +1751,290 @@ class MultiplayerManager {
     // Отримання кількості гравців
     getPlayerCount() {
         return this.players.length;
+    }
+    
+    // Показать выбор персонажа из загруженной игры
+    showLoadedGameCharacterSelection(characters, hostCharacter, lastStory, lastImage) {
+        console.log('Показываем выбор персонажа из загруженной игры');
+        
+        // Закрываем мультиплеер модальное окно
+        this.hideModal();
+        
+        // Создаем модальное окно выбора персонажа
+        const charactersArray = Object.values(characters);
+        let charactersHTML = '';
+        
+        if (charactersArray.length === 0) {
+            charactersHTML = '<p class="no-characters">Нет доступных персонажей из предыдущей игры</p>';
+        } else {
+            charactersHTML = charactersArray.map(playerData => {
+                const character = playerData.character;
+                return `
+                    <div class="character-selection-card" onclick="window.multiplayerManager.selectLoadedCharacter('${playerData.playerId}', '${character.name}')">
+                        <h4>${character.name}</h4>
+                        <p class="character-class">${character.class}</p>
+                        <p class="character-level">Рівень ${character.level}</p>
+                        <div class="character-stats">
+                            <span class="stat-hp">❤️ ${character.health}/${character.maxHealth}</span>
+                            <span class="stat-mana">🔮 ${character.mana}/${character.maxMana}</span>
+                        </div>
+                        <div class="character-perks">
+                            ${character.perks ? character.perks.slice(0, 2).map(perk => `<span class="perk">${perk}</span>`).join('') : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Добавляем контекст игры если есть
+        let gameContextHTML = '';
+        if (lastStory) {
+            gameContextHTML = `
+                <div class="game-context">
+                    <h4>📖 Контекст истории:</h4>
+                    <div class="last-story">${lastStory.length > 200 ? lastStory.substring(0, 200) + '...' : lastStory}</div>
+                </div>
+            `;
+        }
+        
+        if (lastImage) {
+            gameContextHTML += `
+                <div class="game-image">
+                    <h4>🖼️ Последнее изображение:</h4>
+                    <img src="${lastImage}" alt="Последняя сцена" style="max-width: 200px; border-radius: 8px;">
+                </div>
+            `;
+        }
+        
+        const modalHTML = `
+            <div id="characterSelectionModal" class="modal" style="display: block;">
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <h2>🎭 Вибір персонажа</h2>
+                        <span class="close" onclick="window.multiplayerManager.hideCharacterSelectionModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="character-selection-info">
+                            <h3>Приєднання до збереженої гри</h3>
+                            <p>Хост <strong>${hostCharacter.name}</strong> завантажив збережену гру.</p>
+                            <p>Виберіть персонажа, яким хочете грати:</p>
+                        </div>
+                        
+                        ${gameContextHTML}
+                        
+                        <div class="characters-grid">
+                            ${charactersHTML}
+                        </div>
+                        
+                        <div class="character-selection-actions">
+                            <button onclick="window.multiplayerManager.createNewCharacterInstead()" class="mp-btn secondary">
+                                ✨ Створити нового персонажа
+                            </button>
+                            <button onclick="window.multiplayerManager.hideCharacterSelectionModal()" class="mp-btn danger">
+                                ❌ Покинути лобі
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Добавляем модальное окно в DOM
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Добавляем стили
+        this.addCharacterSelectionStyles();
+    }
+    
+    // Выбрать загруженного персонажа
+    selectLoadedCharacter(originalPlayerId, characterName) {
+        console.log('Выбран персонаж:', characterName, 'от игрока:', originalPlayerId);
+        
+        // Отправляем запрос на сервер для взятия персонажа под контроль
+        if (this.socket && this.isConnected) {
+            this.socket.send(JSON.stringify({
+                type: 'take_over_character',
+                originalPlayerId: originalPlayerId,
+                characterName: characterName
+            }));
+        }
+        
+        // Закрываем модальное окно
+        this.hideCharacterSelectionModal();
+    }
+    
+    // Создать нового персонажа вместо выбора из загруженных
+    createNewCharacterInstead() {
+        console.log('Игрок решил создать нового персонажа');
+        
+        // Закрываем модальное окно выбора
+        this.hideCharacterSelectionModal();
+        
+        // Показываем обычное создание персонажа
+        if (this.gameIntegration && this.gameIntegration.onGameStarted) {
+            // Имитируем событие начала игры для показа создания персонажа
+            this.gameIntegration.onGameStarted({
+                players: this.players,
+                isLoadedGame: true
+            });
+        }
+    }
+    
+    // Скрыть модальное окно выбора персонажа
+    hideCharacterSelectionModal() {
+        const modal = document.getElementById('characterSelectionModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+    
+    // Добавить стили для выбора персонажа
+    addCharacterSelectionStyles() {
+        if (document.getElementById('characterSelectionStyles')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'characterSelectionStyles';
+        style.textContent = `
+            .character-selection-info {
+                text-align: center;
+                margin-bottom: 20px;
+                padding: 15px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+            }
+            
+            .character-selection-info h3 {
+                color: #4ecdc4;
+                margin-bottom: 10px;
+            }
+            
+            .game-context {
+                margin: 15px 0;
+                padding: 15px;
+                background: rgba(255, 193, 7, 0.1);
+                border-radius: 8px;
+                border-left: 3px solid #ffc107;
+            }
+            
+            .game-context h4 {
+                color: #ffc107;
+                margin-bottom: 10px;
+            }
+            
+            .last-story {
+                color: #ddd;
+                line-height: 1.4;
+                font-style: italic;
+            }
+            
+            .game-image {
+                text-align: center;
+                margin: 15px 0;
+                padding: 15px;
+                background: rgba(78, 205, 196, 0.1);
+                border-radius: 8px;
+                border-left: 3px solid #4ecdc4;
+            }
+            
+            .game-image h4 {
+                color: #4ecdc4;
+                margin-bottom: 10px;
+            }
+            
+            .characters-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 15px;
+                margin: 20px 0;
+            }
+            
+            .character-selection-card {
+                background: rgba(255, 255, 255, 0.1);
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                padding: 15px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                text-align: center;
+            }
+            
+            .character-selection-card:hover {
+                border-color: #4ecdc4;
+                background: rgba(78, 205, 196, 0.2);
+                transform: translateY(-3px);
+                box-shadow: 0 5px 15px rgba(78, 205, 196, 0.3);
+            }
+            
+            .character-selection-card h4 {
+                color: #fff;
+                margin: 0 0 8px 0;
+                font-size: 18px;
+            }
+            
+            .character-class {
+                color: #4ecdc4;
+                font-weight: bold;
+                margin: 0 0 5px 0;
+                text-transform: capitalize;
+            }
+            
+            .character-level {
+                color: #f39c12;
+                margin: 0 0 10px 0;
+                font-size: 14px;
+            }
+            
+            .character-stats {
+                display: flex;
+                justify-content: space-around;
+                margin: 10px 0;
+                font-size: 12px;
+            }
+            
+            .stat-hp {
+                color: #e74c3c;
+            }
+            
+            .stat-mana {
+                color: #3498db;
+            }
+            
+            .character-perks {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+                justify-content: center;
+                margin-top: 10px;
+            }
+            
+            .perk {
+                background: rgba(155, 89, 182, 0.3);
+                border: 1px solid rgba(155, 89, 182, 0.5);
+                border-radius: 12px;
+                padding: 2px 8px;
+                font-size: 10px;
+                color: #ddd;
+            }
+            
+            .character-selection-actions {
+                display: flex;
+                gap: 10px;
+                justify-content: center;
+                margin-top: 20px;
+                padding-top: 15px;
+                border-top: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .no-characters {
+                text-align: center;
+                color: #95a5a6;
+                font-style: italic;
+                padding: 40px 20px;
+                grid-column: 1 / -1;
+            }
+        `;
+        
+        document.head.appendChild(style);
     }
 }
 

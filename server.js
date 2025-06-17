@@ -28,6 +28,8 @@ class Lobby {
         // Добавляем хранение последней сцены для переподключений
         this.lastScene = null;
         this.lastResults = null;
+        // Добавляем хранение данных загруженной игры
+        this.loadedGameData = null;
     }
 
     addPlayer(playerId, playerData) {
@@ -58,8 +60,12 @@ class Lobby {
     setPlayerAction(playerId, action) {
         this.currentActions.set(playerId, action);
         
-        // Перевіряємо, чи всі гравці зробили дії
-        if (this.currentActions.size === this.players.size) {
+        // ИСПРАВЛЕНИЕ: Проверяем только онлайн игроков вместо всех игроков
+        const onlinePlayersCount = Array.from(this.players.values()).filter(p => p.status === 'online').length;
+        console.log(`📊 Действие от ${playerId}: ${this.currentActions.size}/${onlinePlayersCount} онлайн игроков сделали действия`);
+        
+        if (this.currentActions.size === onlinePlayersCount) {
+            console.log(`✅ Все онлайн игроки сделали действия, запускаем обработку`);
             this.processAllActions();
         }
     }
@@ -334,6 +340,10 @@ function handleMessage(currentPlayerId, message, ws) {
             handleCreateRecoveryLobby(actualPlayerId, message);
             break;
             
+        case 'set_loaded_game_data':
+            handleSetLoadedGameData(actualPlayerId, message);
+            break;
+            
         default:
             console.log(`Невідомий тип повідомлення: ${message.type}`);
     }
@@ -390,6 +400,24 @@ function handleJoinLobby(playerId, message) {
             message: 'Лобі переповнене'
         }));
         return;
+    }
+    
+    // Проверяем, есть ли загруженные данные игры
+    console.log('🔍 Проверка загруженных данных для лобби:', message.code, 'loadedGameData:', !!lobby.loadedGameData);
+    if (lobby.loadedGameData) {
+        console.log('📋 Игрок присоединяется к лобби с загруженной игрой, показываем выбор персонажей');
+        console.log('👥 Доступные персонажи:', Object.keys(lobby.loadedGameData.playersData || {}));
+        // Отправляем доступные персонажи из загруженной игры
+        player.socket.send(JSON.stringify({
+            type: 'loaded_game_characters_available',
+            characters: lobby.loadedGameData.playersData || {},
+            hostCharacter: lobby.loadedGameData.hostCharacter,
+            lastStory: lobby.loadedGameData.lastStory,
+            lastImage: lobby.loadedGameData.lastImage
+        }));
+        return;
+    } else {
+        console.log('⏳ Лобби пока без загруженных данных игры, игрок будет ждать');
     }
     
     if (lobby.isGameStarted) {
@@ -1139,8 +1167,36 @@ function handleHostReconnect(playerId, message) {
     // Переподключение успешно
     player.lobbyCode = lobbyCode;
     
+    // ИСПРАВЛЕНИЕ: Обновляем статус хоста в лобби на "online"
+    const hostPlayerInLobby = lobby.players.get(playerId);
+    if (hostPlayerInLobby) {
+        hostPlayerInLobby.status = 'online';
+        hostPlayerInLobby.socket = player.socket;
+        console.log(`✅ Статус хоста ${playerId} обновлен на "online" в лобби ${lobbyCode}`);
+    }
+    
     // Отменяем таймер ожидания хоста если он есть
     cancelHostReconnectionTimer(lobbyCode, playerId);
+    
+    // Сохраняем информацию о текущих действиях для передачи хосту
+    const currentActionsData = {};
+    const playersWithActions = [];
+    lobby.currentActions.forEach((action, playerId) => {
+        const player = lobby.players.get(playerId);
+        if (player) {
+            currentActionsData[playerId] = {
+                action: action,
+                playerName: player.name,
+                character: player.character
+            };
+            playersWithActions.push(player.name);
+        }
+    });
+    
+    const hasActiveActions = lobby.currentActions.size > 0;
+    const onlinePlayersCount = Array.from(lobby.players.values()).filter(p => p.status === 'online').length;
+    const allPlayersActed = lobby.currentActions.size === onlinePlayersCount;
+    console.log(`💾 При переподключении хоста: ${lobby.currentActions.size}/${onlinePlayersCount} онлайн игроков уже сделали действия: ${playersWithActions.join(', ')}`);
     
     // Отправляем подтверждение хосту
     player.socket.send(JSON.stringify({
@@ -1148,20 +1204,76 @@ function handleHostReconnect(playerId, message) {
         lobbyCode: lobbyCode,
         players: lobby.getPlayersArray(),
         gameState: lobby.gameState,
-        lastScene: lobby.lastScene
+        lastScene: lobby.lastScene,
+        currentActions: currentActionsData,
+        hasActiveActions: hasActiveActions,
+        allPlayersActed: allPlayersActed
     }));
+    
+    // Если все онлайн игроки уже сделали действия, сразу запускаем обработку
+    if (allPlayersActed && hasActiveActions) {
+        console.log(`🚀 Все онлайн игроки уже сделали действия при переподключении хоста, запускаем обработку`);
+        setTimeout(() => {
+            lobby.processAllActions();
+        }, 1000); // Небольшая задержка чтобы хост успел восстановиться
+    }
     
     // Уведомляем других игроков о возвращении хоста
     lobby.players.forEach((lobbyPlayer, lobbyPlayerId) => {
         if (lobbyPlayerId !== playerId && lobbyPlayer.socket.readyState === 1) {
             lobbyPlayer.socket.send(JSON.stringify({
                 type: 'host_reconnected',
-                hostId: playerId
+                hostId: playerId,
+                currentActions: currentActionsData,
+                hasActiveActions: hasActiveActions,
+                players: lobby.getPlayersArray()
             }));
         }
     });
     
     console.log(`✅ Хост ${playerId} успешно переподключился к лобби ${lobbyCode}`);
+}
+
+// Обработка установки данных загруженной игры
+function handleSetLoadedGameData(playerId, message) {
+    const player = players.get(playerId);
+    if (!player || !player.lobbyCode) {
+        player?.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Игрок не в лобби'
+        }));
+        return;
+    }
+    
+    const lobby = lobbies.get(player.lobbyCode);
+    if (!lobby || lobby.hostId !== playerId) {
+        player.socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Только хост может устанавливать данные загруженной игры'
+        }));
+        return;
+    }
+    
+    // Сохраняем минимальные данные загруженной игры
+    lobby.loadedGameData = message.gameData;
+    const charactersCount = Object.keys(message.gameData.playersData || {}).length;
+    console.log(`💾 Данные загруженной игры установлены для лобби ${lobby.code}:`, 
+        charactersCount, 'персонажей, последняя сцена:', 
+        message.gameData.lastStory ? message.gameData.lastStory.substring(0, 50) + '...' : 'нет');
+    console.log('🔍 loadedGameData установлено:', !!lobby.loadedGameData);
+    
+    // Уведомляем всех игроков о доступных персонажах (кроме хоста)
+    lobby.players.forEach((lobbyPlayer, lobbyPlayerId) => {
+        if (lobbyPlayerId !== lobby.hostId && lobbyPlayer.socket.readyState === 1) {
+            lobbyPlayer.socket.send(JSON.stringify({
+                type: 'loaded_game_characters_available',
+                characters: message.gameData.playersData || {},
+                hostCharacter: message.gameData.hostCharacter,
+                lastStory: message.gameData.lastStory,
+                lastImage: message.gameData.lastImage
+            }));
+        }
+    });
 }
 
 // Экспорт для тестирования
