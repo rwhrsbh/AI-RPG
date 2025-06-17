@@ -16,8 +16,8 @@ class MultiplayerManager {
         this.gameIntegration = null; // Интеграция с game.js
         
         // Устанавливаем URL сервера
-        this.serverUrl = 'ws://localhost:3001';
-        // this.serverUrl = 'wss://ai-rpg-c4df.onrender.com';
+        // this.serverUrl = 'ws://localhost:3001';
+        this.serverUrl = 'wss://ai-rpg-c4df.onrender.com';
         // this.serverUrl = 'wss://f486-185-136-134-229.ngrok-free.app';
         
         // Пинг система для поддержания соединения
