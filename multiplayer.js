@@ -1404,12 +1404,28 @@ class MultiplayerManager {
         console.log('Является ли хостом:', this.isHost);
         if (startBtn && this.isHost) {
             const getText = window.getText || ((key) => key);
-            console.log('Обновляем кнопку старта игры. Количество игроков:', players.length);
-            startBtn.disabled = players.length < 2;
-            if (players.length < 2) {
-                startBtn.textContent = getText('needMinPlayersBtn') || `Нужно минимум 2 игрока (${players.length}/4)`;
+            const playersWithCharacters = players.filter(p => p.character);
+            console.log('Обновляем кнопку старта игры. Всего игроков:', players.length, 'с персонажами:', playersWithCharacters.length);
+            
+            // Для НОВЫХ игр - нужно просто 2+ игрока
+            // Для ЗАГРУЖЕННЫХ игр - нужно 2+ игрока с персонажами
+            const hasLoadedGame = window.loadedGameData || window.pendingLoadedGameData;
+            const canStart = hasLoadedGame ? playersWithCharacters.length >= 2 : players.length >= 2;
+            
+            startBtn.disabled = !canStart;
+            
+            if (!canStart) {
+                if (hasLoadedGame) {
+                    startBtn.textContent = getText('needMinPlayersBtn') || `Нужно минимум 2 игрока с персонажами (${playersWithCharacters.length}/4)`;
+                } else {
+                    startBtn.textContent = getText('needMinPlayersBtn') || `Нужно минимум 2 игрока (${players.length}/4)`;
+                }
             } else {
-                startBtn.textContent = getText('startGameBtn') || `Начать игру (${players.length} игроков)`;
+                if (hasLoadedGame) {
+                    startBtn.textContent = getText('startGameBtn') || `Начать игру (${playersWithCharacters.length} готовых игроков)`;
+                } else {
+                    startBtn.textContent = getText('startGameBtn') || `Начать игру (${players.length} игроков)`;
+                }
             }
             console.log('Кнопка обновлена. Disabled:', startBtn.disabled, 'Text:', startBtn.textContent);
         }
@@ -1513,6 +1529,22 @@ class MultiplayerManager {
                 }
                 break;
                 
+            case 'loaded_game_started':
+                console.log('🔄 Загруженная игра запущена - сообщение получено');
+                console.log('🔍 Данные сообщения:', message);
+                console.log('🎭 Текущий статус: isHost =', this.isHost);
+                
+                // Скрываем модальные окна
+                document.getElementById('multiplayerModal').style.display = 'none';
+                
+                if (this.gameIntegration && this.gameIntegration.onLoadedGameStarted) {
+                    console.log('✅ Вызываем onLoadedGameStarted');
+                    this.gameIntegration.onLoadedGameStarted(message);
+                } else {
+                    console.error('❌ gameIntegration или onLoadedGameStarted не найдены');
+                }
+                break;
+                
             case 'character_created':
                 console.log('Персонаж создан игроком:', message.playerId, message.character);
                 console.log('Получен обновленный список игроков:', message.players);
@@ -1536,6 +1568,13 @@ class MultiplayerManager {
                 
             case 'character_assigned':
                 console.log('👑 Получен персонаж:', message.character.name);
+                
+                // ИСПРАВЛЕНИЕ: Обновляем playerId если предоставлен сервером
+                if (message.playerId) {
+                    console.log('🔄 Обновляем playerId для character_assigned с', this.playerId, 'на', message.playerId);
+                    this.playerId = message.playerId;
+                }
+                
                 if (this.gameIntegration && this.gameIntegration.onCharacterAssigned) {
                     this.gameIntegration.onCharacterAssigned(message);
                 }
@@ -1685,9 +1724,34 @@ class MultiplayerManager {
             return;
         }
         
-        if (this.players.length < 2) {
-            alert('Потрібно мінімум 2 гравці для початку гри');
-            return;
+        // Для НОВЫХ игр - считаем всех игроков (персонажи создаются после старта)
+        // Для ЗАГРУЖЕННЫХ игр - считаем только игроков с персонажами
+        const hasLoadedGame = window.loadedGameData || window.pendingLoadedGameData;
+        
+        if (hasLoadedGame) {
+            // Логика для загруженных игр - нужны персонажи
+            const playersWithCharacters = this.players.filter(p => p.character);
+            console.log('🎮 Проверка готовности ЗАГРУЖЕННОЙ игры:', {
+                всего_игроков: this.players.length,
+                с_персонажами: playersWithCharacters.length,
+                список: this.players.map(p => `${p.name}: ${p.character ? 'есть' : 'нет'} персонаж`)
+            });
+            
+            if (playersWithCharacters.length < 2) {
+                alert(`Для загруженной игры нужно минимум 2 игрока с персонажами. Сейчас готовы: ${playersWithCharacters.length}`);
+                return;
+            }
+        } else {
+            // Логика для новых игр - просто нужно минимум 2 игрока
+            console.log('🎮 Проверка готовности НОВОЙ игры:', {
+                всего_игроков: this.players.length,
+                список: this.players.map(p => p.name)
+            });
+            
+            if (this.players.length < 2) {
+                alert(`Потрібно мінімум 2 гравці. Зараз в лобі: ${this.players.length}`);
+                return;
+            }
         }
         
         if (!window.gameState || !window.gameState.apiKey) {
