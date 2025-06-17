@@ -1309,25 +1309,42 @@ function handleSetLoadedGameData(playerId, message) {
         message.gameData.lastStory ? message.gameData.lastStory.substring(0, 50) + '...' : 'нет');
     console.log('🔍 loadedGameData установлено:', !!lobby.loadedGameData);
     
-    // Создаем "фиктивных" игроков для каждого персонажа из сохранения (кроме хоста)
+    // Создаем "фиктивных" игроков для каждого персонажа из сохранения 
     console.log(`🎭 Создание фиктивных игроков. Хост ID: ${playerId}`);
+    console.log(`📊 playersData:`, Object.keys(message.gameData.playersData || {}));
+    
+    // Получаем список ID игроков из hostCharacter для определения хоста
+    const hostCharacterPlayerId = message.gameData.hostCharacter?.playerId || playerId;
+    console.log(`🔍 ID хоста из hostCharacter: ${hostCharacterPlayerId}, текущий хост: ${playerId}`);
+    
     Object.entries(message.gameData.playersData || {}).forEach(([originalPlayerId, playerData]) => {
-        console.log(`🔍 Обрабатываем персонажа ${originalPlayerId} (${playerData.character.name}), хост: ${originalPlayerId === playerId}`);
-        if (originalPlayerId !== playerId) { // Не создаем для хоста
+        console.log(`🔍 Обрабатываем персонажа ${originalPlayerId} (${playerData.character?.name})`);
+        
+        // Проверяем, не является ли этот персонаж хостовским
+        const isHostCharacter = (originalPlayerId === hostCharacterPlayerId) || 
+                               (playerData.character?.name === message.gameData.hostCharacter?.name);
+        
+        console.log(`👑 Это персонаж хоста? ${isHostCharacter}`);
+        
+        if (!isHostCharacter) {
+            // Создаем уникальный ID для фиктивного игрока (добавляем префикс)
+            const fakePlayerId = `save_${originalPlayerId}`;
+            
             // Создаем офлайн игрока для этого персонажа
-            lobby.players.set(originalPlayerId, {
-                id: originalPlayerId,
+            lobby.players.set(fakePlayerId, {
+                id: fakePlayerId,
                 name: playerData.character.name,
                 status: 'offline', // ВАЖНО: статус offline, чтобы персонажа можно было взять
                 socket: null,
                 character: playerData.character,
                 lastAction: null,
                 joinedAt: Date.now(),
-                isFromSave: true // Маркер что это персонаж из сохранения
+                isFromSave: true, // Маркер что это персонаж из сохранения
+                originalPlayerId: originalPlayerId // Сохраняем оригинальный ID для поиска
             });
-            console.log(`👤 Создан offline персонаж: ${playerData.character.name} (ID: ${originalPlayerId}, статус: offline)`);
+            console.log(`👤 Создан offline персонаж: ${playerData.character.name} (новый ID: ${fakePlayerId}, оригинальный: ${originalPlayerId}, статус: offline)`);
         } else {
-            console.log(`👑 Пропускаем создание для хоста: ${playerData.character.name} (ID: ${originalPlayerId})`);
+            console.log(`👑 Пропускаем создание для хоста: ${playerData.character?.name} (ID: ${originalPlayerId})`);
         }
     });
     
