@@ -1268,8 +1268,8 @@ class MultiplayerManager {
 
     // Підключення до сервера
     connectToServer() {
-        const serverUrl = 'ws://localhost:3001';
-        // const serverUrl = 'wss://ai-rpg-c4df.onrender.com';
+        // const serverUrl = 'ws://localhost:3001';
+        const serverUrl = 'wss://ai-rpg-c4df.onrender.com';
 // const serverUrl = 'wss://f486-185-136-134-229.ngrok-free.app';
         console.log('Підключення до сервера:', serverUrl);
         
