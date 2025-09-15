@@ -29,6 +29,22 @@ let gameState = {
 };
 window.gameState = gameState;
 
+// Універсальна обгортка для запитів з фолбеком через AllOrigins (POST підтримується)
+async function fetchWithAllOriginsFallback(url, options) {
+    try {
+        const primaryResponse = await fetch(url, options);
+        if (!primaryResponse.ok) {
+            throw new Error(`Primary fetch failed: ${primaryResponse.status} ${primaryResponse.statusText}`);
+        }
+        return primaryResponse;
+    } catch (error) {
+        console.warn('⚠️ Primary fetch error, switching to AllOrigins proxy:', error?.message || error);
+        const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        // Виконуємо той самий метод/ті ж заголовки/тіло через проксі
+        return fetch(proxiedUrl, options);
+    }
+}
+
 const classStats = {
     warrior: { health: 120, mana: 30, perks: ['Майстерність мечем', 'Берсерк'] },
     mage: { health: 80, mana: 150, perks: ['Магічна стріла', 'Щит магії'] },
@@ -3764,7 +3780,7 @@ MANDATORY JSON OUTPUT REQUIREMENT:
     try {
         console.log('Отправка запроса к ИИ для мультиплеер сцены...');
         
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gameState.apiKey}`, {
+        const response = await fetchWithAllOriginsFallback(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gameState.apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -4299,7 +4315,7 @@ MANDATORY JSON OUTPUT REQUIREMENT:
     try {
         console.log('Отправка запроса к ИИ для обработки мультиплеер действий...');
         
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${window.gameState.apiKey}`, {
+        const response = await fetchWithAllOriginsFallback(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${window.gameState.apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -6378,7 +6394,7 @@ async function callGeminiAPI(prompt, isInitial = false) {
             parts: [{ text: prompt }]
         });
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gameState.apiKey}`, {
+        const response = await fetchWithAllOriginsFallback(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gameState.apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -8028,7 +8044,7 @@ Respond in English. Summary should be detailed but concise.`;
 
         console.log('📝 Відправка запиту на саммарайз мультиплеєра...');
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${window.gameState.apiKey}`, {
+        const response = await fetchWithAllOriginsFallback(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${window.gameState.apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -9106,7 +9122,7 @@ Important: the summary should be detailed but concise. Make the summary interest
             console.log('Дані запиту:', JSON.stringify(requestBody).substring(0, 150) + '...');
             console.log('Початок відправки запиту до API Gemini...');
             
-            response = await fetch(apiUrl, {
+            response = await fetchWithAllOriginsFallback(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

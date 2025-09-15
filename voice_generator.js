@@ -505,7 +505,20 @@ async function fetchGeminiVoiceAudio(text, voice, instructions) {
         
         // Відправляємо запит з сигналом AbortController
         console.log('Відправляємо запит до TTS API...');
-        const response = await fetch(apiUrl, {
+        // Локальна обгортка для фолбеку через AllOrigins спеціально для TTS
+        const fetchWithAllOriginsFallbackTTS = async (url, options) => {
+            try {
+                const res = await fetch(url, options);
+                if (!res.ok) throw new Error(`Primary fetch failed: ${res.status} ${res.statusText}`);
+                return res;
+            } catch (e) {
+                console.warn('⚠️ TTS primary fetch failed, using AllOrigins proxy:', e?.message || e);
+                const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                return fetch(proxied, options);
+            }
+        };
+
+        const response = await fetchWithAllOriginsFallbackTTS(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

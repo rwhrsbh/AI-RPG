@@ -139,7 +139,20 @@ async function generateImage(prompt, apiKey, safePrompt = null) {
         };
     
         try {
-            const response = await fetch(`${modelEndpoint}?key=${apiKey}`, { // Використовуємо оновлений modelEndpoint
+            // Функція фолбеку через AllOrigins для цього файлу
+            const fetchWithAllOriginsFallbackImg = async (url, options) => {
+                try {
+                    const res = await fetch(url, options);
+                    if (!res.ok) throw new Error(`Primary fetch failed: ${res.status} ${res.statusText}`);
+                    return res;
+                } catch (e) {
+                    console.warn('⚠️ Image fetch primary failed, using AllOrigins proxy:', e?.message || e);
+                    const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                    return fetch(proxied, options);
+                }
+            };
+
+            const response = await fetchWithAllOriginsFallbackImg(`${modelEndpoint}?key=${apiKey}`, { // Використовуємо оновлений modelEndpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
