@@ -122,7 +122,7 @@ async function generateImage(prompt, apiKey, safePrompt = null) {
  */
 
     async function tryGenerateWithPrompt(prompt, apiKey) {
-        const modelEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent`; // Змінено на v1beta
+        const modelEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent`; // Змінено на v1beta
         
         const payload = {
             contents: [
