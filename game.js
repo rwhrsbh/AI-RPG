@@ -27,9 +27,7 @@ let gameState = {
     multiplayerTurn: false, // Чи очікуємо дії від інших гравців
     pendingAction: null, // Збереження дії гравця до відправки на сервер
     imageGenerationEnabled: true, // Генерація картинок увімкнена за замовчуванням
-    corsProxyEnabled: false, // CORS проксі вимкнено за замовчуванням
-    streamingTtsEnabled: false, // Streaming TTS вимкнено за замовчуванням
-    liveApiEnabled: false // Live API режим вимкнено за замовчуванням
+    corsProxyEnabled: false // CORS проксі вимкнено за замовчуванням
 };
 window.gameState = gameState;
 
@@ -142,8 +140,6 @@ const localization = {
         // Налаштування озвучування
         voiceSettings: "Voice Settings",
         voiceEnabled: "Enable voice narration",
-        streamingTtsEnabled: "Streaming mode (faster playback)",
-        liveApiEnabled: "Live API mode (replaces TTS, bidirectional streaming)",
         selectVoice: "Select voice:",
         defaultVoice: "default",
         voiceApiNote: "Voice narration uses the same Gemini API key. Make sure your key has access to the Gemini TTS model.",
@@ -431,8 +427,6 @@ const localization = {
         // Налаштування озвучування
         voiceSettings: "Налаштування озвучування",
         voiceEnabled: "Увімкнути озвучування",
-        streamingTtsEnabled: "Streaming режим (швидше відтворення)",
-        liveApiEnabled: "Live API режим (замінює TTS, двосторонній streaming)",
         selectVoice: "Виберіть голос:",
         defaultVoice: "за замовчуванням",
         voiceApiNote: "Озвучування використовує той же ключ Gemini API. Переконайтеся, що ваш ключ має доступ до TTS моделі Gemini.",
@@ -754,8 +748,6 @@ const localization = {
         // Настройки озвучивания
         voiceSettings: "Настройки озвучивания",
         voiceEnabled: "Включить озвучивание",
-        streamingTtsEnabled: "Streaming режим (быстрое воспроизведение)",
-        liveApiEnabled: "Live API режим (заменяет TTS, двусторонний streaming)",
         selectVoice: "Выберите голос:",
         defaultVoice: "по умолчанию",
         voiceApiNote: "Озвучивание использует тот же ключ Gemini API. Убедитесь, что ваш ключ имеет доступ к TTS модели Gemini.",
@@ -5623,8 +5615,6 @@ function saveApiKey() {
         // Зберігаємо налаштування генерації картинок та CORS проксі
         gameState.imageGenerationEnabled = document.getElementById('imageGenerationEnabled').checked;
         gameState.corsProxyEnabled = document.getElementById('corsProxyEnabled').checked;
-        gameState.streamingTtsEnabled = document.getElementById('streamingTtsEnabled').checked;
-        gameState.liveApiEnabled = document.getElementById('liveApiEnabled').checked;
 
         // Зберігаємо налаштування озвучування
         if (window.voiceGenerator) {
@@ -8654,14 +8644,6 @@ function initVoiceSettingsUI() {
         document.getElementById('voiceEnabledLabel').textContent = getText('voiceEnabled');
     }
 
-    if (document.getElementById('streamingTtsEnabledLabel')) {
-        document.getElementById('streamingTtsEnabledLabel').textContent = getText('streamingTtsEnabled');
-    }
-
-    if (document.getElementById('liveApiEnabledLabel')) {
-        document.getElementById('liveApiEnabledLabel').textContent = getText('liveApiEnabled');
-    }
-
     if (document.getElementById('shortResponsesEnabledLabel')) {
         document.getElementById('shortResponsesEnabledLabel').textContent = getText('shortResponses');
     }
@@ -8709,14 +8691,6 @@ function initVoiceSettingsUI() {
 
     if (document.getElementById('corsProxyEnabled')) {
         document.getElementById('corsProxyEnabled').checked = gameState.corsProxyEnabled;
-    }
-
-    if (document.getElementById('streamingTtsEnabled')) {
-        document.getElementById('streamingTtsEnabled').checked = gameState.streamingTtsEnabled;
-    }
-
-    if (document.getElementById('liveApiEnabled')) {
-        document.getElementById('liveApiEnabled').checked = gameState.liveApiEnabled;
     }
 
     // Якщо налаштування озвучування вже збережені, завантажуємо їх

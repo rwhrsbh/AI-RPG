@@ -428,157 +428,6 @@ async function processVoiceQueue() {
 }
 
 /**
- * Генерує аудіо через Live API з WebSocket
- * @param {string} text - Текст для озвучування
- * @param {string} voice - Голос для озвучування
- * @param {string} apiKey - API ключ
- * @param {AbortSignal} signal - Сигнал для переривання
- * @returns {Promise<null>} - Null, оскільки аудіо відтворюється безпосередньо
- */
-async function generateVoiceWithLiveAPI(text, voice, apiKey, signal) {
-    console.log('🔴 Live API: Підключення до WebSocket...');
-
-    // Використовуємо gemini-2.5-flash-live для Live API
-    const model = 'gemini-2.5-flash-live';
-    const wsUrl = `wss://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`;
-
-    return new Promise((resolve, reject) => {
-        const ws = new WebSocket(wsUrl);
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        let audioQueue = [];
-        let isPlaying = false;
-        let nextStartTime = 0;
-
-        // Функція для відтворення наступного chunk з черги
-        const playNextChunk = async () => {
-            if (audioQueue.length === 0) {
-                isPlaying = false;
-                return;
-            }
-
-            isPlaying = true;
-            const base64Chunk = audioQueue.shift();
-
-            try {
-                // Декодуємо base64 в ArrayBuffer
-                const binaryString = atob(base64Chunk);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                // Декодуємо аудіо
-                const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
-
-                // Створюємо джерело для відтворення
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-
-                // Розраховуємо час початку для безшовного відтворення
-                const currentTime = audioContext.currentTime;
-                if (nextStartTime < currentTime) {
-                    nextStartTime = currentTime;
-                }
-
-                source.start(nextStartTime);
-                nextStartTime += audioBuffer.duration;
-
-                console.log('🔴 Live API: chunk відтворено, тривалість:', audioBuffer.duration);
-
-                // Відтворюємо наступний chunk
-                source.onended = () => {
-                    playNextChunk();
-                };
-            } catch (e) {
-                console.error('🔴 Live API: помилка відтворення chunk:', e);
-                // Продовжуємо з наступним chunk навіть при помилці
-                playNextChunk();
-            }
-        };
-
-        // Обробка переривання
-        if (signal) {
-            signal.addEventListener('abort', () => {
-                console.log('🔴 Live API: отримано сигнал переривання, закриваємо WebSocket');
-                ws.close();
-                reject(new Error('Live API request aborted'));
-            });
-        }
-
-        ws.onopen = () => {
-            console.log('🔴 Live API: WebSocket підключено');
-
-            // Відправляємо запит на генерацію аудіо
-            const request = {
-                contents: [{
-                    role: "user",
-                    parts: [{ text: `Read aloud in a warm, engaging tone: ${text}` }]
-                }],
-                generationConfig: {
-                    responseModalities: ["audio"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: {
-                                voiceName: voice
-                            }
-                        }
-                    }
-                }
-            };
-
-            ws.send(JSON.stringify(request));
-            console.log('🔴 Live API: Запит відправлено');
-        };
-
-        ws.onmessage = async (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                console.log('🔴 Live API: Отримано повідомлення:', data);
-
-                // Шукаємо аудіо дані в повідомленні
-                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-                    for (const part of data.candidates[0].content.parts) {
-                        if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.includes('audio/')) {
-                            console.log('🔴 Live API: Знайдено audio chunk');
-                            audioQueue.push(part.inlineData.data);
-
-                            if (!isPlaying) {
-                                playNextChunk();
-                            }
-                        }
-                    }
-                }
-
-                // Перевіряємо чи завершено генерацію
-                if (data.candidates && data.candidates[0] && data.candidates[0].finishReason) {
-                    console.log('🔴 Live API: Генерацію завершено, причина:', data.candidates[0].finishReason);
-
-                    // Чекаємо поки всі chunks відтворяться
-                    while (audioQueue.length > 0 || isPlaying) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                    }
-
-                    ws.close();
-                    resolve(null);
-                }
-            } catch (e) {
-                console.error('🔴 Live API: Помилка обробки повідомлення:', e);
-            }
-        };
-
-        ws.onerror = (error) => {
-            console.error('🔴 Live API: Помилка WebSocket:', error);
-            reject(new Error('WebSocket error'));
-        };
-
-        ws.onclose = () => {
-            console.log('🔴 Live API: WebSocket закрито');
-        };
-    });
-}
-
-/**
  * Отримує аудіо з Gemini API
  * @param {string} text - Текст для озвучування
  * @param {string} voice - Голос для озвучування
@@ -649,22 +498,11 @@ async function fetchGeminiVoiceAudio(text, voice, instructions) {
         
         // Логування для діагностики
         console.log('TTS запит:', JSON.stringify(requestBody, null, 2));
-
-        // Перевіряємо чи увімкнений Live API режим
-        const liveApiEnabled = window.gameState && window.gameState.liveApiEnabled;
-
-        if (liveApiEnabled) {
-            // Використовуємо Live API з WebSocket
-            console.log('🔴 Live API режим увімкнено, використовуємо WebSocket...');
-            return await generateVoiceWithLiveAPI(text, voice, apiKey, signal);
-        }
-
-        // Перевіряємо чи увімкнений streaming режим
-        const streamingEnabled = window.gameState && window.gameState.streamingTtsEnabled;
-        const endpoint = streamingEnabled ? 'streamGenerateContent' : 'generateContent';
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:${endpoint}?key=${apiKey}`;
-        console.log('TTS API URL:', apiUrl.replace(apiKey, '****'), 'Streaming:', streamingEnabled);
-
+        
+        // Використовуємо non-streaming API endpoint замість streaming
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+        console.log('TTS API URL:', apiUrl.replace(apiKey, '****'));
+        
         // Відправляємо запит з сигналом AbortController
         console.log('Відправляємо запит до TTS API...');
         // Локальна обгортка для фолбеку через AllOrigins спеціально для TTS
@@ -700,151 +538,25 @@ async function fetchGeminiVoiceAudio(text, voice, instructions) {
         });
         
         console.log('TTS відповідь статус:', response.status, response.statusText);
-
+        
         if (!response.ok) {
             const errorText = await response.text();
             console.error('TTS помилка відповіді:', errorText);
             throw new Error(`Помилка API: ${response.status} ${response.statusText} ${errorText}`);
         }
-
-        let data;
-        let audioChunks = []; // Для збору audio chunks
-        let mimeType = 'audio/wav'; // За замовчуванням
-
-        // Обробляємо відповідь в залежності від режиму
-        if (streamingEnabled) {
-            // Streaming режим - обробляємо chunks інкрементально з прогресивним відтворенням
-            console.log('TTS обробка streaming відповіді з інкрементальним відтворенням...');
-
-            // Створюємо AudioContext для прогресивного відтворення
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            let audioQueue = [];
-            let isPlaying = false;
-            let nextStartTime = 0;
-
-            // Функція для відтворення наступного chunk з черги
-            const playNextChunk = async () => {
-                if (audioQueue.length === 0) {
-                    isPlaying = false;
-                    return;
-                }
-
-                isPlaying = true;
-                const base64Chunk = audioQueue.shift();
-
-                try {
-                    // Декодуємо base64 в ArrayBuffer
-                    const binaryString = atob(base64Chunk);
-                    const bytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
-
-                    // Декодуємо аудіо
-                    const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
-
-                    // Створюємо джерело для відтворення
-                    const source = audioContext.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(audioContext.destination);
-
-                    // Розраховуємо час початку для безшовного відтворення
-                    const currentTime = audioContext.currentTime;
-                    if (nextStartTime < currentTime) {
-                        nextStartTime = currentTime;
-                    }
-
-                    source.start(nextStartTime);
-                    nextStartTime += audioBuffer.duration;
-
-                    console.log('TTS chunk відтворено, тривалість:', audioBuffer.duration);
-
-                    // Відтворюємо наступний chunk
-                    source.onended = () => {
-                        playNextChunk();
-                    };
-                } catch (e) {
-                    console.error('TTS помилка відтворення chunk:', e);
-                    // Продовжуємо з наступним chunk навіть при помилці
-                    playNextChunk();
-                }
-            };
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-                const {done, value} = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, {stream: true});
-
-                // Обробляємо всі повні JSON об'єкти в буфері
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // Зберігаємо неповний рядок
-
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-
-                    try {
-                        const chunk = JSON.parse(line);
-
-                        // Шукаємо аудіо дані в chunk
-                        if (chunk.candidates &&
-                            chunk.candidates[0] &&
-                            chunk.candidates[0].content &&
-                            chunk.candidates[0].content.parts) {
-
-                            for (const part of chunk.candidates[0].content.parts) {
-                                if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.includes('audio/')) {
-                                    console.log('TTS знайдено audio chunk, тип:', part.inlineData.mimeType);
-                                    mimeType = part.inlineData.mimeType;
-
-                                    // Додаємо chunk в чергу та починаємо відтворення
-                                    audioQueue.push(part.inlineData.data);
-                                    audioChunks.push(part.inlineData.data); // Зберігаємо для fallback
-
-                                    if (!isPlaying) {
-                                        playNextChunk();
-                                    }
-                                }
-                            }
-                        }
-
-                        // Зберігаємо останній chunk як data
-                        data = chunk;
-                    } catch (e) {
-                        console.warn('TTS помилка парсингу chunk:', e);
-                    }
-                }
-            }
-
-            console.log('TTS зібрано audio chunks:', audioChunks.length);
-
-            // Чекаємо поки всі chunks відтворяться
-            while (audioQueue.length > 0 || isPlaying) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-
-            console.log('TTS streaming відтворення завершено');
-        } else {
-            // Звичайний режим - отримуємо JSON відповідь
-            data = await response.json();
-            console.log('TTS отримано повну відповідь:', JSON.stringify(data, null, 2).substring(0, 200) + '...');
-        }
-
+        
+        // Отримуємо JSON відповідь замість потокової обробки
+        const data = await response.json();
+        console.log('TTS отримано повну відповідь:', JSON.stringify(data, null, 2).substring(0, 200) + '...');
+        
         // Очищаємо поточний AbortController після успішного завершення
         currentTTSAbortController = null;
-
+        
         let audioData = null;
-
-        // Обробляємо аудіо дані
-        if (streamingEnabled && audioChunks.length > 0) {
-            // У streaming режимі аудіо вже відтворено прогресивно, нічого більше робити не потрібно
-            console.log('TTS streaming режим: аудіо вже відтворено,', audioChunks.length, 'chunks оброблено');
-            return null; // Аудіо вже відтворено, повертаємо null
-        } else if (data.candidates && 
+        let mimeType = 'audio/wav'; // За замовчуванням
+        
+        // Шукаємо аудіо дані в відповіді
+        if (data.candidates && 
             data.candidates[0] && 
             data.candidates[0].content && 
             data.candidates[0].content.parts) {
