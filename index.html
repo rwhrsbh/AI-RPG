@@ -445,14 +445,26 @@
             </div>
             
             <div class="voice-settings">
-                <h4 style="margin-top: 0;">🎤 <span id="voiceSettingsTitle">Налаштування озвучування</span></h4>
-                
+                <h4 style="margin-top: 0;">⚙️ <span id="generalSettingsTitle">Загальні налаштування</span></h4>
+
+                <div class="voice-option">
+                    <input type="checkbox" id="imageGenerationEnabled" checked>
+                    <label for="imageGenerationEnabled" id="imageGenerationEnabledLabel">Увімкнути генерацію зображень</label>
+                </div>
+
+                <div class="voice-option">
+                    <input type="checkbox" id="corsProxyEnabled">
+                    <label for="corsProxyEnabled" id="corsProxyEnabledLabel">Увімкнути CORS проксі (якщо виникають помилки з'єднання)</label>
+                </div>
+
+                <h4 style="margin-top: 15px;">🎤 <span id="voiceSettingsTitle">Налаштування озвучування</span></h4>
+
                 <div class="voice-option">
                     <input type="checkbox" id="voiceEnabled" checked>
                     <label for="voiceEnabled" id="voiceEnabledLabel">Увімкнути озвучування</label>
                 </div>
-                
-                
+
+
                 <div style="margin-top: 15px;">
                     <label for="voiceService" id="voiceServiceLabel">Виберіть сервіс озвучування:</label>
                     <select id="voiceService" class="api-input" style="margin-top: 5px;" onchange="toggleVoiceServiceOptions()">

@@ -24,6 +24,15 @@ window.lastGeneratedImage = null;
  * @returns {Promise<string>} - URL зображення або null у випадку помилки
  */
 async function generateImage(prompt, apiKey, safePrompt = null) {
+    // Перевіряємо чи увімкнена генерація картинок
+    if (window.gameState && !window.gameState.imageGenerationEnabled) {
+        console.log('Image generation is disabled');
+        // Позначаємо зображення як готове (пропускаємо генерацію)
+        imageResponseReady = true;
+        checkAndDisplayContent(null);
+        return null;
+    }
+
     if (!prompt || !apiKey) {
         console.error('Missing prompt or API key for image generation');
         return null;
@@ -35,7 +44,7 @@ async function generateImage(prompt, apiKey, safePrompt = null) {
     window.lastImagePrompt = prompt;
     window.safeImagePrompt = safePrompt || prompt;
     isUsingSafePrompt = false;
-    
+
     // Скидаємо прапорці готовності
     textResponseReady = false;
     imageResponseReady = false;
@@ -141,14 +150,24 @@ async function generateImage(prompt, apiKey, safePrompt = null) {
         try {
             // Функція фолбеку через AllOrigins для цього файлу
             const fetchWithAllOriginsFallbackImg = async (url, options) => {
+                // Перевіряємо чи увімкнено CORS проксі
+                const corsProxyEnabled = window.gameState && window.gameState.corsProxyEnabled;
+
                 try {
                     const res = await fetch(url, options);
                     if (!res.ok) throw new Error(`Primary fetch failed: ${res.status} ${res.statusText}`);
                     return res;
                 } catch (e) {
-                    console.warn('⚠️ Image fetch primary failed, using AllOrigins proxy:', e?.message || e);
-                    const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-                    return fetch(proxied, options);
+                    // Використовуємо проксі тільки якщо він увімкнений
+                    if (corsProxyEnabled) {
+                        console.warn('⚠️ Image fetch primary failed, using AllOrigins proxy:', e?.message || e);
+                        const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                        return fetch(proxied, options);
+                    } else {
+                        // Якщо проксі вимкнено, викидаємо помилку
+                        console.error('⚠️ Image fetch failed and CORS proxy is disabled:', e?.message || e);
+                        throw e;
+                    }
                 }
             };
 

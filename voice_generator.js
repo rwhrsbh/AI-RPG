@@ -507,14 +507,24 @@ async function fetchGeminiVoiceAudio(text, voice, instructions) {
         console.log('Відправляємо запит до TTS API...');
         // Локальна обгортка для фолбеку через AllOrigins спеціально для TTS
         const fetchWithAllOriginsFallbackTTS = async (url, options) => {
+            // Перевіряємо чи увімкнено CORS проксі
+            const corsProxyEnabled = window.gameState && window.gameState.corsProxyEnabled;
+
             try {
                 const res = await fetch(url, options);
                 if (!res.ok) throw new Error(`Primary fetch failed: ${res.status} ${res.statusText}`);
                 return res;
             } catch (e) {
-                console.warn('⚠️ TTS primary fetch failed, using AllOrigins proxy:', e?.message || e);
-                const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-                return fetch(proxied, options);
+                // Використовуємо проксі тільки якщо він увімкнений
+                if (corsProxyEnabled) {
+                    console.warn('⚠️ TTS primary fetch failed, using AllOrigins proxy:', e?.message || e);
+                    const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                    return fetch(proxied, options);
+                } else {
+                    // Якщо проксі вимкнено, викидаємо помилку
+                    console.error('⚠️ TTS fetch failed and CORS proxy is disabled:', e?.message || e);
+                    throw e;
+                }
             }
         };
 

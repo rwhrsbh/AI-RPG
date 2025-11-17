@@ -25,7 +25,9 @@ let gameState = {
     shortResponses: false, // Прапорець для режиму коротких відповідей
     isMultiplayer: false, // Чи активний мультиплеєр режим
     multiplayerTurn: false, // Чи очікуємо дії від інших гравців
-    pendingAction: null // Збереження дії гравця до відправки на сервер
+    pendingAction: null, // Збереження дії гравця до відправки на сервер
+    imageGenerationEnabled: true, // Генерація картинок увімкнена за замовчуванням
+    corsProxyEnabled: false // CORS проксі вимкнено за замовчуванням
 };
 window.gameState = gameState;
 
@@ -38,10 +40,17 @@ async function fetchWithAllOriginsFallback(url, options) {
         }
         return primaryResponse;
     } catch (error) {
-        console.warn('⚠️ Primary fetch error, switching to AllOrigins proxy:', error?.message || error);
-        const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-        // Виконуємо той самий метод/ті ж заголовки/тіло через проксі
-        return fetch(proxiedUrl, options);
+        // Перевіряємо чи увімкнено CORS проксі
+        if (gameState.corsProxyEnabled) {
+            console.warn('⚠️ Primary fetch error, switching to AllOrigins proxy:', error?.message || error);
+            const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+            // Виконуємо той самий метод/ті ж заголовки/тіло через проксі
+            return fetch(proxiedUrl, options);
+        } else {
+            // Якщо проксі вимкнено, викидаємо помилку
+            console.error('⚠️ Fetch failed and CORS proxy is disabled:', error?.message || error);
+            throw error;
+        }
     }
 }
 
@@ -123,6 +132,11 @@ const localization = {
         unmute: "Unmute",
         volume: "Volume",
         
+        // Загальні налаштування
+        generalSettings: "General Settings",
+        imageGenerationEnabled: "Enable image generation",
+        corsProxyEnabled: "Enable CORS proxy (if connection errors occur)",
+
         // Налаштування озвучування
         voiceSettings: "Voice Settings",
         voiceEnabled: "Enable voice narration",
@@ -405,6 +419,11 @@ const localization = {
         unmute: "Увімкнути",
         volume: "Гучність",
         
+        // Загальні налаштування
+        generalSettings: "Загальні налаштування",
+        imageGenerationEnabled: "Увімкнути генерацію зображень",
+        corsProxyEnabled: "Увімкнути CORS проксі (якщо виникають помилки з'єднання)",
+
         // Налаштування озвучування
         voiceSettings: "Налаштування озвучування",
         voiceEnabled: "Увімкнути озвучування",
@@ -721,6 +740,11 @@ const localization = {
         unmute: "Включить",
         volume: "Громкость",
         
+        // Общие настройки
+        generalSettings: "Общие настройки",
+        imageGenerationEnabled: "Включить генерацию изображений",
+        corsProxyEnabled: "Включить CORS прокси (если возникают ошибки соединения)",
+
         // Настройки озвучивания
         voiceSettings: "Настройки озвучивания",
         voiceEnabled: "Включить озвучивание",
@@ -5587,13 +5611,17 @@ function saveApiKey() {
     const apiKey = document.getElementById('apiKey').value.trim();
     if (apiKey) {
         gameState.apiKey = apiKey;
-        
+
+        // Зберігаємо налаштування генерації картинок та CORS проксі
+        gameState.imageGenerationEnabled = document.getElementById('imageGenerationEnabled').checked;
+        gameState.corsProxyEnabled = document.getElementById('corsProxyEnabled').checked;
+
         // Зберігаємо налаштування озвучування
         if (window.voiceGenerator) {
             const voiceEnabled = document.getElementById('voiceEnabled').checked;
             const voiceService = document.getElementById('voiceService').value;
             const elevenLabsApiKey = document.getElementById('elevenLabsApiKey').value.trim();
-            
+
             // Зберігаємо налаштування коротких відповідей
             gameState.shortResponses = document.getElementById('shortResponsesEnabled').checked;
             
@@ -8596,14 +8624,26 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function initVoiceSettingsUI() {
     // Оновлюємо тексти з перекладом
+    if (document.getElementById('generalSettingsTitle')) {
+        document.getElementById('generalSettingsTitle').textContent = getText('generalSettings');
+    }
+
+    if (document.getElementById('imageGenerationEnabledLabel')) {
+        document.getElementById('imageGenerationEnabledLabel').textContent = getText('imageGenerationEnabled');
+    }
+
+    if (document.getElementById('corsProxyEnabledLabel')) {
+        document.getElementById('corsProxyEnabledLabel').textContent = getText('corsProxyEnabled');
+    }
+
     if (document.getElementById('voiceSettingsTitle')) {
         document.getElementById('voiceSettingsTitle').textContent = getText('voiceSettings');
     }
-    
+
     if (document.getElementById('voiceEnabledLabel')) {
         document.getElementById('voiceEnabledLabel').textContent = getText('voiceEnabled');
     }
-    
+
     if (document.getElementById('shortResponsesEnabledLabel')) {
         document.getElementById('shortResponsesEnabledLabel').textContent = getText('shortResponses');
     }
@@ -8644,15 +8684,24 @@ function initVoiceSettingsUI() {
         document.getElementById('selectElevenLabsVoiceLabel').textContent = getText('selectVoice');
     }
     
+    // Встановлюємо значення для чекбоксів генерації картинок та CORS проксі
+    if (document.getElementById('imageGenerationEnabled')) {
+        document.getElementById('imageGenerationEnabled').checked = gameState.imageGenerationEnabled;
+    }
+
+    if (document.getElementById('corsProxyEnabled')) {
+        document.getElementById('corsProxyEnabled').checked = gameState.corsProxyEnabled;
+    }
+
     // Якщо налаштування озвучування вже збережені, завантажуємо їх
     if (window.voiceGenerator) {
         const settings = window.voiceGenerator.getVoiceSettings();
-        
+
         // Встановлюємо значення для чекбоксу озвучування
         if (document.getElementById('voiceEnabled')) {
             document.getElementById('voiceEnabled').checked = settings.isEnabled;
         }
-        
+
         // Встановлюємо значення для чекбоксу коротких відповідей
         if (document.getElementById('shortResponsesEnabled')) {
             document.getElementById('shortResponsesEnabled').checked = gameState.shortResponses;
